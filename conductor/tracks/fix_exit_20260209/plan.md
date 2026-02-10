@@ -14,7 +14,7 @@ Refactor the application entry point to separate the UI loop from the signal-han
     - [x] **Refactor:** Clean up global variables by encapsulating signal state in a class or closure.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Threading and Signal Logic Refactor' (Protocol in workflow.md)
 
-## Phase 2: Clean Shutdown and Traceback Fix
+## Phase 2: Clean Shutdown and Traceback Fix [checkpoint: 7d361d1]
 Ensure the transition from signal confirmation to `pystray` termination is silent and fast.
 
 - [x] Task: Resolve `SystemExit` Traceback in `engine/ui.py` (f889dd6)
@@ -24,12 +24,13 @@ Ensure the transition from signal confirmation to `pystray` termination is silen
 - [x] Task: Implement Bounded Shutdown (<= 2s) (697fe8a)
     - [x] **Green:** Update shutdown sequence to wait for the UI thread with a 2-second timeout.
     - [x] **Green:** Ensure all background threads (audio, etc.) are marked as `daemon=True`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Clean Shutdown and Traceback Fix' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Clean Shutdown and Traceback Fix' (Protocol in workflow.md)
 
-## Phase 3: Tray Menu Exit Fix
+## Phase 3: Tray Menu Exit Fix [checkpoint: ee6d323]
 Ensure that choosing 'Quit' from the tray menu correctly signals the main thread to exit.
 
 - [x] Task: Fix Tray Menu Exit Hang (c9dc7b6)
     - [x] **Red:** Create a reproduction script showing the main thread hanging after `app.stop()` is called from the UI.
     - [x] **Green:** Implement a shared `shutdown_event` between `main.py`, `ShutdownHandler`, and `TrayApp`.
     - [x] **Refactor:** Centralize shutdown logic to avoid redundant termination sequences.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Tray Menu Exit Fix' (Protocol in workflow.md)
