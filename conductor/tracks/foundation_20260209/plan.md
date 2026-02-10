@@ -12,17 +12,17 @@ Establish the project structure and implement a robust configuration loader.
     - [x] **Refactor:** Ensure clean error reporting for user-friendly notifications
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Project Skeleton & Configuration' (Protocol in workflow.md)
 
-## Phase 2: System Tray & State Management [checkpoint: 735730e]
+## Phase 2: System Tray & State Management [checkpoint: 6ff0240]
 Implement the background utility and visual feedback.
 
 - [x] Task: Create System Tray Icon and Menu in `engine/ui.py` (de38086)
-    - [ ] **Red:** Write tests for tray state transitions (Idle -> Listening)
-    - [ ] **Green:** Implement `TrayApp` using `pystray`
-    - [ ] **Refactor:** Decouple UI logic from business logic using an Event/Signal pattern
+    - [x] **Red:** Write tests for tray state transitions (Idle -> Listening)
+    - [x] **Green:** Implement `TrayApp` using `pystray`
+    - [x] **Refactor:** Decouple UI logic from business logic using an Event/Signal pattern
 - [x] Task: Implement Provider Selection and Config Opening from Tray (d79529e)
-    - [ ] **Red:** Write tests for provider switching logic
-    - [ ] **Green:** Implement menu actions and radio item updates
-- [~] Task: Conductor - User Manual Verification 'Phase 2: System Tray & State Management' (Protocol in workflow.md)
+    - [x] **Red:** Write tests for provider switching logic
+    - [x] **Green:** Implement menu actions and radio item updates
+- [x] Task: Conductor - User Manual Verification 'Phase 2: System Tray & State Management' (Protocol in workflow.md)
 
 ## Phase 3: Audio Capture Engine
 Capture and process microphone input.
