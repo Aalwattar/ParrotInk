@@ -5,10 +5,10 @@ Implement the logic to handle partial corrections via backspacing.
 
 - [x] Task: Update `engine/injector.py` [5fa4c90]
     - [x] Add `inject_backspaces(count: int)` function using `SendInput`. [5fa4c90]
-- [~] Task: Update `AppCoordinator` in `main.py`
-    - [ ] Implement `_smart_inject(text: str)` that calculates common prefix vs. needed backspaces.
-    - [ ] Connect `on_partial` to `_smart_inject`.
-    - [ ] Ensure `on_final` performs a final sync and resets tracking.
+- [x] Task: Update `AppCoordinator` in `main.py` [0801f42]
+    - [x] Implement `_smart_inject(text: str)` that calculates common prefix vs. needed backspaces. [0801f42]
+    - [x] Connect `on_partial` to `_smart_inject`. [0801f42]
+    - [x] Ensure `on_final` performs a final sync and resets tracking. [0801f42]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Smart Overwrite Logic' (Protocol in workflow.md)
 
 ## Phase 2: AssemblyAI Immediate Partials
