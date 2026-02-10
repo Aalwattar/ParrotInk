@@ -27,7 +27,7 @@ Implement the background utility and visual feedback.
 ## Phase 3: Audio Capture Engine
 Capture and process microphone input.
 
-- [ ] Task: Implement Audio Streamer in `engine/audio.py`
+- [x] Task: Implement Audio Streamer in `engine/audio.py` (778eb61)
     - [ ] **Red:** Write tests for audio chunk generation (mocking `sounddevice`)
     - [ ] **Green:** Implement `AudioStreamer` using `sounddevice` callback
     - [ ] **Refactor:** Optimize buffer sizes and handling of sample rates
