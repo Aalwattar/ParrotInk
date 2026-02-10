@@ -17,7 +17,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
 ### 2.3 Hotkey Control
 - **Unified Hotkey:** The application uses a single configurable hotkey for control.
-- **Hold vs. Toggle:** The user can configure whether the hotkey works in "Hold-to-Talk" mode (transcribe while held) or "Toggle" mode (press once to start, press again to stop).
+- **Smart Interaction:** The hotkey serves as the "Start" trigger. Once active, **any** keyboard interaction (including the hotkey itself or modifiers) acts as a "Stop" command.
+- **Manual Priority:** To prevent AI interference with manual typing, if a session is stopped by a key press, any pending transcription text is discarded. The user's manual input always takes precedence.
 
 ### 2.4 Text Injection
 - The primary function is to inject the final transcribed text directly at the current text cursor's location in the active application.
