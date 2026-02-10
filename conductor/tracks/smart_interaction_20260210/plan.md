@@ -3,8 +3,8 @@
 ## Phase 1: Smart Overwrite Logic
 Implement the logic to handle partial corrections via backspacing.
 
-- [~] Task: Update `engine/injector.py`
-    - [ ] Add `inject_backspaces(count: int)` function using `SendInput`.
+- [x] Task: Update `engine/injector.py` [5fa4c90]
+    - [x] Add `inject_backspaces(count: int)` function using `SendInput`. [5fa4c90]
 - [ ] Task: Update `AppCoordinator` in `main.py`
     - [ ] Implement `_smart_inject(text: str)` that calculates common prefix vs. needed backspaces.
     - [ ] Connect `on_partial` to `_smart_inject`.
