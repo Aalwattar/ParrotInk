@@ -13,22 +13,22 @@ Extend the configuration model to support test modes and URL overrides.
     - [x] **Green:** Ensure all config tests pass.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema & Defaults' (Protocol in workflow.md)
 
-## Phase 2: Provider Refactoring
+## Phase 2: Provider Refactoring [checkpoint: a6b0e26]
 Remove hardcoded URLs from provider classes and inject them via the constructor.
 
-- [~] Task: Update `BaseProvider` and implementations to accept `base_url`
-    - [ ] Update `BaseProvider.__init__` in `engine/transcription/base.py`.
-    - [ ] Refactor `OpenAIProvider` in `engine/transcription/openai_provider.py` to use `self.base_url`.
-    - [ ] Refactor `AssemblyAIProvider` in `engine/transcription/assemblyai_provider.py` to use `self.base_url`.
-- [ ] Task: Write unit tests for URL injection
-    - [ ] **Red:** Update provider tests to ensure they fail if URL is not provided or if they still use hardcoded strings.
-    - [ ] **Green:** Update tests to pass with injected URLs.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Provider Refactoring' (Protocol in workflow.md)
+- [x] Task: Update `BaseProvider` and implementations to accept `base_url` [a6b0e26]
+    - [x] Update `BaseProvider.__init__` in `engine/transcription/base.py`.
+    - [x] Refactor `OpenAIProvider` in `engine/transcription/openai_provider.py` to use `self.base_url`.
+    - [x] Refactor `AssemblyAIProvider` in `engine/transcription/assemblyai_provider.py` to use `self.base_url`.
+- [x] Task: Write unit tests for URL injection [a6b0e26]
+    - [x] **Red:** Update provider tests to ensure they fail if URL is not provided or if they still use hardcoded strings.
+    - [x] **Green:** Update tests to pass with injected URLs.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Provider Refactoring' (Protocol in workflow.md)
 
 ## Phase 3: Factory and Integration
 Update the factory logic to resolve URLs based on the test mode state.
 
-- [ ] Task: Update `TranscriptionFactory.create` to resolve URLs
+- [~] Task: Update `TranscriptionFactory.create` to resolve URLs
     - [ ] Implement logic in `factory.py` to choose between `test_url` and `production_url` based on `config.test.enabled`.
 - [ ] Task: Update `AppCoordinator` integration
     - [ ] Ensure `AppCoordinator` in `main.py` passes the full `config` object to the factory.
