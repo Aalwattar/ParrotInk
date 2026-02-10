@@ -6,7 +6,7 @@ Establish the project structure and implement a robust configuration loader.
 - [x] Task: Set up project structure and initial `main.py` entry point (43bea15)
     - [ ] Create `engine/` directory and `main.py`
     - [ ] Verify environment with a simple "Hello Tray" script
-- [ ] Task: Implement TOML configuration loader in `engine/config.py`
+- [x] Task: Implement TOML configuration loader in `engine/config.py` (ec26af5)
     - [ ] **Red:** Write tests for loading and validating `config.toml` (missing keys, invalid types)
     - [ ] **Green:** Implement `Config` class using `pydantic` or `tomllib`
     - [ ] **Refactor:** Ensure clean error reporting for user-friendly notifications
