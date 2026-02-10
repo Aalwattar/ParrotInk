@@ -24,14 +24,14 @@ Implement the background utility and visual feedback.
     - [x] **Green:** Implement menu actions and radio item updates
 - [x] Task: Conductor - User Manual Verification 'Phase 2: System Tray & State Management' (Protocol in workflow.md)
 
-## Phase 3: Audio Capture Engine
+## Phase 3: Audio Capture Engine [checkpoint: 368888f]
 Capture and process microphone input.
 
 - [x] Task: Implement Audio Streamer in `engine/audio.py` (778eb61)
-    - [ ] **Red:** Write tests for audio chunk generation (mocking `sounddevice`)
-    - [ ] **Green:** Implement `AudioStreamer` using `sounddevice` callback
-    - [ ] **Refactor:** Optimize buffer sizes and handling of sample rates
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Audio Capture Engine' (Protocol in workflow.md)
+    - [x] **Red:** Write tests for audio chunk generation (mocking `sounddevice`)
+    - [x] **Green:** Implement `AudioStreamer` using `sounddevice` callback
+    - [x] **Refactor:** Optimize buffer sizes and handling of sample rates
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Audio Capture Engine' (Protocol in workflow.md)
 
 ## Phase 4: Transcription Integration
 Connect to OpenAI and AssemblyAI.
