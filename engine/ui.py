@@ -91,10 +91,17 @@ class TrayApp:
         self.icon.run()
 
     def stop(self) -> None:
-        print("\nShutting down cleanly...")
+        if not self.icon.visible and self.state == AppState.IDLE:
+            # Simple check if already stopped, but visible is better
+            pass
+
+        print("\nShutting down UI...", flush=True)
         self.icon.stop()
-        if self.on_quit_callback:
-            self.on_quit_callback()
+
+        callback = self.on_quit_callback
+        self.on_quit_callback = None  # Prevent recursion
+        if callback:
+            callback()
 
 
 class TrayAppThread(threading.Thread):

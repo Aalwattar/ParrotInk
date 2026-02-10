@@ -9,8 +9,8 @@ from engine.ui import TrayApp
 def main():
     print("Starting Voice2Text...", flush=True)
 
-    app = TrayApp()
     handler = ShutdownHandler(window=3.0)
+    app = TrayApp(on_quit_callback=lambda: setattr(handler, "should_exit", True))
 
     # Register the signal handler
     signal.signal(signal.SIGINT, handler.handle)
