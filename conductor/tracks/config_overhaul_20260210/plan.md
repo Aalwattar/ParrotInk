@@ -1,18 +1,18 @@
 # Implementation Plan: Granular Provider Configuration & AssemblyAI V3
 
-## Phase 1: Configuration Schema Refactoring
+## Phase 1: Configuration Schema Refactoring [checkpoint: d14d0ce]
 Update the Pydantic models to support the new nested structure and remove legacy fields.
 
-- [~] Task: Update `engine/config.py` with new models
-    - [ ] Define `OpenAICoreConfig` and `OpenAIAdvancedConfig`.
-    - [ ] Define `AssemblyAICoreConfig` and `AssemblyAIAdvancedConfig`.
-    - [ ] Define `AudioConfig` (`capture_sample_rate`, `chunk_ms`).
-    - [ ] Update main `Config` model to use these nested structures.
-    - [ ] Remove legacy `AdvancedConfig` and its fields.
-- [~] Task: Write tests for new configuration schema
-    - [ ] **Red:** Write tests in `tests/test_config.py` that attempt to load the new nested structure.
-    - [ ] **Green:** Ensure `Config.from_file` correctly parses the new schema and provides defaults.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema Refactoring' (Protocol in workflow.md)
+- [x] Task: Update `engine/config.py` with new models [d14d0ce]
+    - [x] Define `OpenAICoreConfig` and `OpenAIAdvancedConfig`.
+    - [x] Define `AssemblyAICoreConfig` and `AssemblyAIAdvancedConfig`.
+    - [x] Define `AudioConfig` (`capture_sample_rate`, `chunk_ms`).
+    - [x] Update main `Config` model to use these nested structures.
+    - [x] Remove legacy `AdvancedConfig` and its fields.
+- [x] Task: Write tests for new configuration schema [d14d0ce]
+    - [x] **Red:** Write tests in `tests/test_config.py` that attempt to load the new nested structure.
+    - [x] **Green:** Ensure `Config.from_file` correctly parses the new schema and provides defaults.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema Refactoring' (Protocol in workflow.md) [d14d0ce]
 
 ## Phase 2: OpenAI Provider Enhancement
 Update the OpenAI provider to consume the new granular settings.
