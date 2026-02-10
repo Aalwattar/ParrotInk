@@ -35,4 +35,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Verbose Debugging & Logging System** [checkpoint: b57a786]
-*Link: [./tracks/debug_logging_20260210/](./tracks/debug_logging_20260210/)*
+*Link: [./archive/debug_logging_20260210/](./archive/debug_logging_20260210/)*
