@@ -1,37 +1,47 @@
-# Specification: Secrets Management & Security
+# Specification: Secrets Management & Security (Final)
 
 ## 1. Overview
-This track implements secure handling of API keys and sensitive credentials. The application will transition from storing literal keys in `config.toml` to a secure lookup model using the Windows Credential Manager (via `keyring`) and environment variables.
+This track implements a modern, secure handling system for API keys. It moves away from storing secrets in configuration files entirely, utilizing the Windows Credential Manager (via `keyring`) as the primary storage. It introduces an interactive UI for managing these credentials while ensuring keys are never exposed in the interface.
 
 ## 2. Functional Requirements
 
-### 2.1 Secret Lookup Logic
-- Implement a tiered lookup system for all credential fields (e.g., `openai_api_key`, `assemblyai_api_key`).
+### 2.1 Storage & Resolution Model
+- **Strict Secure Storage:** API keys are stored only in the Windows Credential Manager.
 - **Precedence Order:**
-    1. **Windows Credential Manager (Keyring):** Look up using the value from `config.toml` as the "Account Name".
-    2. **Environment Variables:** Look up using the value from `config.toml` as the variable name.
-    3. **Literal Fallback:** Use the value in `config.toml` as the literal secret (primarily for development or quick start).
+    1. **Windows Credential Manager (Keyring):** Primary source.
+    2. **Environment Variables:** Secondary source for development/automated environments.
+- **NO Config Fallback:** Literal keys in `config.toml` are strictly prohibited.
+- **Service/Account Mapping:** Service `voice2text`, Accounts `openai_api_key`, `assemblyai_api_key`.
 
-### 2.2 Security Best Practices
-- **`config.example.toml`:** Create a template file containing only placeholder values and comments.
-- **Git Protection:** Update `.gitignore` to ensure `config.toml` and any files containing real secrets are never committed to the repository.
-- **Dependency Management:** Add `keyring` to the project dependencies.
+### 2.2 System Tray Credential Management
+- **Menu Structure:** `Credentials` > `Set OpenAI Key...`, `Set AssemblyAI Key...`.
+- **Absolute Privacy:** 
+    - Keys are **never** displayed in the tray menu.
+    - The input dialog for setting a key must use a password-style mask (e.g., `*`) for the entry field.
+- **Immediate Update:** Saving a key updates the application's active session without requiring a restart.
 
-### 2.3 Configuration Integration
-- The `Config` loader in `engine/config.py` must be updated to resolve these secrets at runtime before they are passed to the providers.
+### 2.3 Code Organization & Clean Architecture
+- **Separation of Concerns:** All security logic is isolated in `engine/security.py`.
+- **Module Responsibilities:**
+    - `SecurityManager`: Centralized class for resolving and writing secrets.
+    - `CredentialDialog`: Self-contained `tkinter` dialog for password-masked input.
+
+### 2.4 Error Handling & Feedback
+- **Credential Notifications:** The system must provide clear feedback if a key is missing or if a provider fails to authenticate.
+- **Plumbing:** Implement a notification bridge (e.g., via `signals.py`) so the `SecurityManager` or Providers can trigger user-friendly error dialogs (e.g., "Invalid OpenAI Key", "AssemblyAI Key Expired").
 
 ## 3. Technical Requirements
-- Add `keyring` to `pyproject.toml`.
-- Create a `SecretResolver` utility or integrate logic into `Config` to handle the `keyring` and `os.environ` lookups.
-- Service name for `keyring` should be standardized (e.g., `voice2text`).
+- **Dependencies:** `keyring`.
+- **Dialog:** `tkinter.simpledialog.askstring` with `show='*'` parameter.
+- **Integration:** `AppCoordinator` uses the `SecurityManager` to resolve keys before initializing providers.
 
 ## 4. Acceptance Criteria
-1. A `config.example.toml` exists with clear instructions.
-2. If `openai_api_key = "MY_OPENAI_KEY"` is in `config.toml`, and `MY_OPENAI_KEY` exists in Windows Credentials, the app uses that secret.
-3. If not in Windows Credentials but `MY_OPENAI_KEY` is an environment variable, the app uses that value.
-4. If neither exist, the app uses `"MY_OPENAI_KEY"` as the literal API key.
-5. The `.gitignore` successfully prevents `config.toml` from being tracked.
+1. Tray menu shows "Set..." options but no key values.
+2. Input dialog masks the characters as they are typed.
+3. Keys are saved to `keyring` and the app immediately recognizes them.
+4. No secrets exist in `config.toml`.
+5. Code is cleanly separated into `engine/security.py`.
+6. Missing or invalid keys trigger a user-friendly error message instead of a silent failure.
 
 ## 5. Out of Scope
-- Implementing a GUI for managing/saving keys into the Windows Credential Manager (users must add them manually or via CLI for now).
-- Encryption of the local `config.toml` file itself.
+- Retrieval of existing keys via UI.

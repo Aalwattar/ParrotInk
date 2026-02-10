@@ -1,42 +1,45 @@
 # Implementation Plan: Secrets Management & Security
 
-## Phase 1: Environment & Dependency Setup
-Set up the necessary security boundaries and install dependencies.
+## Phase 1: Dependency & Architecture Setup
+Set up the new module and move existing security concerns.
 
-- [ ] Task: Update project dependencies and repository structure
+- [ ] Task: Project structure and dependencies
     - [ ] Add `keyring` to `pyproject.toml`.
-    - [ ] Create `config.example.toml` with placeholder values and usage instructions.
-    - [ ] Update `.gitignore` to explicitly exclude `config.toml`.
-- [ ] Task: Verify dependency installation
-    - [ ] **Red:** Write a small script to attempt importing `keyring` and verify it fails if not installed.
-    - [ ] **Green:** Run `uv sync` and verify the script now succeeds.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Environment & Dependency Setup' (Protocol in workflow.md)
+    - [ ] Create `engine/security.py`.
+    - [ ] Update `.gitignore` to exclude `config.toml` and create `config.example.toml`.
+- [ ] Task: Conductor - User Manual Verification 'Phase 1: Dependency & Architecture Setup' (Protocol in workflow.md)
 
-## Phase 2: Secret Resolution Logic
-Implement the logic to resolve secrets from Keyring, Environment, or Literal values.
+## Phase 2: Security Module Implementation
+Build the core logic for resolving and saving secrets.
 
-- [ ] Task: Implement `SecretResolver` utility
-    - [ ] Create a utility that takes a reference string and performs the tiered lookup (Keyring -> Env -> Literal).
-    - [ ] Use `voice2text` as the default service name for `keyring`.
-- [ ] Task: Write unit tests for secret resolution
-    - [ ] **Red:** Write tests in `tests/test_security.py` that mock `keyring` and `os.environ` to verify precedence.
-    - [ ] **Green:** Implement the resolver to pass the tests.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Secret Resolution Logic' (Protocol in workflow.md)
+- [ ] Task: Implement `SecurityManager` in `engine/security.py`
+    - [ ] Logic to lookup: Keyring -> Environment.
+    - [ ] Logic to save: Write to Keyring with service `voice2text`.
+- [ ] Task: Implement `CredentialDialog`
+    - [ ] Simple `tkinter` dialog with password masking (`show='*'`).
+- [ ] Task: Write tests for `SecurityManager`
+    - [ ] **Red:** Write tests in `tests/test_security.py` mocking `keyring` and `os.environ`.
+    - [ ] **Green:** Implement logic to pass the tests.
+- [ ] Task: Conductor - User Manual Verification 'Phase 2: Security Module Implementation' (Protocol in workflow.md)
 
-## Phase 3: Configuration Integration
-Integrate the resolver into the configuration loading process.
+## Phase 3: Integration & UI
+Connect the security module to the tray and coordinator.
 
-- [ ] Task: Update `Config` model to resolve secrets
-    - [ ] Update `engine/config.py` to apply the resolver to credential fields after loading the TOML.
-- [ ] Task: Write tests for secure config loading
-    - [ ] **Red:** Write tests ensuring that if a field matches a keyring entry, the `Config` object contains the secret, not the reference string.
-    - [ ] **Green:** Ensure all configuration security tests pass.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Configuration Integration' (Protocol in workflow.md)
+- [ ] Task: Update `Config` and `AppCoordinator`
+    - [ ] Remove secret fields from `Config` (move to resolution logic).
+    - [ ] Update `AppCoordinator` to use `SecurityManager` for provider initialization.
+- [ ] Task: Update `TrayApp` UI
+    - [ ] Add "Credentials" sub-menu with masked input triggers.
+- [ ] Task: Implement Error Feedback Bridge
+    - [ ] Add a mechanism (e.g., `show_error` signal) to display credential errors to the user.
+- [ ] Task: Integration Test for Key Update & Error Handling
+    - [ ] **Red:** Verify app triggers error if key is missing -> Update key via UI -> Verify connection works (mocked).
+    - [ ] **Green:** Ensure UI triggers update and errors correctly.
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Integration & UI' (Protocol in workflow.md)
 
-## Phase 4: Final Security Audit
-Ensure no secrets are leaked and the system is robust.
-
-- [ ] Task: Verify `.gitignore` and `config.example.toml`
-    - [ ] Run `git check-ignore config.toml` to confirm protection.
-    - [ ] Ensure `config.example.toml` is correctly committed and tracked.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Security Audit' (Protocol in workflow.md)
+## Phase 4: Final Verification & Cleanup
+- [ ] Task: Verify no legacy keys remain
+    - [ ] Audit `config.py` and `main.py` for any remaining hardcoded or config-based secret logic.
+- [ ] Task: Final end-to-end smoke test
+    - [ ] Set keys via UI and verify successful transcription and error reporting.
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Verification & Cleanup' (Protocol in workflow.md)
