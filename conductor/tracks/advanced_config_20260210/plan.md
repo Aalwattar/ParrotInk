@@ -1,6 +1,6 @@
 # Implementation Plan: Advanced Configuration & Test Mode
 
-## Phase 1: Configuration Schema & Defaults
+## Phase 1: Configuration Schema & Defaults [checkpoint: fb27625]
 Extend the configuration model to support test modes and URL overrides.
 
 - [x] Task: Update `engine/config.py` with `TestConfig` and `AdvancedConfig` [39870a4]
@@ -11,12 +11,12 @@ Extend the configuration model to support test modes and URL overrides.
     - [x] **Red:** Write tests in `tests/test_config.py` to verify defaults are populated.
     - [x] **Red:** Write tests to verify `config.toml` overrides for mock and production URLs work.
     - [x] **Green:** Ensure all config tests pass.
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema & Defaults' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema & Defaults' (Protocol in workflow.md)
 
 ## Phase 2: Provider Refactoring
 Remove hardcoded URLs from provider classes and inject them via the constructor.
 
-- [ ] Task: Update `BaseProvider` and implementations to accept `base_url`
+- [~] Task: Update `BaseProvider` and implementations to accept `base_url`
     - [ ] Update `BaseProvider.__init__` in `engine/transcription/base.py`.
     - [ ] Refactor `OpenAIProvider` in `engine/transcription/openai_provider.py` to use `self.base_url`.
     - [ ] Refactor `AssemblyAIProvider` in `engine/transcription/assemblyai_provider.py` to use `self.base_url`.
