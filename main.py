@@ -10,6 +10,7 @@ from pynput import keyboard
 from engine.audio import AudioStreamer
 from engine.config import load_config, Config, ConfigError
 from engine.injector import inject_text
+from engine.interaction import InteractionMonitor
 from engine.signals import ShutdownHandler
 from engine.transcription import TranscriptionFactory, BaseProvider
 from engine.ui import TrayApp, AppState
@@ -30,10 +31,24 @@ class AppCoordinator:
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
         self.current_keys: Set[str] = set()
 
+        # Interaction monitoring
+        self.interaction_monitor = InteractionMonitor()
+        self.interaction_monitor.set_any_key_callback(self._on_manual_stop)
+        self.session_cancelled = False
+
         # Injection safety
         self.injection_lock = asyncio.Lock()
         
         print(f"DEBUG: Target hotkey set to: {self.target_hotkey}")
+
+    def _on_manual_stop(self):
+        """Callback for when a manual key press is detected during listening."""
+        # Ignore keyboard events if they are coming from our own injection
+        if self.is_listening and not self.injection_lock.locked():
+            print("\n[EVENT] Manual key press detected. Stopping and cancelling injection...")
+            self.session_cancelled = True
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     def _parse_hotkey(self, hotkey_str: str) -> Set[str]:
         """Parse hotkey string into a set of canonical names."""
@@ -68,6 +83,10 @@ class AppCoordinator:
         pass
 
     def on_final(self, text: str):
+        if self.session_cancelled:
+            print(f"[DEBUG] Session cancelled. Discarding final text: {text}")
+            return
+
         if self.loop:
             asyncio.run_coroutine_threadsafe(self._delayed_inject(text), self.loop)
 
@@ -75,6 +94,10 @@ class AppCoordinator:
         # Wait a bit for the user to release keys (Ctrl/Alt) to avoid shortcut interference
         await asyncio.sleep(0.3)
         
+        # Check again after sleep in case session was cancelled during delay
+        if self.session_cancelled:
+            return
+
         # Use a lock to prevent overlapping injections
         if self.injection_lock.locked():
             print("[WARN] Injection skipped: Previous injection still in progress.")
@@ -91,6 +114,7 @@ class AppCoordinator:
         
         print("\n[EVENT] Starting listening...")
         self.is_connecting = True
+        self.session_cancelled = False
         
         self.provider = TranscriptionFactory.create(
             self.config, 
@@ -101,6 +125,7 @@ class AppCoordinator:
         try:
             await self.provider.start()
             self.streamer.start()
+            self.interaction_monitor.start()
             self.is_listening = True
             if self.ui:
                 self.ui.set_state(AppState.LISTENING)
@@ -119,6 +144,8 @@ class AppCoordinator:
         
         print("\n[EVENT] Stopping listening...")
         self.is_listening = False
+        self.interaction_monitor.stop()
+
         if self.ui:
             self.ui.set_state(AppState.IDLE)
         
