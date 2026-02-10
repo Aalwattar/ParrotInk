@@ -27,6 +27,12 @@ class AppTestConfig(BaseModel):
     assemblyai_mock_url: str = "ws://localhost:8081"
 
 
+class LoggingConfig(BaseModel):
+    file_enabled: bool = False
+    file_path: Optional[str] = None
+    file_level: int = 1
+
+
 # --- OpenAI Configuration ---
 
 class OpenAICoreConfig(BaseModel):
@@ -35,7 +41,7 @@ class OpenAICoreConfig(BaseModel):
     transcription_model: str = "whisper-1"
     language: str = "en"
     prompt: str = ""
-    input_audio_type: str = "audio/pcm"
+    input_audio_type: str = "audio/pcm16"
     input_audio_rate: int = 24000
 
 
@@ -91,6 +97,7 @@ class Config(BaseModel):
     audio: AudioConfig = Field(default_factory=AudioConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: AppTestConfig = Field(default_factory=AppTestConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     def get_openai_key(self) -> Optional[str]:

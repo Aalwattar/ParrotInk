@@ -1,9 +1,12 @@
 import queue
+import time
 from typing import Generator
 
 import numpy as np
 import sounddevice as sd
+from engine.logging import get_logger
 
+logger = get_logger("Audio")
 
 class AudioStreamer:
     def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
@@ -13,10 +16,10 @@ class AudioStreamer:
         self.is_running = False
         self._stream: sd.InputStream | None = None
 
-    def _callback(self, indata: np.ndarray, frames: int, time, status):
+    def _callback(self, indata: np.ndarray, frames: int, time_info, status):
         """This is called (from a separate thread) for each audio block."""
         if status:
-            print(f"Audio status warning: {status}")
+            logger.warning(f"Audio status warning: {status}")
         self.queue.put(indata.copy())
 
     def start(self):
@@ -34,7 +37,7 @@ class AudioStreamer:
         )
         self._stream.start()
         self.is_running = True
-        print(f"Audio capture started at {self.sample_rate}Hz...")
+        logger.info(f"Audio capture started at {self.sample_rate}Hz (chunk_size={self.chunk_size})")
 
     def stop(self):
         """Stops the audio capture stream."""
@@ -47,7 +50,7 @@ class AudioStreamer:
             self._stream = None
 
         self.is_running = False
-        print("Audio capture stopped.")
+        logger.info("Audio capture stopped.")
 
     def generator(self) -> Generator[np.ndarray, None, None]:
         """Yields audio chunks from the queue."""
@@ -55,6 +58,8 @@ class AudioStreamer:
             try:
                 # Use a timeout to avoid blocking indefinitely so we can check is_running
                 chunk = self.queue.get(timeout=0.1)
+                duration_ms = (len(chunk) / self.sample_rate) * 1000
+                logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
                 yield chunk
             except queue.Empty:
                 continue

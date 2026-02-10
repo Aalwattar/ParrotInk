@@ -42,7 +42,7 @@ language = "en"
 prompt = "" # optional context/keywords
 
 # Input audio format (Only 24000 supported for audio/pcm in Realtime)
-input_audio_type = "audio/pcm"
+input_audio_type = "audio/pcm16"
 input_audio_rate = 24000
 
 [providers.openai.advanced]
@@ -71,6 +71,15 @@ speech_model = "universal-streaming-english"
 keyterms_prompt = []
 # 0 = disabled
 inactivity_timeout_seconds = 0
+
+[logging]
+# Enable persistent logging to a file
+file_enabled = false
+# Level of detail for file logs (1 = basic, 2 = deep/WebSocket traffic)
+file_level = 1
+# Optional: Override default log file path.
+# Default is %LOCALAPPDATA%\Voice2Text\logs\voice2text.log on Windows.
+# file_path = "C:/path/to/my.log"
 
 [providers.assemblyai.advanced]
 # Latency vs accuracy tradeoffs (0.0 to 1.0)

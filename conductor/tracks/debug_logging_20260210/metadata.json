@@ -1,0 +1,8 @@
+{
+  "track_id": "debug_logging_20260210",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-10T14:11:00Z",
+  "updated_at": "2026-02-10T14:11:00Z",
+  "description": "Add --verbose flag and config for structured, sanitized, non-blocking debug logging."
+}

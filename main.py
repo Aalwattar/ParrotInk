@@ -3,6 +3,7 @@ import signal
 import sys
 import argparse
 import threading
+import time
 from typing import Optional, Set
 
 from pynput import keyboard
@@ -16,7 +17,9 @@ from engine.transcription import BaseProvider, TranscriptionFactory
 from engine.ui import AppState, TrayApp
 from engine.security import SecurityManager
 from engine.credential_ui import ask_key
+from engine.logging import get_logger, configure_logging
 
+logger = get_logger("Main")
 
 class AppCoordinator:
     def __init__(self, config: Config):
@@ -43,11 +46,12 @@ class AppCoordinator:
         self.interaction_monitor = InteractionMonitor()
         self.interaction_monitor.set_any_key_callback(self._on_manual_stop)
         self.session_cancelled = False
+        self.start_time = 0
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
 
-        print(f"DEBUG: Target hotkey set to: {self.target_hotkey}")
+        logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
     def get_provider_availability(self) -> dict[str, bool]:
         """Returns a mapping of provider names to their availability status."""
@@ -61,9 +65,13 @@ class AppCoordinator:
 
     def _on_manual_stop(self):
         """Callback for when a manual key press is detected during listening."""
+        # Cooldown to avoid catching the release of the hotkey itself
+        if time.time() - self.start_time < 0.5:
+            return
+
         # Ignore keyboard events if they are coming from our own injection
         if self.is_listening and not self.injection_lock.locked():
-            print("\n[EVENT] Manual key press detected. Stopping and cancelling injection...")
+            logger.info("Manual key press detected. Stopping and cancelling injection...")
             self.session_cancelled = True
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
@@ -114,7 +122,7 @@ class AppCoordinator:
 
     def on_final(self, text: str):
         if self.session_cancelled:
-            print(f"[DEBUG] Session cancelled. Discarding final text: {text}")
+            logger.debug(f"Session cancelled. Discarding final text: {text}")
             return
 
         if self.loop:
@@ -130,12 +138,13 @@ class AppCoordinator:
 
         # Use a lock to prevent overlapping injections
         if self.injection_lock.locked():
-            print("[WARN] Injection skipped: Previous injection still in progress.")
+            logger.warning("Injection skipped: Previous injection still in progress.")
             return
 
         async with self.injection_lock:
             # Run injection in executor because it blocks (calls sleep)
             if self.loop:
+                logger.debug(f"Injecting text: {text}")
                 await self.loop.run_in_executor(None, inject_text, text)
 
     async def start_listening(self):
@@ -145,7 +154,7 @@ class AppCoordinator:
         # Credential check
         availability = self.get_provider_availability()
         if not availability.get(self.config.default_provider, False):
-            print(f"\n[ERROR] Missing API Key for {self.config.default_provider}")
+            logger.error(f"Missing API Key for {self.config.default_provider}")
             if self.ui:
                 self.ui.notify(
                     f"Please set your {self.config.default_provider.title()} API Key in the Credentials menu.",
@@ -154,9 +163,10 @@ class AppCoordinator:
                 self.ui.set_state(AppState.ERROR)
             return
 
-        print(f"\n[EVENT] Starting listening with {self.config.default_provider}...")
+        logger.info(f"Starting listening with {self.config.default_provider}...")
         self.is_connecting = True
         self.session_cancelled = False
+        self.start_time = time.time()
 
         self.provider = TranscriptionFactory.create(
             self.config, on_partial=self.on_partial, on_final=self.on_final
@@ -171,7 +181,7 @@ class AppCoordinator:
                 self.ui.set_state(AppState.LISTENING)
             asyncio.create_task(self._audio_pipe())
         except Exception as e:
-            print(f"Error starting transcription: {e}")
+            logger.exception(f"Error starting transcription: {e}")
             self.is_listening = False
             if self.ui:
                 self.ui.set_state(AppState.ERROR)
@@ -184,7 +194,7 @@ class AppCoordinator:
         if not self.is_listening:
             return
 
-        print("\n[EVENT] Stopping listening...")
+        logger.info("Stopping listening...")
         self.is_listening = False
         self.interaction_monitor.stop()
 
@@ -257,6 +267,13 @@ Examples:
         help="The transcription provider (openai or assemblyai)",
     )
 
+    # Global options for logging
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0, help="Increase verbosity (Level 1 or 2)"
+    )
+    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
+    parser.add_argument("--log-file", type=str, help="Override default log file path")
+
     args = parser.parse_args()
 
     if args.command == "set-key":
@@ -266,11 +283,6 @@ Examples:
         }
         account_id, provider_name = account_map[args.provider]
         
-        # Use our new UI helper, forcing console if needed or just letting it decide
-        # Since we are running from CLI, the user likely expects console input.
-        # However, our shared helper defaults to GUI if available.
-        # We can implement a specific console call here or reuse the helper.
-        # Let's reuse the helper but maybe print a hint.
         print(f"Setting credential for {provider_name}...")
         key = ask_key(provider_name)
         
@@ -280,13 +292,22 @@ Examples:
         else:
             print("Operation cancelled.")
         sys.exit(0)
+    
+    return args
 
-async def main_async():
+async def main_async(cli_args):
     try:
         config = load_config()
     except ConfigError as e:
         print(f"\n[CONFIGURATION ERROR] {e}", file=sys.stderr)
         return
+
+    # CLI overrides config for file path if provided
+    if cli_args.log_file:
+        config.logging.file_path = cli_args.log_file
+        config.logging.file_enabled = True
+
+    configure_logging(config, verbose_count=cli_args.verbose, quiet=cli_args.quiet)
 
     handler = ShutdownHandler()
     signal.signal(signal.SIGINT, handler.handle)
@@ -299,11 +320,11 @@ async def main_async():
 
     def on_provider_change(provider_name):
         config.default_provider = provider_name
-        print(f"\nProvider changed to: {provider_name}")
+        logger.info(f"Provider changed to: {provider_name}")
 
     def on_set_key(account_id, key):
         SecurityManager.set_key(account_id, key)
-        print(f"\nAPI Key updated for: {account_id}")
+        logger.info(f"API Key updated for: {account_id}")
         if coordinator.ui:
             coordinator.ui.update_availability(coordinator.get_provider_availability())
             coordinator.ui.notify(
@@ -325,11 +346,11 @@ async def main_async():
 
     listener = keyboard.Listener(on_press=coordinator.on_press, on_release=coordinator.on_release)
     listener.start()
-    print(
+    logger.info(
         f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
     )
 
-    print("Application running. Press Ctrl+C twice within 3s to exit.")
+    logger.info("Application running. Press Ctrl+C twice within 3s to exit.")
 
     try:
         while not handler.should_exit:
@@ -337,15 +358,15 @@ async def main_async():
     except asyncio.CancelledError:
         pass
     finally:
-        print("\nShutting down...")
+        logger.info("Shutting down...")
         await coordinator.stop_listening()
         app.stop()
         await asyncio.sleep(0.5)
 
 
 if __name__ == "__main__":
-    handle_cli()
+    cli_args = handle_cli()
     try:
-        asyncio.run(main_async())
+        asyncio.run(main_async(cli_args))
     except KeyboardInterrupt:
         pass

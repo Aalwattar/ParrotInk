@@ -31,3 +31,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Secrets Management & Security** [checkpoint: 16e6004]
   *Link: [./archive/secrets_management_20260210/](./archive/secrets_management_20260210/)*
+
+---
+
+- [ ] **Track: Verbose Debugging & Logging System**
+*Link: [./tracks/debug_logging_20260210/](./tracks/debug_logging_20260210/)*

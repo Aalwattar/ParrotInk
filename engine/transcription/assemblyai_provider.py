@@ -9,7 +9,9 @@ import websockets
 
 from .base import BaseProvider
 from engine.config import Config
+from engine.logging import get_logger
 
+logger = get_logger("AssemblyAI")
 
 class AssemblyAIProvider(BaseProvider):
     """AssemblyAI transcription provider using Streaming V3."""
@@ -59,6 +61,7 @@ class AssemblyAIProvider(BaseProvider):
     async def start(self):
         """Connect to AssemblyAI and start receiving events."""
         headers = {"Authorization": self.api_key}
+        logger.info(f"Connecting to AssemblyAI at {self.url}...")
         try:
             self.ws = await websockets.connect(
                 self.url, 
@@ -66,9 +69,9 @@ class AssemblyAIProvider(BaseProvider):
             )
             self.is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
-            print(f"Connected to AssemblyAI at {self.url}")
+            logger.info("Connected to AssemblyAI successfully.")
         except Exception as e:
-            print(f"Failed to connect to AssemblyAI at {self.url}: {e}")
+            logger.error(f"Failed to connect to AssemblyAI: {e}")
             raise
 
     async def stop(self):
@@ -76,11 +79,13 @@ class AssemblyAIProvider(BaseProvider):
         if self.ws and self.is_running:
             try:
                 # Send end of stream message
-                await self.ws.send(json.dumps({"terminate_session": True}))
+                terminate_msg = json.dumps({"terminate_session": True})
+                logger.debug(f"Sending termination message: {terminate_msg}")
+                await self.ws.send(terminate_msg)
                 # Give it a moment to process before hard close
                 await asyncio.sleep(0.2)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Error during graceful shutdown: {e}")
 
         self.is_running = False
         if self._receive_task:
@@ -93,7 +98,7 @@ class AssemblyAIProvider(BaseProvider):
         if self.ws:
             await self.ws.close()
             self.ws = None
-        print("Disconnected from AssemblyAI.")
+        logger.info("Disconnected from AssemblyAI.")
 
     async def send_audio(self, audio_chunk: np.ndarray):
         """Send audio chunk as raw binary PCM16."""
@@ -105,35 +110,38 @@ class AssemblyAIProvider(BaseProvider):
         
         # In V3, we send the raw bytes directly, not JSON.
         try:
+            logger.debug(f"Sending binary audio chunk ({len(audio_int16.tobytes())} bytes)")
             await self.ws.send(audio_int16.tobytes())
         except websockets.exceptions.ConnectionClosed:
+            logger.info("AssemblyAI connection closed while sending audio.")
             self.is_running = False
 
     async def _receive_loop(self):
         """Listen for transcription events."""
         try:
             async for message in self.ws:
+                logger.debug(f"Received message: {message}")
                 event = json.loads(message)
                 await self._handle_event(event)
         except websockets.exceptions.ConnectionClosed:
-            print("AssemblyAI connection closed.")
+            logger.info("AssemblyAI connection closed.")
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"Error in AssemblyAI receive loop: {e}")
+            logger.error(f"Error in AssemblyAI receive loop: {e}")
 
     async def _handle_event(self, event: dict):
         """Process incoming events."""
-        # V3 returns 'text' in FinalTranscript and PartialTranscript
+        m_type = event.get("message_type")
+        
         if "text" in event:
             text = event["text"]
-            # message_type is the standard field for V3 response types
-            m_type = event.get("message_type")
             if m_type == "FinalTranscript":
+                logger.info(f"Final transcript received: {text}")
                 self.on_final(text)
             elif m_type == "PartialTranscript":
                 self.on_partial(text)
         elif "error" in event:
-            print(f"AssemblyAI API Error: {event.get('error')}")
-        elif event.get("message_type") == "SessionBegins":
-            print(f"AssemblyAI Session Started: {event.get('session_id')}")
+            logger.error(f"AssemblyAI API Error: {event.get('error')}")
+        elif m_type == "SessionBegins":
+            logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
