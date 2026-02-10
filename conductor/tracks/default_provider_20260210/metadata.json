@@ -1,0 +1,8 @@
+{
+  "track_id": "default_provider_20260210",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-10T09:30:00Z",
+  "updated_at": "2026-02-10T09:30:00Z",
+  "description": "Set the default provider in the config file and dynamically disable UI options if credentials are missing."
+}
