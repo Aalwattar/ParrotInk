@@ -15,11 +15,11 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **AssemblyAI:** Integrate with AssemblyAI's real-time transcription service.
 - The user can select the desired provider through the application's settings.
 
-### 2.3. Hotkey Control
-- **Hold-to-Talk:** The user can press and hold a configurable hotkey to start transcription and release it to stop.
-- **Toggle Mode:** The user can press a configurable hotkey to toggle the listening state on and off.
+### 2.3 Hotkey Control
+- **Unified Hotkey:** The application uses a single configurable hotkey for control.
+- **Hold vs. Toggle:** The user can configure whether the hotkey works in "Hold-to-Talk" mode (transcribe while held) or "Toggle" mode (press once to start, press again to stop).
 
-### 2.4. Text Injection
+### 2.4 Text Injection
 - The primary function is to inject the final transcribed text directly at the current text cursor's location in the active application.
 - The injection should simulate keyboard typing to ensure broad compatibility.
 
@@ -36,7 +36,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - All settings will be managed through a local configuration file in TOML format for easy editing.
 - Configurable options will include:
     - API provider selection and API keys.
-    - Hotkey assignments for "hold" and "toggle" modes.
+    - Hotkey assignment and "hold_mode" boolean.
     - Transcription language.
     - Custom word overrides or vocabulary lists to improve accuracy.
     - Simple post-processing rules for the transcribed text.

@@ -10,7 +10,7 @@ Establish the project structure and implement a robust configuration loader.
     - [ ] **Red:** Write tests for loading and validating `config.toml` (missing keys, invalid types)
     - [ ] **Green:** Implement `Config` class using `pydantic` or `tomllib`
     - [ ] **Refactor:** Ensure clean error reporting for user-friendly notifications
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Project Skeleton & Configuration' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Project Skeleton & Configuration' (Protocol in workflow.md)
 
 ## Phase 2: System Tray & State Management [checkpoint: 735730e]
 Implement the background utility and visual feedback.

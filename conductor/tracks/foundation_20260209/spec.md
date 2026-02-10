@@ -13,8 +13,8 @@ This track focuses on building the core infrastructure of the `voice2text` appli
   - `openai_api_key`: string.
   - `assemblyai_api_key`: string.
   - `hotkeys`:
-    - `hold_to_talk`: string (e.g., "ctrl+alt+v").
-    - `toggle_listen`: string.
+    - `hotkey`: string (e.g., "ctrl+alt+v").
+    - `hold_mode`: boolean (default true).
   - `transcription`:
     - `language`: string (default "en").
     - `sample_rate`: integer (default 16000).

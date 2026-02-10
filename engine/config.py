@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field, ValidationError
 
 
 class HotkeysConfig(BaseModel):
-    hold_to_talk: str
-    toggle_listen: str
+    hotkey: str = "ctrl+alt+v"
+    hold_mode: bool = True
 
 
 class TranscriptionConfig(BaseModel):
@@ -16,10 +16,10 @@ class TranscriptionConfig(BaseModel):
 
 
 class Config(BaseModel):
-    active_provider: Literal["openai", "assemblyai"]
-    openai_api_key: str
-    assemblyai_api_key: str
-    hotkeys: HotkeysConfig
+    active_provider: Literal["openai", "assemblyai"] = "openai"
+    openai_api_key: str = ""
+    assemblyai_api_key: str = ""
+    hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
 
     @classmethod
@@ -43,6 +43,11 @@ class Config(BaseModel):
             raise ConfigError(f"Configuration validation failed:\n{error_summary}") from e
         except Exception as e:
             raise ConfigError(f"An unexpected error occurred while loading config: {e}") from e
+
+
+def load_config(path: str | Path = "config.toml") -> Config:
+    """Helper function to load the configuration from a file."""
+    return Config.from_file(path)
 
 
 class ConfigError(Exception):
