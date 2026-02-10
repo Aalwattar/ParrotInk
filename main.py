@@ -15,7 +15,7 @@ from engine.transcription.base import BaseProvider
 from engine.ui import TrayApp, AppState
 from engine.security import SecurityManager
 from engine.credential_ui import ask_key
-from engine.injector import inject_text
+from engine.injector import inject_text, inject_backspaces
 from engine.logging import get_logger, configure_logging
 
 logger = get_logger("Main")
@@ -139,15 +139,8 @@ class AppCoordinator:
         if not text:
             return
 
-        # Simple delta calculation: if new text starts with old text, inject remainder.
-        # Otherwise, we might have a correction (backspace needed), but for now we ignore corrections 
-        # to keep it simple and fast.
-        if text.startswith(self.last_injected_text):
-            delta = text[len(self.last_injected_text):]
-            if delta:
-                self.last_injected_text = text
-                if self.loop:
-                    asyncio.run_coroutine_threadsafe(self._inject_direct(delta), self.loop)
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(self._smart_inject(text), self.loop)
 
     def on_final(self, text: str):
         if self.session_cancelled:
@@ -155,34 +148,48 @@ class AppCoordinator:
             return
 
         text = text.strip()
-        
-        # Calculate final delta
-        if text.startswith(self.last_injected_text):
-            delta = text[len(self.last_injected_text):]
-        else:
-            # Fallback: if final text completely changed, just inject the whole thing? 
-            # Or assume we missed something. For safety, let's just append the whole final 
-            # if it looks completely different, OR just the trailing space if it looks same-ish.
-            # Best safest: delta = text
-            delta = text 
-            # Wait, if we inject 'text', we duplicate. 
-            # Let's rely on standard flow:
-            delta = text # Dangerous if we already typed half.
-            # Realistically, on_final usually matches on_partial.
-            # Let's trust the prefix check mostly.
-            if len(text) > len(self.last_injected_text):
-                 delta = text[len(self.last_injected_text):]
-            else:
-                 delta = ""
+        if not text:
+            return
 
-        # Always add a trailing space at the end of a turn
-        final_payload = delta + " "
-        
+        # Ensure final text is fully synchronized and add a trailing space
         if self.loop:
-            asyncio.run_coroutine_threadsafe(self._inject_direct(final_payload), self.loop)
+            asyncio.run_coroutine_threadsafe(self._smart_inject(text + " "), self.loop)
 
         # Reset for next turn
         self.last_injected_text = ""
+
+    async def _smart_inject(self, text: str):
+        """Inject text using backspaces for corrections if needed."""
+        if self.session_cancelled:
+            return
+
+        async with self.injection_lock:
+            if not self.loop:
+                return
+
+            # Find common prefix length
+            common_len = 0
+            for i in range(min(len(self.last_injected_text), len(text))):
+                if self.last_injected_text[i] == text[i]:
+                    common_len += 1
+                else:
+                    break
+            
+            # Number of backspaces needed
+            backspaces = len(self.last_injected_text) - common_len
+            
+            # New text to append
+            new_text = text[common_len:]
+            
+            if backspaces > 0:
+                logger.debug(f"Smart Inject: Backspacing {backspaces} chars")
+                await self.loop.run_in_executor(None, inject_backspaces, backspaces)
+            
+            if new_text:
+                logger.debug(f"Smart Inject: Injecting '{new_text}'")
+                await self.loop.run_in_executor(None, inject_text, new_text)
+            
+            self.last_injected_text = text
 
     async def _inject_direct(self, text: str):
         if self.session_cancelled:
