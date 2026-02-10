@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Foundation & Core Engine**
+- [~] **Track: Foundation & Core Engine**
   *Link: [./tracks/foundation_20260209/](./tracks/foundation_20260209/)*
