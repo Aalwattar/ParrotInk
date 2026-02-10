@@ -9,8 +9,6 @@ from main import AppCoordinator
 def test_coordinator_initialization():
     config = Config(
         active_provider="openai",
-        openai_api_key="test",
-        assemblyai_api_key="test",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=True),
         transcription=TranscriptionConfig(sample_rate=16000),
     )

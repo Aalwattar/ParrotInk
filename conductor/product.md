@@ -37,6 +37,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - All settings will be managed through a local configuration file in TOML format for easy editing.
 - Configurable options will include:
     - API provider selection, API keys, and **Test Mode** toggle.
+    - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
     - Hotkey assignment and "hold_mode" boolean.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.

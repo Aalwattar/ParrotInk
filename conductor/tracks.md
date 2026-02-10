@@ -24,5 +24,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Secrets Management & Security**
-  *Link: [./tracks/secrets_management_20260210/](./tracks/secrets_management_20260210/)*
+- [x] **Track: Secrets Management & Security** [checkpoint: 16e6004]
+  *Link: [./archive/secrets_management_20260210/](./archive/secrets_management_20260210/)*

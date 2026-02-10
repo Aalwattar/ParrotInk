@@ -11,8 +11,6 @@ from main import AppCoordinator
 def setup_coordinator():
     config = Config(
         active_provider="openai",
-        openai_api_key="test",
-        assemblyai_api_key="test",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=False),
         transcription=TranscriptionConfig(sample_rate=16000),
     )

@@ -52,8 +52,6 @@ async def test_assemblyai_provider_send_audio():
 def test_transcription_factory():
     config = Config(
         active_provider="openai",
-        openai_api_key="okey",
-        assemblyai_api_key="akey",
         hotkeys=HotkeysConfig(hotkey="ctrl+v", hold_mode=True),
         transcription=TranscriptionConfig(language="en", sample_rate=16000),
     )

@@ -1,7 +1,5 @@
-from unittest.mock import MagicMock
-
+from unittest.mock import MagicMock, patch
 from pynput import keyboard
-
 from engine.config import Config, HotkeysConfig, TranscriptionConfig
 from main import AppCoordinator
 
@@ -9,8 +7,6 @@ from main import AppCoordinator
 def setup_coordinator(hold_mode=True):
     config = Config(
         active_provider="openai",
-        openai_api_key="test",
-        assemblyai_api_key="test",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=hold_mode),
         transcription=TranscriptionConfig(sample_rate=16000),
     )
@@ -54,9 +50,6 @@ def test_hold_mode_logic():
         coordinator.on_release(keyboard.KeyCode.from_char("v"))
         assert not coordinator.hotkey_pressed
         assert mock_run.called  # stop_listening should be called
-
-
-from unittest.mock import patch
 
 
 def test_toggle_mode_logic():

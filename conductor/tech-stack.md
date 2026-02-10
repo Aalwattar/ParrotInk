@@ -13,6 +13,8 @@
 - **pystray:** Manages the application's system tray icon and context menu.
 - **threading:** Used to run the UI loop in a background thread, ensuring the main thread remains responsive to system signals.
 - **pydantic:** Used for robust configuration management, validation, and schema definition.
+- **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.
+- **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
 - **pynput:** Powering the `InteractionMonitor`, used to detect global keyboard events for the "Stop on Any Key" functionality.
 - **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
 
