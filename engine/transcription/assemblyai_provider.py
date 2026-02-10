@@ -12,7 +12,7 @@ class AssemblyAIProvider(BaseProvider):
     def __init__(self, api_key: str, on_partial: Callable[[str], None], on_final: Callable[[str], None], sample_rate: int = 16000):
         super().__init__(api_key, on_partial, on_final)
         self.sample_rate = sample_rate
-        self.url = f"wss://api.assemblyai.com/v2/realtime/ws?sample_rate={self.sample_rate}"
+        self.url = f"ws://127.0.0.1:8082"
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
@@ -23,7 +23,7 @@ class AssemblyAIProvider(BaseProvider):
             "Authorization": self.api_key
         }
         try:
-            self.ws = await websockets.connect(self.url, additional_headers=headers)
+            self.ws = await websockets.connect(self.url)
             self.is_running = True
             
             # AssemblyAI sends a 'SessionBegins' message first

@@ -14,7 +14,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Advanced Configuration & Test Mode**
+- [~] **Track: Advanced Configuration & Test Mode**
   *Link: [./tracks/advanced_config_20260210/](./tracks/advanced_config_20260210/)*
 
 ---

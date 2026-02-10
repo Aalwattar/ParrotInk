@@ -7,11 +7,11 @@ Extend the configuration model to support test modes and URL overrides.
     - [x] Add `TestConfig` class with `enabled`, `openai_mock_url`, and `assemblyai_mock_url`.
     - [x] Add `AdvancedConfig` class with production URLs for OpenAI and AssemblyAI.
     - [x] Update main `Config` class to include these sections as fields.
-- [~] Task: Write tests for new configuration loading
-    - [ ] **Red:** Write tests in `tests/test_config.py` to verify defaults are populated.
-    - [ ] **Red:** Write tests to verify `config.toml` overrides for mock and production URLs work.
-    - [ ] **Green:** Ensure all config tests pass.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema & Defaults' (Protocol in workflow.md)
+- [x] Task: Write tests for new configuration loading [39870a4]
+    - [x] **Red:** Write tests in `tests/test_config.py` to verify defaults are populated.
+    - [x] **Red:** Write tests to verify `config.toml` overrides for mock and production URLs work.
+    - [x] **Green:** Ensure all config tests pass.
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Configuration Schema & Defaults' (Protocol in workflow.md)
 
 ## Phase 2: Provider Refactoring
 Remove hardcoded URLs from provider classes and inject them via the constructor.

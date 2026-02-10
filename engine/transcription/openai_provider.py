@@ -11,7 +11,7 @@ class OpenAIProvider(BaseProvider):
 
     def __init__(self, api_key: str, on_partial: Callable[[str], None], on_final: Callable[[str], None]):
         super().__init__(api_key, on_partial, on_final)
-        self.url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+        self.url = "ws://127.0.0.1:8081"
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
@@ -23,7 +23,7 @@ class OpenAIProvider(BaseProvider):
             "OpenAI-Beta": "realtime=v1"
         }
         try:
-            self.ws = await websockets.connect(self.url, additional_headers=headers)
+            self.ws = await websockets.connect(self.url)
             self.is_running = True
             
             # Initialize session for transcription only
