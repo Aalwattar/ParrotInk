@@ -36,3 +36,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Verbose Debugging & Logging System** [checkpoint: b57a786]
 *Link: [./archive/debug_logging_20260210/](./archive/debug_logging_20260210/)*
+
+---
+
+- [~] **Track: Real-Time AssemblyAI & Smart Interaction Fix**
+*Link: [./tracks/smart_interaction_20260210/](./tracks/smart_interaction_20260210/)*

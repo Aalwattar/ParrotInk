@@ -1,0 +1,15 @@
+2026-02-10 15:59:28,202 [INFO] [Main] Hotkey listener started: ctrl+alt+v (hold_mode=False)
+2026-02-10 15:59:28,202 [INFO] [Main] Application running. Press Ctrl+C twice within 3s to exit.
+2026-02-10 15:59:33,153 [INFO] [Main] Starting listening with assemblyai...
+2026-02-10 15:59:33,154 [INFO] [AssemblyAI] Connecting to AssemblyAI at wss://streaming.assemblyai.com/v3/ws?sample_rate=16000&speech_model=universal-streaming-english&encoding=pcm_s16le&vad_threshold=0.4&end_of_turn_confidence_threshold=0.4&end_of_turn_silence_threshold=400&max_end_of_turn_silence=1280&format_turns=false&detect_language=false...
+2026-02-10 15:59:34,541 [INFO] [AssemblyAI] Connected to AssemblyAI successfully.
+2026-02-10 15:59:34,641 [INFO] [Audio] Audio capture started at 16000Hz (chunk_size=1600)
+2026-02-10 15:59:47,749 [INFO] [AssemblyAI] Final transcript received: okay now text and text one two three that's a text as insane amount of this
+2026-02-10 15:59:47,750 [INFO] [AssemblyAI] Final transcript received: let's wait to see if we get anything
+2026-02-10 15:59:51,049 [INFO] [AssemblyAI] Final transcript received: we're getting
+2026-02-10 15:59:54,348 [INFO] [AssemblyAI] Final transcript received: boom boom
+2026-02-10 15:59:57,648 [INFO] [AssemblyAI] Final transcript received: yes
+2026-02-10 16:00:20,644 [INFO] [Main] Shutting down...
+2026-02-10 16:00:20,644 [INFO] [Main] Stopping listening...
+2026-02-10 16:00:20,761 [INFO] [Audio] Audio capture stopped.
+2026-02-10 16:00:21,395 [INFO] [AssemblyAI] Disconnected from AssemblyAI.

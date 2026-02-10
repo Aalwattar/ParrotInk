@@ -11,6 +11,7 @@ USER32 = ctypes.WinDLL('user32', use_last_error=True)
 INPUT_KEYBOARD = 1
 KEYEVENTF_UNICODE = 0x0004
 KEYEVENTF_KEYUP = 0x0002
+VK_BACK = 0x08
 
 class KEYBDINPUT(ctypes.Structure):
     _fields_ = [
@@ -58,3 +59,30 @@ def inject_text(text: str):
     end_time = time.perf_counter()
     duration_ms = (end_time - start_time) * 1000
     logger.debug(f"Injection completed in {duration_ms:.2f}ms")
+
+def inject_backspaces(count: int):
+    """Inject N backspaces efficiently using Windows SendInput API."""
+    if count <= 0:
+        return
+
+    start_time = time.perf_counter()
+    logger.debug(f"Injecting {count} backspaces...")
+
+    inputs = []
+    for _ in range(count):
+        # Backspace Down
+        ki_down = KEYBDINPUT(VK_BACK, 0, 0, 0, None)
+        inputs.append(INPUT(INPUT_KEYBOARD, _INPUT=INPUT._INPUT(ki=ki_down)))
+        
+        # Backspace Up
+        ki_up = KEYBDINPUT(VK_BACK, 0, KEYEVENTF_KEYUP, 0, None)
+        inputs.append(INPUT(INPUT_KEYBOARD, _INPUT=INPUT._INPUT(ki=ki_up)))
+
+    n_inputs = len(inputs)
+    input_array = (INPUT * n_inputs)(*inputs)
+    
+    USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+    
+    end_time = time.perf_counter()
+    duration_ms = (end_time - start_time) * 1000
+    logger.debug(f"Backspaces injection completed in {duration_ms:.2f}ms")
