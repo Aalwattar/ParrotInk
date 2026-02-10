@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import time
 from typing import Callable, Optional
 
 import numpy as np
@@ -72,10 +73,14 @@ class OpenAIProvider(BaseProvider):
             self.ws = None
         logger.info("Disconnected from OpenAI.")
 
-    async def send_audio(self, audio_chunk: np.ndarray):
+    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
         """Send audio chunk as base64 encoded PCM16, with resampling if needed."""
         if not self.ws or not self.is_running:
             return
+        
+        send_start = time.perf_counter()
+        lag_ms = (send_start - capture_time) * 1000
+        logger.debug(f"Audio chunk age before send: {lag_ms:.1f}ms")
 
         source_rate = self.config.audio.capture_sample_rate
         target_rate = self.config.providers.openai.core.input_audio_rate
@@ -146,14 +151,13 @@ class OpenAIProvider(BaseProvider):
             if transcript:
                 logger.info(f"Final transcript received: {transcript}")
                 self.on_final(transcript)
-            # Reset accumulation
             self.current_partial = ""
         
         elif event_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta", "")
             if delta:
-                # Send the incremental delta immediately for real-time feel
-                self.on_partial(delta)
+                self.current_partial += delta
+                self.on_partial(self.current_partial)
 
         elif event_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")

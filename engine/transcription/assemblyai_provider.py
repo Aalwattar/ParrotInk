@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import urllib.parse
+import time
 from typing import Callable, Optional
 
 import numpy as np
@@ -101,10 +102,14 @@ class AssemblyAIProvider(BaseProvider):
             self.ws = None
         logger.info("Disconnected from AssemblyAI.")
 
-    async def send_audio(self, audio_chunk: np.ndarray):
+    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
         """Send audio chunk as raw binary PCM16."""
         if not self.ws or not self.is_running:
             return
+
+        send_start = time.perf_counter()
+        lag_ms = (send_start - capture_time) * 1000
+        logger.debug(f"Audio chunk age before send: {lag_ms:.1f}ms")
 
         # Convert float32 [-1.0, 1.0] to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
@@ -133,49 +138,28 @@ class AssemblyAIProvider(BaseProvider):
 
     async def _handle_event(self, event: dict):
         """Process incoming events."""
-        # V3 uses 'type', while some older patterns use 'message_type'
         msg_type = event.get("type") or event.get("message_type")
-        
-        # Text can be in 'transcript' (V3 Turn) or 'text' (V3 Transcript types)
         text = event.get("transcript") or event.get("text")
         
         if text is not None:
-            # Handle V3 'Turn' objects
             if msg_type == "Turn":
                 if event.get("end_of_turn"):
-                    # Calculate final delta
-                    if text.startswith(self.last_transcript):
-                        final_delta = text[len(self.last_transcript):]
-                    else:
-                        final_delta = text
-                    
-                    if final_delta:
-                        self.on_final(final_delta)
-                    
-                    # Reset for next turn
-                    self.last_transcript = ""
+                    if text.strip():
+                        logger.info(f"Final transcript received: {text}")
+                        self.on_final(text)
                 else:
-                    # Calculate partial delta
-                    if text.startswith(self.last_transcript):
-                        delta = text[len(self.last_transcript):]
-                        if delta:
-                            self.last_transcript = text
-                            self.on_partial(delta)
-                    elif len(text) > len(self.last_transcript):
-                        # Fallback if it doesn't strictly start with (rare but possible with corrections)
-                        self.on_partial(text)
-                        self.last_transcript = text
+                    self.on_partial(text)
             
-            # Handle explicit Transcript types
             elif msg_type == "FinalTranscript":
                 logger.info(f"Final transcript received: {text}")
                 self.on_final(text)
-                self.last_transcript = ""
             elif msg_type == "PartialTranscript":
-                # For simplicity, we only do complex delta logic for Turn types which are standard in V3
                 self.on_partial(text)
 
         elif "error" in event:
+            logger.error(f"AssemblyAI API Error: {event.get('error')}")
+        elif msg_type == "SessionBegins":
+            logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
             logger.error(f"AssemblyAI API Error: {event.get('error')}")
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")

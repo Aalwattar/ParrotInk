@@ -30,6 +30,6 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    async def send_audio(self, audio_chunk: np.ndarray):
+    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
         """Send an audio chunk for transcription."""
         pass

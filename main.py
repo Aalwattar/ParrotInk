@@ -1,7 +1,6 @@
 import asyncio
 import signal
 import sys
-import argparse
 import threading
 import time
 from typing import Optional, Set
@@ -9,14 +8,14 @@ from typing import Optional, Set
 from pynput import keyboard
 
 from engine.audio import AudioStreamer
-from engine.config import Config, ConfigError, load_config
-from engine.injector import inject_text
+from engine.config import Config, load_config, ConfigError
 from engine.interaction import InteractionMonitor
-from engine.signals import ShutdownHandler
-from engine.transcription import BaseProvider, TranscriptionFactory
-from engine.ui import AppState, TrayApp
+from engine.transcription.factory import TranscriptionFactory
+from engine.transcription.base import BaseProvider
+from engine.ui import TrayApp, AppState
 from engine.security import SecurityManager
 from engine.credential_ui import ask_key
+from engine.injector import inject_text
 from engine.logging import get_logger, configure_logging
 
 logger = get_logger("Main")
@@ -50,7 +49,7 @@ class AppCoordinator:
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
-        self.last_partial = ""
+        self.last_injected_text = ""
 
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
@@ -67,18 +66,15 @@ class AppCoordinator:
     def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
         # Cooldown to avoid catching the release/repeat of the hotkey itself
-        if time.time() - self.start_time < 0.2: # Reduced cooldown, more responsive
+        if time.time() - self.start_time < 0.2:
             return
 
         if key:
             name = self._get_canonical_name(key)
-            # If the key is part of our hotkey, ignore it.
-            # We also check if it's currently in current_keys which is managed by the hotkey listener
             if name in self.target_hotkey:
                 return
 
         # Ignore keyboard events if they are coming from our own injection
-        # Also ensure we are actually listening and not just in the process of starting
         if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
             logger.info(f"Manual key press detected ({key}). Stopping and cancelling injection...")
             self.session_cancelled = True
@@ -139,52 +135,78 @@ class AppCoordinator:
         if self.session_cancelled:
             return
 
-        # In this new mode, providers send DELTAS, so we inject them directly
-        if text:
-            if self.loop:
-                asyncio.run_coroutine_threadsafe(self._inject_direct(text), self.loop)
+        text = text.strip()
+        if not text:
+            return
+
+        # Simple delta calculation: if new text starts with old text, inject remainder.
+        # Otherwise, we might have a correction (backspace needed), but for now we ignore corrections 
+        # to keep it simple and fast.
+        if text.startswith(self.last_injected_text):
+            delta = text[len(self.last_injected_text):]
+            if delta:
+                self.last_injected_text = text
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self._inject_direct(delta), self.loop)
 
     def on_final(self, text: str):
         if self.session_cancelled:
             logger.debug(f"Session cancelled. Discarding final text: {text}")
             return
 
-        # Since we are injecting deltas, we need to be careful with on_final.
-        # Most providers send 'completed' which might contain the FULL text.
-        # But if we already injected parts of it, we don't want to re-inject.
+        text = text.strip()
         
-        # For now, let's just add the final space.
+        # Calculate final delta
+        if text.startswith(self.last_injected_text):
+            delta = text[len(self.last_injected_text):]
+        else:
+            # Fallback: if final text completely changed, just inject the whole thing? 
+            # Or assume we missed something. For safety, let's just append the whole final 
+            # if it looks completely different, OR just the trailing space if it looks same-ish.
+            # Best safest: delta = text
+            delta = text 
+            # Wait, if we inject 'text', we duplicate. 
+            # Let's rely on standard flow:
+            delta = text # Dangerous if we already typed half.
+            # Realistically, on_final usually matches on_partial.
+            # Let's trust the prefix check mostly.
+            if len(text) > len(self.last_injected_text):
+                 delta = text[len(self.last_injected_text):]
+            else:
+                 delta = ""
+
+        # Always add a trailing space at the end of a turn
+        final_payload = delta + " "
+        
         if self.loop:
-            asyncio.run_coroutine_threadsafe(self._inject_direct(" "), self.loop)
+            asyncio.run_coroutine_threadsafe(self._inject_direct(final_payload), self.loop)
+
+        # Reset for next turn
+        self.last_injected_text = ""
 
     async def _inject_direct(self, text: str):
-        """Immediate injection without delay."""
-        if self.session_cancelled:
-            return
-        
-        async with self.injection_lock:
-            if self.loop:
-                await self.loop.run_in_executor(None, inject_text, text)
-
-    async def _delayed_inject(self, text: str):
-        # We removed the sleep here to achieve real-time speed.
-        # Check if session was cancelled
         if self.session_cancelled:
             return
 
-        # Use a lock to prevent overlapping injections
-        if self.injection_lock.locked():
-            logger.warning(f"Injection busy. Queuing text: {text}")
-            # Even if busy, we want the lock to handle it rather than dropping it
-            # but for partials, dropping older ones is often fine.
-            # For simplicity, we'll keep the lock check but make it fast.
-
         async with self.injection_lock:
             if self.loop:
+                # Log timing for latency debugging
                 t0 = time.perf_counter()
                 await self.loop.run_in_executor(None, inject_text, text)
                 t1 = time.perf_counter()
-                logger.debug(f"Coordinator handoff to injector took {(t1-t0)*1000:.2f}ms")
+                logger.debug(f"Direct injection of '{text}' took {(t1-t0)*1000:.2f}ms")
+
+    async def _delayed_inject(self, text: str):
+        if self.session_cancelled:
+            return
+
+        async with self.injection_lock:
+            if self.loop:
+                logger.debug(f"Injecting text: {text}")
+                t0 = time.perf_counter()
+                await self.loop.run_in_executor(None, inject_text, text)
+                t1 = time.perf_counter()
+                logger.debug(f"Injection call completed in {(t1-t0)*1000:.2f}ms")
 
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
@@ -206,6 +228,7 @@ class AppCoordinator:
         self.is_connecting = True
         self.session_cancelled = False
         self.start_time = time.time()
+        self.last_injected_text = ""
 
         self.provider = TranscriptionFactory.create(
             self.config, on_partial=self.on_partial, on_final=self.on_final
@@ -246,10 +269,10 @@ class AppCoordinator:
             self.provider = None
 
     async def _audio_pipe(self):
-        for chunk in self.streamer.generator():
+        for chunk, capture_time in self.streamer.generator():
             if not self.is_listening or not self.provider:
                 break
-            await self.provider.send_audio(chunk)
+            await self.provider.send_audio(chunk, capture_time)
 
     def on_press(self, key):
         name = self._get_canonical_name(key)
@@ -284,6 +307,7 @@ class AppCoordinator:
 
 
 def handle_cli():
+    import argparse
     parser = argparse.ArgumentParser(
         description="Voice2Text: A real-time voice-to-text system tray application.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -402,30 +426,26 @@ async def main_async(cli_args):
         app.stop()
         await asyncio.sleep(0.5)
 
+class ShutdownHandler:
+    def __init__(self):
+        self.should_exit = False
+        self.last_ctrl_c = 0
+
+    def handle(self, sig, frame):
+        now = time.time()
+        if now - self.last_ctrl_c < 3:
+            print("\nForce Shutting down...")
+            sys.exit(1)
+        self.last_ctrl_c = now
+        print("\nCtrl+C received. Press Ctrl+C again within 3 seconds to force exit.")
+        self.should_exit = True
 
 if __name__ == "__main__":
-
-
     from engine.config import migrate_config_file
-
-
     migrate_config_file("config.toml")
 
-
-
-
-
     cli_args = handle_cli()
-
-
     try:
-
-
         asyncio.run(main_async(cli_args))
-
-
     except KeyboardInterrupt:
-
-
         pass
-

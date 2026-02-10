@@ -1,6 +1,6 @@
 import queue
 import time
-from typing import Generator
+from typing import Generator, Tuple
 
 import numpy as np
 import sounddevice as sd
@@ -12,7 +12,7 @@ class AudioStreamer:
     def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
-        self.queue: queue.Queue[np.ndarray] = queue.Queue()
+        self.queue: queue.Queue[Tuple[np.ndarray, float]] = queue.Queue()
         self.is_running = False
         self._stream: sd.InputStream | None = None
 
@@ -20,7 +20,9 @@ class AudioStreamer:
         """This is called (from a separate thread) for each audio block."""
         if status:
             logger.warning(f"Audio status warning: {status}")
-        self.queue.put(indata.copy())
+        # Capture precise timestamp when audio block arrives
+        capture_time = time.perf_counter()
+        self.queue.put((indata.copy(), capture_time))
 
     def start(self):
         """Starts the audio capture stream."""
@@ -69,18 +71,18 @@ class AudioStreamer:
         
         return chunk.flatten()
 
-    def generator(self) -> Generator[np.ndarray, None, None]:
-        """Yields audio chunks from the queue."""
+    def generator(self) -> Generator[Tuple[np.ndarray, float], None, None]:
+        """Yields (audio_chunk, timestamp) tuples from the queue."""
         while self.is_running:
             try:
                 # Use a timeout to avoid blocking indefinitely so we can check is_running
-                chunk = self.queue.get(timeout=0.1)
+                chunk, capture_time = self.queue.get(timeout=0.1)
                 
                 # Robust normalization (Mono + 1D)
                 chunk = self._normalize_audio(chunk)
                 
                 duration_ms = (len(chunk) / self.sample_rate) * 1000
-                logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
-                yield chunk
+                logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms) | Age: {(time.perf_counter() - capture_time)*1000:.1f}ms")
+                yield chunk, capture_time
             except queue.Empty:
                 continue
