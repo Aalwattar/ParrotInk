@@ -50,6 +50,7 @@ class AppCoordinator:
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
+        self.last_partial = ""
 
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
@@ -135,15 +136,54 @@ class AppCoordinator:
         return mapping.get(name, name)
 
     def on_partial(self, text: str):
-        pass
+        if self.session_cancelled:
+            return
+
+        text = text.strip()
+        if not text:
+            return
+
+        # Find what's new in the partial transcript
+        if text.startswith(self.last_partial):
+            new_text = text[len(self.last_partial):]
+            if new_text:
+                self.last_partial = text
+                if self.loop:
+                    # We don't delay partials, we want them fast
+                    asyncio.run_coroutine_threadsafe(self._inject_direct(new_text), self.loop)
 
     def on_final(self, text: str):
         if self.session_cancelled:
             logger.debug(f"Session cancelled. Discarding final text: {text}")
             return
 
-        if self.loop:
-            asyncio.run_coroutine_threadsafe(self._delayed_inject(text), self.loop)
+        # Inject anything remaining that wasn't covered by last_partial
+        text = text.strip()
+        if text.startswith(self.last_partial):
+            remaining = text[len(self.last_partial):]
+            if remaining:
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self._inject_direct(remaining + " "), self.loop)
+            else:
+                # Just add the trailing space if nothing new
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self._inject_direct(" "), self.loop)
+        else:
+            # Fallback if partials got out of sync
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self._delayed_inject(text + " "), self.loop)
+
+        # Reset partial state for next turn
+        self.last_partial = ""
+
+    async def _inject_direct(self, text: str):
+        """Immediate injection without delay."""
+        if self.session_cancelled:
+            return
+        
+        async with self.injection_lock:
+            if self.loop:
+                await self.loop.run_in_executor(None, inject_text, text)
 
     async def _delayed_inject(self, text: str):
         # Wait a bit for the user to release keys (Ctrl/Alt) to avoid shortcut interference

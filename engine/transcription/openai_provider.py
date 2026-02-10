@@ -28,6 +28,7 @@ class OpenAIProvider(BaseProvider):
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
+        self.current_partial = ""
 
     def _build_url(self) -> str:
         if self.config.test.enabled:
@@ -145,6 +146,14 @@ class OpenAIProvider(BaseProvider):
             if transcript:
                 logger.info(f"Final transcript received: {transcript}")
                 self.on_final(transcript)
+            # Reset accumulation
+            self.current_partial = ""
+        
+        elif event_type == "conversation.item.input_audio_transcription.delta":
+            delta = event.get("delta", "")
+            if delta:
+                self.current_partial += delta
+                self.on_partial(self.current_partial)
 
         elif event_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")

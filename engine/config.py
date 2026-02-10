@@ -80,7 +80,7 @@ class OpenAIAdvancedConfig(BaseModel):
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.5
     prefix_padding_ms: int = 300
-    silence_duration_ms: int = 500
+    silence_duration_ms: int = 300 # Reduced from 500
     include_logprobs: bool = False
 
 
@@ -103,8 +103,8 @@ class AssemblyAICoreConfig(BaseModel):
 
 class AssemblyAIAdvancedConfig(BaseModel):
     end_of_turn_confidence_threshold: float = 0.4
-    min_end_of_turn_silence_when_confident_ms: int = 400
-    max_turn_silence_ms: int = 1280
+    min_end_of_turn_silence_when_confident_ms: int = 300 # Reduced from 400
+    max_turn_silence_ms: int = 800 # Reduced from 1280
     format_turns: bool = False
     language_detection: bool = False
 
