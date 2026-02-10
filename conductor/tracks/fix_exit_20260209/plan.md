@@ -1,6 +1,6 @@
 # Implementation Plan: Fix pystray SystemExit and Double Ctrl+C Responsiveness
 
-## Phase 1: Threading and Signal Logic Refactor
+## Phase 1: Threading and Signal Logic Refactor [checkpoint: 8d4ecc9]
 Refactor the application entry point to separate the UI loop from the signal-handling main thread.
 
 - [x] Task: Refactor `main.py` for Threaded UI and Signal Responsiveness (f889dd6)
