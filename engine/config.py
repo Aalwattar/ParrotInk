@@ -15,12 +15,25 @@ class TranscriptionConfig(BaseModel):
     sample_rate: int = 16000
 
 
+class TestConfig(BaseModel):
+    enabled: bool = False
+    openai_mock_url: str = "ws://localhost:8081"
+    assemblyai_mock_url: str = "ws://localhost:8081"
+
+
+class AdvancedConfig(BaseModel):
+    openai_url: str = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+    assemblyai_url: str = "wss://api.assemblyai.com/v2/realtime/ws"
+
+
 class Config(BaseModel):
     active_provider: Literal["openai", "assemblyai"] = "openai"
     openai_api_key: str = ""
     assemblyai_api_key: str = ""
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
+    test: TestConfig = Field(default_factory=TestConfig)
+    advanced: AdvancedConfig = Field(default_factory=AdvancedConfig)
 
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":
