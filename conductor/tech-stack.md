@@ -11,6 +11,8 @@
 - **httpx:** Used for making standard HTTP requests to API endpoints where streaming is not required.
 - **pywin32:** Provides robust, low-level access to the Windows API for creating global hotkeys and injecting text at the cursor location.
 - **pystray:** Manages the application's system tray icon and context menu.
+- **threading:** Used to run the UI loop in a background thread, ensuring the main thread remains responsive to system signals.
+- **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
 
 ## 3. API SDKs
 
