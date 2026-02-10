@@ -73,6 +73,15 @@ class AssemblyAIProvider(BaseProvider):
 
     async def stop(self):
         """Close connection and stop tasks."""
+        if self.ws and self.is_running:
+            try:
+                # Send end of stream message
+                await self.ws.send(json.dumps({"terminate_session": True}))
+                # Give it a moment to process before hard close
+                await asyncio.sleep(0.2)
+            except:
+                pass
+
         self.is_running = False
         if self._receive_task:
             self._receive_task.cancel()
@@ -87,16 +96,18 @@ class AssemblyAIProvider(BaseProvider):
         print("Disconnected from AssemblyAI.")
 
     async def send_audio(self, audio_chunk: np.ndarray):
-        """Send audio chunk as base64 encoded PCM16."""
+        """Send audio chunk as raw binary PCM16."""
         if not self.ws or not self.is_running:
             return
 
         # Convert float32 [-1.0, 1.0] to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
-        audio_base64 = base64.b64encode(audio_int16.tobytes()).decode("utf-8")
-
-        event = {"audio_data": audio_base64}
-        await self.ws.send(json.dumps(event))
+        
+        # In V3, we send the raw bytes directly, not JSON.
+        try:
+            await self.ws.send(audio_int16.tobytes())
+        except websockets.exceptions.ConnectionClosed:
+            self.is_running = False
 
     async def _receive_loop(self):
         """Listen for transcription events."""

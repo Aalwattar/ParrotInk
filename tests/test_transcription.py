@@ -79,19 +79,45 @@ async def test_openai_provider_session_update(base_config):
         # Find the session.update call
         session_update = None
         for call in mock_ws.send.call_args_list:
-            msg = json.loads(call[0][0])
-            if msg["type"] == "session.update":
-                session_update = msg
-                break
+            arg = call[0][0]
+            if isinstance(arg, str):
+                msg = json.loads(arg)
+                if msg["type"] == "session.update":
+                    session_update = msg
+                    break
         
         assert session_update is not None
         session = session_update["session"]
         assert session["input_audio_transcription"]["model"] == "whisper-custom"
-        assert session["turn_detection"]["threshold"] == 0.8 # We'll check if we use this structure
+        assert session["turn_detection"]["threshold"] == 0.8
+
+@pytest.mark.asyncio
+async def test_assemblyai_provider_send_audio(base_config):
+    on_partial = MagicMock()
+    on_final = MagicMock()
+    provider = AssemblyAIProvider(
+        api_key="test_key", 
+        on_partial=on_partial, 
+        on_final=on_final, 
+        config=base_config
+    )
+
+    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
+
+        await provider.start()
+
+        audio_chunk = np.zeros(1024, dtype=np.float32)
+        await provider.send_audio(audio_chunk)
+
+        # In V3, it should be bytes, not JSON string
+        assert mock_ws.send.called
+        sent_data = mock_ws.send.call_args[0][0]
+        assert isinstance(sent_data, bytes)
 
 @pytest.mark.asyncio
 async def test_assemblyai_provider_v3_url(base_config):
-    # This will fail until Phase 3 is implemented
     on_partial = MagicMock()
     on_final = MagicMock()
     provider = AssemblyAIProvider(

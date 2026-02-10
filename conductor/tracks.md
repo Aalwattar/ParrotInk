@@ -24,7 +24,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Granular Provider Configuration & AssemblyAI V3** [checkpoint: 337449a]
+- [x] **Track: Granular Provider Configuration & AssemblyAI V3** [checkpoint: 97b886c]
 *Link: [./tracks/config_overhaul_20260210/](./tracks/config_overhaul_20260210/)*
 
 ---
