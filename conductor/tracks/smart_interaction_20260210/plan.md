@@ -14,7 +14,7 @@ Implement the logic to handle partial corrections via backspacing.
 ## Phase 2: AssemblyAI Immediate Partials
 Restore real-time streaming for AssemblyAI V3.
 
-- [ ] Task: Update `AssemblyAIProvider`
+- [~] Task: Update `AssemblyAIProvider`
     - [ ] Ensure `on_partial` is called for EVERY `Turn` message regardless of `end_of_turn`.
     - [ ] Switch back to sending the **cumulative** transcript in `on_partial` so the Coordinator can diff it.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: AssemblyAI Immediate Partials' (Protocol in workflow.md)

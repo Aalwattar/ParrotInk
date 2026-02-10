@@ -143,12 +143,15 @@ class AssemblyAIProvider(BaseProvider):
         
         if text is not None:
             if msg_type == "Turn":
+                # In V3, transcripts within a Turn are cumulative.
+                # Call on_partial immediately for real-time responsiveness.
+                if text.strip():
+                    self.on_partial(text)
+
                 if event.get("end_of_turn"):
                     if text.strip():
-                        logger.info(f"Final transcript received: {text}")
+                        logger.info(f"End of Turn received: {text}")
                         self.on_final(text)
-                else:
-                    self.on_partial(text)
             
             elif msg_type == "FinalTranscript":
                 logger.info(f"Final transcript received: {text}")
@@ -157,9 +160,6 @@ class AssemblyAIProvider(BaseProvider):
                 self.on_partial(text)
 
         elif "error" in event:
-            logger.error(f"AssemblyAI API Error: {event.get('error')}")
-        elif msg_type == "SessionBegins":
-            logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
             logger.error(f"AssemblyAI API Error: {event.get('error')}")
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
