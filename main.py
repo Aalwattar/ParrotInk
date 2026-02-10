@@ -1,23 +1,31 @@
+import signal
 import sys
 
 from engine.ui import TrayApp
 
 
-def on_provider_change(provider: str):
-    print(f"Provider switched to: {provider}")
-    # In future tasks, we will update the engine's active provider here
-
-
 def main():
     print("Starting Voice2Text...")
-    print("Press Ctrl+C in this terminal or select 'Quit' from the tray icon to exit.")
 
-    app = TrayApp(on_provider_change=on_provider_change)
+    app = TrayApp()
 
+    # Define a clean shutdown function
+    def shutdown(sig, frame):
+        print("\nInterrupt received! Shutting down immediately...")
+        app.stop()
+        sys.exit(0)
+
+    # Register the signal handler for immediate response
+    signal.signal(signal.SIGINT, shutdown)
+
+    print("System Tray is active. Select 'Quit' or press Ctrl+C to exit.")
+
+    # Run the tray icon in the main thread's loop
+    # (pystray's run() method is usually the one that needs to own the main thread on some OSs)
+    # To keep the main thread responsive to signals, we can use run_detached()
+    # if supported, or just let it run and trust the signal handler.
     try:
         app.run()
-    except KeyboardInterrupt:
-        app.stop()
     except Exception as e:
         print(f"Fatal error: {e}")
         sys.exit(1)

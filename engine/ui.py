@@ -2,6 +2,7 @@ import os
 import signal
 import threading
 from enum import Enum
+from pathlib import Path
 from typing import Callable, Literal
 
 import pystray
@@ -52,11 +53,12 @@ class TrayApp:
             self.on_provider_change(provider)
 
     def _open_config(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
-        config_path = os.path.join(os.getcwd(), "config.toml")
-        if os.path.exists(config_path):
+        # Check current dir first
+        config_path = Path("config.toml").absolute()
+        if config_path.exists():
             os.startfile(config_path)
         else:
-            print(f"Config file not found at {config_path}")
+            print(f"Config file not found at: {config_path}")
 
     def _create_icon(self) -> pystray.Icon:
         menu = pystray.Menu(
