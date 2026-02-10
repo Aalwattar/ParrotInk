@@ -52,14 +52,33 @@ class AudioStreamer:
         self.is_running = False
         logger.info("Audio capture stopped.")
 
+    def _normalize_audio(self, chunk: np.ndarray) -> np.ndarray:
+        """Ensures audio is mono (1D array) by downmixing if necessary."""
+        if chunk.ndim == 1:
+            return chunk
+        
+        if chunk.ndim == 2:
+            channels = chunk.shape[1]
+            if channels > 1:
+                # Downmix: average across channels to produce mono
+                # We specify dtype to ensure we stay in float32
+                return np.mean(chunk, axis=1, dtype=np.float32)
+            else:
+                # Squeeze (N, 1) to (N,)
+                return chunk.squeeze()
+        
+        return chunk.flatten()
+
     def generator(self) -> Generator[np.ndarray, None, None]:
         """Yields audio chunks from the queue."""
         while self.is_running:
             try:
                 # Use a timeout to avoid blocking indefinitely so we can check is_running
                 chunk = self.queue.get(timeout=0.1)
-                # Ensure the chunk is 1D (sounddevice returns (N, Channels))
-                chunk = chunk.flatten()
+                
+                # Robust normalization (Mono + 1D)
+                chunk = self._normalize_audio(chunk)
+                
                 duration_ms = (len(chunk) / self.sample_rate) * 1000
                 logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
                 yield chunk

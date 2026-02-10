@@ -27,6 +27,24 @@ def test_audio_callback(mocker):
     assert np.array_equal(queued_data, indata)
 
 
+def test_normalize_audio_mono():
+    streamer = AudioStreamer()
+    # (N, 1) -> (N,)
+    chunk = np.ones((10, 1), dtype=np.float32)
+    norm = streamer._normalize_audio(chunk)
+    assert norm.shape == (10,)
+    assert norm.ndim == 1
+
+
+def test_normalize_audio_stereo():
+    streamer = AudioStreamer()
+    # (N, 2) -> (N,) via mean
+    chunk = np.array([[1.0, 3.0], [2.0, 4.0]], dtype=np.float32) # Mean should be [2.0, 3.0]
+    norm = streamer._normalize_audio(chunk)
+    assert norm.shape == (2,)
+    assert np.array_equal(norm, np.array([2.0, 3.0], dtype=np.float32))
+
+
 def test_audio_generator(mocker):
     """Test that the generator yields data from the queue."""
     streamer = AudioStreamer()
