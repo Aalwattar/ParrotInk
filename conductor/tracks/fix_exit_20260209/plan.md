@@ -21,7 +21,7 @@ Ensure the transition from signal confirmation to `pystray` termination is silen
     - [x] **Red:** Create a reproduction case (script) that triggers the `SystemExit` traceback during shutdown.
     - [x] **Green:** Ensure `app.stop()` is called from the main thread and correctly triggers `icon.stop()`.
     - [x] **Green:** Remove any direct `sys.exit()` calls within handlers that might be executed in the `pystray` loop context.
-- [~] Task: Implement Bounded Shutdown (<= 2s)
-    - [ ] **Green:** Update shutdown sequence to wait for the UI thread with a 2-second timeout.
-    - [ ] **Green:** Ensure all background threads (audio, etc.) are marked as `daemon=True`.
+- [x] Task: Implement Bounded Shutdown (<= 2s) (697fe8a)
+    - [x] **Green:** Update shutdown sequence to wait for the UI thread with a 2-second timeout.
+    - [x] **Green:** Ensure all background threads (audio, etc.) are marked as `daemon=True`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Clean Shutdown and Traceback Fix' (Protocol in workflow.md)
