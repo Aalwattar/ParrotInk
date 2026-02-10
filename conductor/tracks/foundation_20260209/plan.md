@@ -31,7 +31,7 @@ Capture and process microphone input.
     - [ ] **Red:** Write tests for audio chunk generation (mocking `sounddevice`)
     - [ ] **Green:** Implement `AudioStreamer` using `sounddevice` callback
     - [ ] **Refactor:** Optimize buffer sizes and handling of sample rates
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Audio Capture Engine' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Audio Capture Engine' (Protocol in workflow.md)
 
 ## Phase 4: Transcription Integration
 Connect to OpenAI and AssemblyAI.
