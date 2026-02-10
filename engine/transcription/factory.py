@@ -9,7 +9,7 @@ class TranscriptionFactory:
 
     @staticmethod
     def create(config: Config, on_partial: Callable[[str], None], on_final: Callable[[str], None]) -> BaseProvider:
-        if config.active_provider == "openai":
+        if config.default_provider == "openai":
             # Resolve URL based on test mode
             base_url = config.test.openai_mock_url if config.test.enabled else config.advanced.openai_url
             
@@ -19,7 +19,7 @@ class TranscriptionFactory:
                 on_final=on_final,
                 base_url=base_url
             )
-        elif config.active_provider == "assemblyai":
+        elif config.default_provider == "assemblyai":
             # Resolve URL based on test mode
             base_url = config.test.assemblyai_mock_url if config.test.enabled else config.advanced.assemblyai_url
             
@@ -31,4 +31,4 @@ class TranscriptionFactory:
                 sample_rate=config.transcription.sample_rate
             )
         else:
-            raise ValueError(f"Unsupported transcription provider: {config.active_provider}")
+            raise ValueError(f"Unsupported transcription provider: {config.default_provider}")

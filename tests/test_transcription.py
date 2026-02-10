@@ -51,7 +51,7 @@ async def test_assemblyai_provider_send_audio():
 
 def test_transcription_factory():
     config = Config(
-        active_provider="openai",
+        default_provider="openai",
         hotkeys=HotkeysConfig(hotkey="ctrl+v", hold_mode=True),
         transcription=TranscriptionConfig(language="en", sample_rate=16000),
     )
@@ -62,7 +62,7 @@ def test_transcription_factory():
     provider = TranscriptionFactory.create(config, on_partial, on_final)
     assert isinstance(provider, OpenAIProvider)
 
-    config.active_provider = "assemblyai"
+    config.default_provider = "assemblyai"
     provider = TranscriptionFactory.create(config, on_partial, on_final)
     assert isinstance(provider, AssemblyAIProvider)
 
@@ -72,7 +72,7 @@ def test_transcription_factory_url_resolution():
     
     # Test Mode Enabled
     config = Config(
-        active_provider="openai",
+        default_provider="openai",
         test={"enabled": True, "openai_mock_url": "ws://mock-openai"},
         advanced={"openai_url": "wss://real-openai"}
     )
@@ -85,7 +85,7 @@ def test_transcription_factory_url_resolution():
     assert provider.url == "wss://real-openai"
     
     # AssemblyAI resolution
-    config.active_provider = "assemblyai"
+    config.default_provider = "assemblyai"
     config.test.enabled = True
     config.test.assemblyai_mock_url = "ws://mock-aai"
     config.advanced.assemblyai_url = "wss://real-aai"

@@ -8,7 +8,7 @@ from main import AppCoordinator
 
 def test_coordinator_initialization():
     config = Config(
-        active_provider="openai",
+        default_provider="openai",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=True),
         transcription=TranscriptionConfig(sample_rate=16000),
     )
@@ -25,7 +25,7 @@ async def test_coordinator_basic_state():
     # Setup nested mock
     config.transcription = MagicMock(spec=TranscriptionConfig)
     config.transcription.sample_rate = 16000
-    config.active_provider = "openai"
+    config.default_provider = "openai"
     config.hotkeys = MagicMock(spec=HotkeysConfig)
     config.hotkeys.hotkey = "ctrl+alt+v"
 

@@ -42,10 +42,24 @@ def test_open_config(mocker, tmp_path):
 
     # Mock current working directory to use tmp_path
     mocker.patch("os.getcwd", return_value=str(tmp_path))
-    config_file = tmp_path / "config.toml"
-    config_file.write_text("dummy content")
+    # We need to make sure the absolute path exists for os.startfile in TrayApp
+    # TrayApp does: Path("config.toml").absolute()
+    # If we mocker.patch("pathlib.Path.exists", return_value=True)
+    mocker.patch("pathlib.Path.exists", return_value=True)
 
     app = TrayApp()
     app._open_config(None, None)
 
     mock_startfile.assert_called_once()
+
+def test_tray_app_availability(mocker):
+    """Test that TrayApp stores availability status."""
+    mocker.patch("pystray.Icon")
+    availability = {"openai": True, "assemblyai": False}
+    app = TrayApp(availability=availability)
+    assert app.availability == availability
+    
+    # Test update
+    new_availability = {"openai": False, "assemblyai": True}
+    app.update_availability(new_availability)
+    assert app.availability == new_availability

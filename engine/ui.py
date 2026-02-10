@@ -25,12 +25,14 @@ class TrayApp:
         on_provider_change: Callable[[ProviderType], None] | None = None,
         on_set_key: Callable[[str, str], None] | None = None,
         initial_provider: ProviderType = "openai",
+        availability: Optional[dict[str, bool]] = None,
     ):
         self.state = AppState.IDLE
-        self.active_provider: ProviderType = initial_provider
+        self.default_provider: ProviderType = initial_provider
         self.on_quit_callback = on_quit_callback
         self.on_provider_change = on_provider_change
         self.on_set_key = on_set_key
+        self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
 
@@ -49,7 +51,7 @@ class TrayApp:
         return "black"
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
-        self.active_provider = provider
+        self.default_provider = provider
         if self.on_provider_change:
             self.on_provider_change(provider)
 
@@ -78,13 +80,15 @@ class TrayApp:
             pystray.MenuItem(
                 "OpenAI",
                 lambda icon, item: self._on_provider_selection(icon, "openai"),
-                checked=lambda item: self.active_provider == "openai",
+                checked=lambda item: self.default_provider == "openai",
+                enabled=lambda item: self.availability.get("openai", True),
                 radio=True,
             ),
             pystray.MenuItem(
                 "AssemblyAI",
                 lambda icon, item: self._on_provider_selection(icon, "assemblyai"),
-                checked=lambda item: self.active_provider == "assemblyai",
+                checked=lambda item: self.default_provider == "assemblyai",
+                enabled=lambda item: self.availability.get("assemblyai", True),
                 radio=True,
             ),
             pystray.Menu.SEPARATOR,
@@ -104,6 +108,10 @@ class TrayApp:
     def set_state(self, state: AppState) -> None:
         self.state = state
         self.icon.icon = self._create_image(self._get_icon_color(state))
+
+    def update_availability(self, availability: dict[str, bool]):
+        """Updates the availability status of providers."""
+        self.availability = availability
 
     def notify(self, message: str, title: str = "Voice2Text"):
         """Show a system tray notification."""

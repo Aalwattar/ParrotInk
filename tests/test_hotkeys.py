@@ -6,7 +6,7 @@ from main import AppCoordinator
 
 def setup_coordinator(hold_mode=True):
     config = Config(
-        active_provider="openai",
+        default_provider="openai",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=hold_mode),
         transcription=TranscriptionConfig(sample_rate=16000),
     )

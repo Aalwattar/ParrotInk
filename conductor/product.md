@@ -38,9 +38,15 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - Configurable options will include:
     - API provider selection, API keys, and **Test Mode** toggle.
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
+    - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
     - Hotkey assignment and "hold_mode" boolean.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
+
+### 2.7. Tray Interaction
+- **Provider Selection:** Users can switch between providers directly from the tray menu.
+- **Visual Feedback:** The app indicates its state (Idle, Listening, Error) through the tray icon color.
+- **Dynamic Menu:** The "Default Provider" setting from the config determines the initial selection, and availability is checked dynamically.
     - Custom word overrides or vocabulary lists to improve accuracy.
     - Simple post-processing rules for the transcribed text.
 

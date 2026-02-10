@@ -2,7 +2,7 @@ import tomllib
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 from .security import SecurityManager
 
 
@@ -28,7 +28,9 @@ class AdvancedConfig(BaseModel):
 
 
 class Config(BaseModel):
-    active_provider: Literal["openai", "assemblyai"] = "openai"
+    default_provider: Literal["openai", "assemblyai"] = Field(
+        default="openai", validation_alias=AliasChoices("default_provider", "active_provider")
+    )
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: TestConfig = Field(default_factory=TestConfig)

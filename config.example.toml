@@ -1,7 +1,7 @@
 # voice2text configuration example
 # Copy this to config.toml and customize
 
-active_provider = "openai"
+default_provider = "openai"
 
 # API keys are NOT stored here anymore. 
 # They are managed via the System Tray -> Credentials menu

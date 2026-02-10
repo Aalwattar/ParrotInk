@@ -6,13 +6,13 @@ from engine.config import ConfigError, load_config
 def test_load_config_missing_file():
     # Now returns a default config instead of raising error
     config = load_config("non_existent.toml")
-    assert config.active_provider == "openai"
+    assert config.default_provider == "openai"
 
 
 def test_load_config_invalid_toml(tmp_path):
     config_file = tmp_path / "invalid.toml"
     # Missing closing quote
-    config_file.write_text('active_provider = "openai')
+    config_file.write_text('default_provider = "openai')
     with pytest.raises(ConfigError, match="Invalid TOML format"):
         load_config(config_file)
 
@@ -21,7 +21,7 @@ def test_load_config_misspelled_value(tmp_path):
     config_file = tmp_path / "misspelled.toml"
     # Boolean value with typo
     config_file.write_text("""
-active_provider = "openai"
+default_provider = "openai"
 [hotkeys]
 hotkey = "v"
 hold_mode = fakse
@@ -32,9 +32,9 @@ hold_mode = fakse
 
 def test_load_config_invalid_types(tmp_path):
     config_file = tmp_path / "types.toml"
-    # active_provider must be a literal
+    # default_provider must be a literal
     config_file.write_text("""
-active_provider = "invalid_provider"
+default_provider = "invalid_provider"
 [hotkeys]
 hold_mode = "true"
 """)
@@ -45,7 +45,7 @@ hold_mode = "true"
 def test_load_config_valid(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
-active_provider = "assemblyai"
+default_provider = "assemblyai"
 
 [hotkeys]
 hotkey = "ctrl+v"
@@ -56,7 +56,7 @@ language = "es"
 sample_rate = 44100
 """)
     config = load_config(config_file)
-    assert config.active_provider == "assemblyai"
+    assert config.default_provider == "assemblyai"
     assert config.hotkeys.hotkey == "ctrl+v"
     assert config.hotkeys.hold_mode is False
     assert config.transcription.language == "es"
@@ -66,7 +66,7 @@ sample_rate = 44100
 def test_config_advanced_and_test_defaults(tmp_path):
     config_file = tmp_path / "default_test.toml"
     config_file.write_text("""
-active_provider = "openai"
+default_provider = "openai"
 """)
     config = load_config(config_file)
 
@@ -86,7 +86,7 @@ active_provider = "openai"
 def test_config_overrides(tmp_path):
     config_file = tmp_path / "overrides.toml"
     config_file.write_text("""
-active_provider = "openai"
+default_provider = "openai"
 
 [test]
 enabled = true
@@ -111,3 +111,10 @@ def test_config_key_resolution(mocker):
     
     assert config.get_openai_key() == "secret-key"
     assert config.get_assemblyai_key() is None
+
+def test_config_backward_compatibility(tmp_path):
+    """Should still load if using legacy 'active_provider' name."""
+    config_file = tmp_path / "legacy.toml"
+    config_file.write_text('active_provider = "assemblyai"')
+    config = load_config(config_file)
+    assert config.default_provider == "assemblyai"

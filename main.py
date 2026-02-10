@@ -43,6 +43,16 @@ class AppCoordinator:
 
         print(f"DEBUG: Target hotkey set to: {self.target_hotkey}")
 
+    def get_provider_availability(self) -> dict[str, bool]:
+        """Returns a mapping of provider names to their availability status."""
+        if self.config.test.enabled:
+            return {"openai": True, "assemblyai": True}
+
+        return {
+            "openai": bool(self.config.get_openai_key()),
+            "assemblyai": bool(self.config.get_assemblyai_key()),
+        }
+
     def _on_manual_stop(self):
         """Callback for when a manual key press is detected during listening."""
         # Ignore keyboard events if they are coming from our own injection
@@ -127,20 +137,18 @@ class AppCoordinator:
             return
 
         # Credential check
-        key = None
-        if self.config.active_provider == "openai":
-            key = self.config.get_openai_key()
-        elif self.config.active_provider == "assemblyai":
-            key = self.config.get_assemblyai_key()
-            
-        if not key and not self.config.test.enabled:
-            print(f"\n[ERROR] Missing API Key for {self.config.active_provider}")
+        availability = self.get_provider_availability()
+        if not availability.get(self.config.default_provider, False):
+            print(f"\n[ERROR] Missing API Key for {self.config.default_provider}")
             if self.ui:
-                self.ui.notify(f"Please set your {self.config.active_provider.title()} API Key in the Credentials menu.", "Missing API Key")
+                self.ui.notify(
+                    f"Please set your {self.config.default_provider.title()} API Key in the Credentials menu.",
+                    "Missing API Key",
+                )
                 self.ui.set_state(AppState.ERROR)
             return
 
-        print(f"\n[EVENT] Starting listening with {self.config.active_provider}...")
+        print(f"\n[EVENT] Starting listening with {self.config.default_provider}...")
         self.is_connecting = True
         self.session_cancelled = False
 
@@ -162,7 +170,7 @@ class AppCoordinator:
             if self.ui:
                 self.ui.set_state(AppState.ERROR)
                 if "401" in str(e) or "unauthorized" in str(e).lower():
-                     self.ui.notify(f"Invalid API Key for {self.config.active_provider.title()}. Please check your credentials.", "Authentication Failed")
+                     self.ui.notify(f"Invalid API Key for {self.config.default_provider.title()}. Please check your credentials.", "Authentication Failed")
         finally:
             self.is_connecting = False
 
@@ -269,20 +277,25 @@ async def main_async():
         handler.should_exit = True
 
     def on_provider_change(provider_name):
-        config.active_provider = provider_name
+        config.default_provider = provider_name
         print(f"\nProvider changed to: {provider_name}")
 
     def on_set_key(account_id, key):
         SecurityManager.set_key(account_id, key)
         print(f"\nAPI Key updated for: {account_id}")
         if coordinator.ui:
-            coordinator.ui.notify(f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.", "Key Saved")
+            coordinator.ui.update_availability(coordinator.get_provider_availability())
+            coordinator.ui.notify(
+                f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.",
+                "Key Saved",
+            )
 
     app = TrayApp(
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
         on_set_key=on_set_key,
-        initial_provider=config.active_provider,
+        initial_provider=config.default_provider,
+        availability=coordinator.get_provider_availability(),
     )
     coordinator.ui = app
 
