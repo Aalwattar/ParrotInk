@@ -3,11 +3,11 @@
 ## Phase 1: Configuration Schema & Defaults
 Extend the configuration model to support test modes and URL overrides.
 
-- [ ] Task: Update `engine/config.py` with `TestConfig` and `AdvancedConfig`
-    - [ ] Add `TestConfig` class with `enabled`, `openai_mock_url`, and `assemblyai_mock_url`.
-    - [ ] Add `AdvancedConfig` class with production URLs for OpenAI and AssemblyAI.
-    - [ ] Update main `Config` class to include these sections as fields.
-- [ ] Task: Write tests for new configuration loading
+- [x] Task: Update `engine/config.py` with `TestConfig` and `AdvancedConfig` [39870a4]
+    - [x] Add `TestConfig` class with `enabled`, `openai_mock_url`, and `assemblyai_mock_url`.
+    - [x] Add `AdvancedConfig` class with production URLs for OpenAI and AssemblyAI.
+    - [x] Update main `Config` class to include these sections as fields.
+- [~] Task: Write tests for new configuration loading
     - [ ] **Red:** Write tests in `tests/test_config.py` to verify defaults are populated.
     - [ ] **Red:** Write tests to verify `config.toml` overrides for mock and production URLs work.
     - [ ] **Green:** Ensure all config tests pass.
