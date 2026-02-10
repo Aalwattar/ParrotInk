@@ -7,6 +7,7 @@
 ## 2. Core Libraries
 
 - **sounddevice:** Used for capturing real-time audio from the microphone.
+- **numpy:** Used for processing and transforming audio chunks (e.g., float32 to int16 conversion) before transmission.
 - **websockets:** Enables low-latency, real-time streaming of audio data to the transcription APIs.
 - **httpx:** Used for making standard HTTP requests to API endpoints where streaming is not required.
 - **pywin32:** Provides robust, low-level access to the Windows API for creating global hotkeys and injecting text at the cursor location.

@@ -39,6 +39,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - API provider selection, API keys, and **Test Mode** toggle.
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
     - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
+    - **Granular Advanced Settings:** Fine-tune transcription behavior (VAD thresholds, models, silence duration, word boosting) directly through the configuration file.
+    - **AssemblyAI V3 Integration:** Leverages the latest AssemblyAI Streaming V3 API for improved performance and more detailed session control.
     - Hotkey assignment and "hold_mode" boolean.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
@@ -55,9 +57,10 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 ### 3.1. Audio Pipeline
 - **Audio Capture:** Use `sounddevice` for microphone input.
 - **Encoding & Streaming:**
-    - **OpenAI:** Audio must be resampled to 24kHz mono PCM and streamed.
-    - **AssemblyAI:** Audio must be streamed over a secure WebSocket (WSS) connection, with a default sample rate of 16kHz.
-- **Real-time Transport:** Use the `websockets` library for low-latency streaming. The application must gracefully handle connection errors and reconnect attempts.
+        - **OpenAI:** Audio must be resampled to 24kHz mono PCM and streamed.
+        - **AssemblyAI:** Audio must be streamed over a secure WebSocket (WSS) using the **Streaming V3 API**, sending raw binary audio frames.
+    - **Real-time Transport:** Use the `websockets` library for low-latency streaming.
+     The application must gracefully handle connection errors and reconnect attempts.
 
 ### 3.2. Windows Integration
 - **Hotkeys:** The preferred implementation is the `pywin32` library to register global system hotkeys for robustness. `pynput` is a viable alternative.
