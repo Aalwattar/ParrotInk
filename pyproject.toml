@@ -13,6 +13,8 @@ dependencies = [
     "assemblyai==0.50.0",
     "pystray==0.19.5",
     "pynput==1.8.1",
+    "keyring>=25.0.0",
+    "pydantic-settings>=2.0.0",
     "pywin32==311; sys_platform == 'win32'",
 ]
 

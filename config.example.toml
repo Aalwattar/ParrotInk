@@ -1,0 +1,26 @@
+# voice2text configuration example
+# Copy this to config.toml and customize
+
+active_provider = "openai"
+
+# API keys are NOT stored here anymore. 
+# They are managed via the System Tray -> Credentials menu
+# and stored securely in the Windows Credential Manager.
+
+[hotkeys]
+hotkey = "ctrl+alt+v"
+hold_mode = true
+
+[transcription]
+language = "en"
+sample_rate = 16000
+
+[test]
+enabled = false
+openai_mock_url = "ws://localhost:8081"
+assemblyai_mock_url = "ws://localhost:8082"
+
+[advanced]
+# Production URLs
+openai_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+assemblyai_url = "wss://api.assemblyai.com/v2/realtime/ws"
