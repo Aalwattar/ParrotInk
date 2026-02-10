@@ -1,5 +1,4 @@
 import os
-import signal
 import threading
 from enum import Enum
 from pathlib import Path
@@ -31,7 +30,6 @@ class TrayApp:
         self.on_provider_change = on_provider_change
 
         self.icon = self._create_icon()
-        self._setup_signal_handlers()
 
     def _create_image(self, color: str) -> Image.Image:
         width, height = 64, 64
@@ -84,9 +82,6 @@ class TrayApp:
         return pystray.Icon(
             "voice2text", self._create_image(self._get_icon_color(self.state)), "Voice2Text", menu
         )
-
-    def _setup_signal_handlers(self) -> None:
-        signal.signal(signal.SIGINT, lambda sig, frame: self.stop())
 
     def set_state(self, state: AppState) -> None:
         self.state = state

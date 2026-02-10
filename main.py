@@ -1,34 +1,41 @@
 import signal
-import sys
+import threading
+import time
 
+from engine.signals import ShutdownHandler
 from engine.ui import TrayApp
 
 
 def main():
-    print("Starting Voice2Text...")
+    print("Starting Voice2Text...", flush=True)
 
     app = TrayApp()
+    handler = ShutdownHandler(window=3.0)
 
-    # Define a clean shutdown function
-    def shutdown(sig, frame):
-        print("\nInterrupt received! Shutting down immediately...")
-        app.stop()
-        sys.exit(0)
+    # Register the signal handler
+    signal.signal(signal.SIGINT, handler.handle)
 
-    # Register the signal handler for immediate response
-    signal.signal(signal.SIGINT, shutdown)
+    # Start the UI in a background thread
+    print("Starting UI thread...", flush=True)
+    ui_thread = threading.Thread(target=app.run, daemon=True)
+    ui_thread.start()
 
-    print("System Tray is active. Select 'Quit' or press Ctrl+C to exit.")
+    print("System Tray is active. Press Ctrl+C to exit.", flush=True)
 
-    # Run the tray icon in the main thread's loop
-    # (pystray's run() method is usually the one that needs to own the main thread on some OSs)
-    # To keep the main thread responsive to signals, we can use run_detached()
-    # if supported, or just let it run and trust the signal handler.
+    # Wait for the shutdown signal
     try:
-        app.run()
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        sys.exit(1)
+        while not handler.should_exit:
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        # This handles cases where the handler might not be triggered correctly
+        print("\nShutdown forced.", flush=True)
+
+    print("Shutting down...", flush=True)
+    app.stop()
+
+    # Wait for UI thread to finish with a timeout
+    ui_thread.join(timeout=2.0)
+    print("Exited cleanly.", flush=True)
 
 
 if __name__ == "__main__":
