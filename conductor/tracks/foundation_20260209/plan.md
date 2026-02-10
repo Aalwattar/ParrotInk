@@ -15,7 +15,7 @@ Establish the project structure and implement a robust configuration loader.
 ## Phase 2: System Tray & State Management
 Implement the background utility and visual feedback.
 
-- [ ] Task: Create System Tray Icon and Menu in `engine/ui.py`
+- [x] Task: Create System Tray Icon and Menu in `engine/ui.py` (de38086)
     - [ ] **Red:** Write tests for tray state transitions (Idle -> Listening)
     - [ ] **Green:** Implement `TrayApp` using `pystray`
     - [ ] **Refactor:** Decouple UI logic from business logic using an Event/Signal pattern
