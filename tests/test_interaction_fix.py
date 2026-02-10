@@ -1,68 +1,49 @@
-import asyncio
 import time
-from unittest.mock import MagicMock, patch
 import pytest
-from pynput import keyboard
-from engine.config import Config
+from unittest.mock import MagicMock, AsyncMock, patch
+
 from main import AppCoordinator
+from engine.config import Config
 
 @pytest.fixture
-def config():
-    c = Config()
-    c.hotkeys.hotkey = "ctrl+alt+v"
-    c.hotkeys.hold_mode = True
-    return c
+def mock_config():
+    config = MagicMock(spec=Config)
+    config.audio = MagicMock()
+    config.audio.capture_sample_rate = 16000
+    config.audio.chunk_ms = 30
+    config.hotkeys = MagicMock()
+    config.hotkeys.hotkey = "ctrl+space"
+    config.hotkeys.hold_mode = True # Set to Hold Mode
+    config.test = MagicMock()
+    config.test.enabled = True
+    config.default_provider = "openai"
+    return config
 
-@pytest.mark.asyncio
-async def test_on_manual_stop_ignores_hotkey_keys(config):
-    coordinator = AppCoordinator(config)
-    coordinator.loop = asyncio.get_running_loop()
-    coordinator.is_listening = True
-    coordinator.start_time = time.time() - 1.0 # Past cooldown
-    
-    # Mock stop_listening
-    coordinator.stop_listening = MagicMock(side_effect=coordinator.stop_listening)
-    
-    # Simulate pressing 'ctrl' (part of hotkey)
-    ctrl_key = keyboard.Key.ctrl_l
-    coordinator._on_manual_stop(ctrl_key)
-    
-    # Should NOT have stopped
-    assert coordinator.is_listening is True
-    assert coordinator.session_cancelled is False
-
-@pytest.mark.asyncio
-async def test_on_manual_stop_triggers_on_other_keys(config):
-    coordinator = AppCoordinator(config)
-    coordinator.loop = asyncio.get_running_loop()
-    coordinator.is_listening = True
-    coordinator.start_time = time.time() - 1.0
-    
-    # Mock stop_listening to be a real coroutine that we can wait for
-    original_stop = coordinator.stop_listening
-    coordinator.stop_listening = MagicMock(side_effect=original_stop)
-    
-    # Simulate pressing 'space'
-    space_key = keyboard.KeyCode.from_char(' ')
-    coordinator._on_manual_stop(space_key)
-    
-    # Give a tiny bit of time for the threadsafe call
-    await asyncio.sleep(0.1)
-    
-    # Should have triggered cancellation
-    assert coordinator.session_cancelled is True
-
-@pytest.mark.asyncio
-async def test_on_manual_stop_triggers_on_standalone_modifier_not_in_hotkey(config):
-    coordinator = AppCoordinator(config)
-    coordinator.loop = asyncio.get_running_loop()
-    coordinator.is_listening = True
-    coordinator.start_time = time.time() - 1.0
-    
-    # Simulate pressing 'shift' (NOT in ctrl+alt+v)
-    shift_key = keyboard.Key.shift_l
-    coordinator._on_manual_stop(shift_key)
-    
-    await asyncio.sleep(0.1)
-    
-    assert coordinator.session_cancelled is True
+def test_hold_mode_interruption_bug(mock_config):
+    """
+    Test that when hold_mode is True, pressing a random key does NOT stop listening.
+    Current behavior (Bug): It STOPS listening.
+    Expected behavior (Fix): It ignores the key.
+    """
+    # Mock AudioStreamer to avoid sounddevice init
+    with patch("main.AudioStreamer") as MockStreamer:
+        coordinator = AppCoordinator(mock_config)
+        
+        # Setup active listening state
+        coordinator.stop_listening = AsyncMock()
+        coordinator.is_listening = True
+        coordinator.is_connecting = False
+        coordinator.start_time = time.time() - 10 # Started 10s ago (past cooldown)
+        coordinator.last_injection_time = 0
+        coordinator.is_injecting = False
+        coordinator.injection_lock = MagicMock()
+        coordinator.injection_lock.locked.return_value = False
+        coordinator.loop = MagicMock() # Mock the loop
+        
+        # Simulate pressing 'a' (not the hotkey)
+        # This simulates the "Stop on Any Key" callback
+        coordinator._on_manual_stop(key='a')
+        
+        # ASSERT: verify stop_listening was NOT called
+        # This should FAIL currently because the bug exists
+        coordinator.stop_listening.assert_not_called()

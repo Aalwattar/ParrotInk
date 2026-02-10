@@ -89,19 +89,9 @@ class AppCoordinator:
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
         else:
-            # Hold Mode: Only stop if it's NOT part of our hotkey.
-            if key:
-                name = self._get_canonical_name(key)
-                if name in self.target_hotkey:
-                    return
-
-            if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
-                logger.info(
-                    f"Manual key press detected ({key}). Stopping and cancelling injection..."
-                )
-                self.session_cancelled = True
-                if self.loop:
-                    asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+            # Hold Mode: The "Stop on Any Key" feature is DISABLED.
+            # We rely strictly on the hotkey release event (handled in on_release) to stop recording.
+            return
 
     def _parse_hotkey(self, hotkey_str: str) -> Set[str]:
         """Parse hotkey string into a set of canonical names."""
