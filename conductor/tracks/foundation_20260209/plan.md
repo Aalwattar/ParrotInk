@@ -47,10 +47,10 @@ Connect to OpenAI and AssemblyAI.
 ## Phase 5: Final Integration & Hotkeys
 Bring all components together.
 
-- [ ] Task: Implement Text Injection in `engine/injector.py`
-    - [ ] **Red:** Write tests for injection utility (mocking `SendInput`)
-    - [ ] **Green:** Implement `inject_text` using `pywin32`
-- [ ] Task: Integrate Hotkeys and Orchestrate Flow in `main.py`
-    - [ ] **Red:** Write tests for hotkey triggers and state changes
-    - [ ] **Green:** Connect Hotkeys -> Audio -> Transcription -> Injection
+- [x] Task: Implement Text Injection in `engine/injector.py` (a306e08)
+    - [x] **Red:** Write tests for injection utility (mocking `SendInput`)
+    - [x] **Green:** Implement `inject_text` using `pywin32`
+- [x] Task: Integrate Hotkeys and Orchestrate Flow in `main.py` (f45e8a2)
+    - [x] **Red:** Write tests for hotkey triggers and state changes
+    - [x] **Green:** Connect Hotkeys -> Audio -> Transcription -> Injection
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Final Integration & Hotkeys' (Protocol in workflow.md)
