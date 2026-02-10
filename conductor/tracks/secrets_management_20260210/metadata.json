@@ -1,0 +1,8 @@
+{
+  "track_id": "secrets_management_20260210",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-10T10:11:00Z",
+  "updated_at": "2026-02-10T10:11:00Z",
+  "description": "Implement secure secrets management using Windows Credential Manager (keyring) and environment variables, with a config.example.toml and improved .gitignore."
+}
