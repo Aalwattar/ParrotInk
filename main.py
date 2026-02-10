@@ -69,17 +69,27 @@ class AppCoordinator:
         if time.time() - self.start_time < 0.2:
             return
 
-        if key:
-            name = self._get_canonical_name(key)
-            if name in self.target_hotkey:
-                return
-
-        # Ignore keyboard events if they are coming from our own injection
-        if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
-            logger.info(f"Manual key press detected ({key}). Stopping and cancelling injection...")
+        # If we are in Toggle mode, ANY key press should stop the session.
+        # If we are in Hold mode, only NON-hotkey keys should stop it (though 
+        # normally hold mode stops on release).
+        if not self.config.hotkeys.hold_mode:
+            # Toggle Mode: Stop on ANY key.
+            logger.info(f"Manual stop triggered by key: {key}")
             self.session_cancelled = True
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+        else:
+            # Hold Mode: Only stop if it's NOT part of our hotkey.
+            if key:
+                name = self._get_canonical_name(key)
+                if name in self.target_hotkey:
+                    return
+
+            if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
+                logger.info(f"Manual key press detected ({key}). Stopping and cancelling injection...")
+                self.session_cancelled = True
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     def _parse_hotkey(self, hotkey_str: str) -> Set[str]:
         """Parse hotkey string into a set of canonical names."""

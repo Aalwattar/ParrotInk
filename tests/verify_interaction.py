@@ -1,31 +1,33 @@
+import asyncio
 import time
+from unittest.mock import MagicMock, patch
+import pytest
+from engine.config import Config
+from main import AppCoordinator
 
-from engine.interaction import InteractionMonitor
+@pytest.fixture
+def coordinator():
+    c = Config()
+    c.hotkeys.hold_mode = False # Toggle mode
+    coord = AppCoordinator(c)
+    coord.loop = asyncio.get_running_loop()
+    return coord
 
+@pytest.mark.asyncio
+async def test_manual_stop_toggle_mode(coordinator):
+    coordinator.is_listening = True
+    coordinator.start_time = time.time() - 1.0 # Past cooldown
+    
+    with patch.object(coordinator, 'stop_listening', new_callable=AsyncMock) as mock_stop:
+        # Trigger manual stop with ANY key (e.g. 'space')
+        coordinator._on_manual_stop(key='space')
+        
+        # Give it a tiny bit of time for the coroutine to be scheduled
+        await asyncio.sleep(0.1)
+        
+        assert coordinator.session_cancelled is True
+        assert mock_stop.called
 
-def main():
-    monitor = InteractionMonitor()
-
-    # Define what happens when a key is pressed
-    def on_trigger():
-        print("\n[SUCCESS] Key Press Detected! Trigger working correctly.")
-
-    monitor.set_any_key_callback(on_trigger)
-
-    print("Starting Interaction Monitor...")
-    print("Press ANY key (Shift, Ctrl, A, Space, etc.) to test.")
-    print("Press Ctrl+C to exit this test.")
-
-    monitor.start()
-
-    try:
-        while True:
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("\nStopping monitor...")
-    finally:
-        monitor.stop()
-
-
-if __name__ == "__main__":
-    main()
+class AsyncMock(MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super(AsyncMock, self).__call__(*args, **kwargs)

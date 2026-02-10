@@ -22,7 +22,7 @@ Restore real-time streaming for AssemblyAI V3.
 ## Phase 3: Interaction & Performance Fixes
 Ensure Toggle mode stop is reliable and not blocked by logs.
 
-- [ ] Task: Refine `AppCoordinator._on_manual_stop`
+- [~] Task: Refine `AppCoordinator._on_manual_stop`
     - [ ] Improve logic to ensure *any* key (including modifiers) stops the session in Toggle mode.
     - [ ] Debug potential race conditions between hotkey release and interaction monitor.
 - [ ] Task: Optimize Logging

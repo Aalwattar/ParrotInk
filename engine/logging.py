@@ -56,6 +56,9 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG) # Catch everything at root
     
+    # Silence noisy loggers
+    logging.getLogger("websockets").setLevel(logging.INFO)
+    
     # Clear existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
