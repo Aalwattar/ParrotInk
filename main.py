@@ -229,12 +229,27 @@ class AppCoordinator:
 
 
 def handle_cli():
-    parser = argparse.ArgumentParser(description="Voice2Text Application")
+    parser = argparse.ArgumentParser(
+        description="Voice2Text: A real-time voice-to-text system tray application.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python main.py              # Start the application tray icon
+  python main.py set-key openai    # Set the OpenAI API key securely
+  python main.py set-key assemblyai # Set the AssemblyAI API key securely
+""",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # Command: set-key
-    set_key_parser = subparsers.add_parser("set-key", help="Set an API key")
-    set_key_parser.add_argument("provider", choices=["openai", "assemblyai"], help="The provider to set the key for")
+    set_key_parser = subparsers.add_parser(
+        "set-key", help="Set an API key securely in the Windows Credential Manager"
+    )
+    set_key_parser.add_argument(
+        "provider",
+        choices=["openai", "assemblyai"],
+        help="The transcription provider (openai or assemblyai)",
+    )
 
     args = parser.parse_args()
 
