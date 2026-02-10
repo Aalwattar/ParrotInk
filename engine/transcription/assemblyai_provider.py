@@ -130,18 +130,62 @@ class AssemblyAIProvider(BaseProvider):
         except Exception as e:
             logger.error(f"Error in AssemblyAI receive loop: {e}")
 
-    async def _handle_event(self, event: dict):
-        """Process incoming events."""
-        m_type = event.get("message_type")
-        
-        if "text" in event:
-            text = event["text"]
-            if m_type == "FinalTranscript":
-                logger.info(f"Final transcript received: {text}")
-                self.on_final(text)
-            elif m_type == "PartialTranscript":
-                self.on_partial(text)
-        elif "error" in event:
-            logger.error(f"AssemblyAI API Error: {event.get('error')}")
-        elif m_type == "SessionBegins":
-            logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
+        async def _handle_event(self, event: dict):
+
+            """Process incoming events."""
+
+            # V3 uses 'type', while some older patterns use 'message_type'
+
+            msg_type = event.get("type") or event.get("message_type")
+
+            
+
+            # Text can be in 'transcript' (V3 Turn) or 'text' (V3 Transcript types)
+
+            text = event.get("transcript") or event.get("text")
+
+            
+
+            if text is not None:
+
+                # Handle V3 'Turn' objects
+
+                if msg_type == "Turn":
+
+                    if event.get("end_of_turn"):
+
+                        if text: # Only send if not empty
+
+                            logger.info(f"Final transcript received (Turn): {text}")
+
+                            self.on_final(text)
+
+                    else:
+
+                        self.on_partial(text)
+
+                
+
+                # Handle explicit Transcript types
+
+                elif msg_type == "FinalTranscript":
+
+                    logger.info(f"Final transcript received: {text}")
+
+                    self.on_final(text)
+
+                elif msg_type == "PartialTranscript":
+
+                    self.on_partial(text)
+
+    
+
+            elif "error" in event:
+
+                logger.error(f"AssemblyAI API Error: {event.get('error')}")
+
+            elif msg_type == "SessionBegins":
+
+                logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
+
+    

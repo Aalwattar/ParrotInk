@@ -723,6 +723,15 @@ wheels = [
 ]
 
 [[package]]
+name = "olefile"
+version = "0.47"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/1b/077b508e3e500e1629d366249c3ccb32f95e50258b231705c09e3c7a4366/olefile-0.47.zip", hash = "sha256:599383381a0bf3dfbd932ca0ca6515acd174ed48870cbf7fee123d698c192c1c", size = 112240, upload-time = "2023-12-01T16:22:53.025Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/17/d3/b64c356a907242d719fc668b71befd73324e47ab46c8ebbbede252c154b2/olefile-0.47-py2.py3-none-any.whl", hash = "sha256:543c7da2a7adadf21214938bb79c83ea12b473a4b6ee4ad4bf854e7715e13d1f", size = 114565, upload-time = "2023-12-01T16:22:51.518Z" },
+]
+
+[[package]]
 name = "openai"
 version = "2.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1428,6 +1437,7 @@ dependencies = [
     { name = "httpx" },
     { name = "keyring" },
     { name = "numpy" },
+    { name = "olefile" },
     { name = "openai" },
     { name = "platformdirs" },
     { name = "pydantic-settings" },
@@ -1456,6 +1466,7 @@ requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "keyring", specifier = ">=25.0.0" },
     { name = "numpy", specifier = ">=1.26.0" },
+    { name = "olefile", specifier = ">=0.46" },
     { name = "openai", specifier = "==2.17.0" },
     { name = "platformdirs", specifier = ">=4.5.1" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
