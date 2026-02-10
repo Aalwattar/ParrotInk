@@ -66,17 +66,20 @@ class AppCoordinator:
     def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
         # Cooldown to avoid catching the release/repeat of the hotkey itself
-        if time.time() - self.start_time < 0.5:
+        if time.time() - self.start_time < 0.2: # Reduced cooldown, more responsive
             return
 
         if key:
             name = self._get_canonical_name(key)
+            # If the key is part of our hotkey, ignore it.
+            # We also check if it's currently in current_keys which is managed by the hotkey listener
             if name in self.target_hotkey:
                 return
 
         # Ignore keyboard events if they are coming from our own injection
-        if self.is_listening and not self.injection_lock.locked():
-            logger.info("Manual key press detected. Stopping and cancelling injection...")
+        # Also ensure we are actually listening and not just in the process of starting
+        if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
+            logger.info(f"Manual key press detected ({key}). Stopping and cancelling injection...")
             self.session_cancelled = True
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
@@ -100,8 +103,17 @@ class AppCoordinator:
             if key.char:
                 return key.char.lower()
             if key.vk:
+                # 65-90 are A-Z
                 if 65 <= key.vk <= 90:
                     return chr(key.vk).lower()
+                # 160-165 are shift/ctrl/alt
+                vk_map = {
+                    160: "shift", 161: "shift",
+                    162: "ctrl", 163: "ctrl",
+                    164: "alt", 165: "alt",
+                }
+                if key.vk in vk_map:
+                    return vk_map[key.vk]
                 return f"<{key.vk}>"
             return ""
 
@@ -370,8 +382,28 @@ async def main_async(cli_args):
 
 
 if __name__ == "__main__":
+
+
+    from engine.config import migrate_config_file
+
+
+    migrate_config_file("config.toml")
+
+
+
+
+
     cli_args = handle_cli()
+
+
     try:
+
+
         asyncio.run(main_async(cli_args))
+
+
     except KeyboardInterrupt:
+
+
         pass
+

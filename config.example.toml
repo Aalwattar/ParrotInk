@@ -60,7 +60,7 @@ include_logprobs = false
 ws_url = "wss://streaming.assemblyai.com/v3/ws"
 
 # Required parameters for V3
-sample_rate = 16000
+sample_rate = 24000
 vad_threshold = 0.4
 
 # encoding: pcm_s16le | pcm_mulaw

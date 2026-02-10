@@ -1,9 +1,36 @@
 import tomllib
+import re
 from pathlib import Path
 from typing import Literal, Optional, List, Union
 
 from pydantic import AliasChoices, BaseModel, Field, ValidationError
 from .security import SecurityManager
+
+
+def migrate_config_file(path: Path | str):
+    """
+    Automatically migrates 16000 sample rates to 24000 in the config file
+    while preserving comments.
+    """
+    path = Path(path)
+    if not path.exists():
+        return
+
+    try:
+        content = path.read_text(encoding="utf-8")
+        # Replace sample rates specifically in keys that likely hold them
+        # capture_sample_rate, sample_rate, input_audio_rate
+        new_content = re.sub(r'(\bcapture_sample_rate\s*=\s*)16000\b', r'\g<1>24000', content)
+        new_content = re.sub(r'(\bsample_rate\s*=\s*)16000\b', r'\g<1>24000', new_content)
+        new_content = re.sub(r'(\binput_audio_rate\s*=\s*)16000\b', r'\g<1>24000', new_content)
+
+        if new_content != content:
+            path.write_text(new_content, encoding="utf-8")
+            # We don't have a logger easily accessible here without circular imports
+            # but we can print for visibility since this is a one-time migration.
+            print(f"Migrated {path} from 16000Hz to 24000Hz.")
+    except Exception as e:
+        print(f"Warning: Failed to migrate config file {path}: {e}")
 
 
 class HotkeysConfig(BaseModel):
@@ -12,13 +39,13 @@ class HotkeysConfig(BaseModel):
 
 
 class AudioConfig(BaseModel):
-    capture_sample_rate: int = 16000
+    capture_sample_rate: int = 24000
     chunk_ms: int = 100
 
 
 class TranscriptionConfig(BaseModel):
     language: str = "en"
-    sample_rate: int = 16000
+    sample_rate: int = 24000
 
 
 class AppTestConfig(BaseModel):
@@ -63,7 +90,7 @@ class OpenAIConfig(BaseModel):
 
 class AssemblyAICoreConfig(BaseModel):
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
-    sample_rate: int = 16000
+    sample_rate: int = 24000
     vad_threshold: float = 0.4
     encoding: str = "pcm_s16le"
     speech_model: str = "universal-streaming-english"
@@ -134,6 +161,7 @@ class Config(BaseModel):
 
 def load_config(path: str | Path = "config.toml") -> Config:
     """Helper function to load the configuration from a file."""
+    migrate_config_file(path)
     return Config.from_file(path)
 
 
