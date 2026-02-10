@@ -22,7 +22,7 @@ Implement the background utility and visual feedback.
 - [x] Task: Implement Provider Selection and Config Opening from Tray (d79529e)
     - [ ] **Red:** Write tests for provider switching logic
     - [ ] **Green:** Implement menu actions and radio item updates
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: System Tray & State Management' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 2: System Tray & State Management' (Protocol in workflow.md)
 
 ## Phase 3: Audio Capture Engine
 Capture and process microphone input.
