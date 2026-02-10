@@ -1,5 +1,7 @@
 from typing import Callable, Optional
+
 from pynput import keyboard
+
 
 class InteractionMonitor:
     def __init__(self):

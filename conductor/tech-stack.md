@@ -12,6 +12,7 @@
 - **pywin32:** Provides robust, low-level access to the Windows API for creating global hotkeys and injecting text at the cursor location.
 - **pystray:** Manages the application's system tray icon and context menu.
 - **threading:** Used to run the UI loop in a background thread, ensuring the main thread remains responsive to system signals.
+- **pydantic:** Used for robust configuration management, validation, and schema definition.
 - **pynput:** Powering the `InteractionMonitor`, used to detect global keyboard events for the "Stop on Any Key" functionality.
 - **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
 

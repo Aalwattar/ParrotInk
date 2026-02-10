@@ -20,8 +20,11 @@ class ShutdownHandler:
             self.should_exit = True
             # Force exit immediately on second press
             import os
+
             os._exit(1)
         else:
-            print("\nCtrl+C received. Press Ctrl+C again within 3 seconds to force exit.", flush=True)
+            print(
+                "\nCtrl+C received. Press Ctrl+C again within 3 seconds to force exit.", flush=True
+            )
             self.shutdown_pending = True
             self.last_press_time = current_time

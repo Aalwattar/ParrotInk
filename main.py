@@ -2,18 +2,17 @@ import asyncio
 import signal
 import sys
 import threading
-import time
 from typing import Optional, Set
 
 from pynput import keyboard
 
 from engine.audio import AudioStreamer
-from engine.config import load_config, Config, ConfigError
+from engine.config import Config, ConfigError, load_config
 from engine.injector import inject_text
 from engine.interaction import InteractionMonitor
 from engine.signals import ShutdownHandler
-from engine.transcription import TranscriptionFactory, BaseProvider
-from engine.ui import TrayApp, AppState
+from engine.transcription import BaseProvider, TranscriptionFactory
+from engine.ui import AppState, TrayApp
 
 
 class AppCoordinator:
@@ -25,7 +24,7 @@ class AppCoordinator:
         self.is_connecting = False
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self.ui: Optional[TrayApp] = None
-        
+
         # Hotkey state
         self.hotkey_pressed = False
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
@@ -38,7 +37,7 @@ class AppCoordinator:
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
-        
+
         print(f"DEBUG: Target hotkey set to: {self.target_hotkey}")
 
     def _on_manual_stop(self):
@@ -52,8 +51,15 @@ class AppCoordinator:
 
     def _parse_hotkey(self, hotkey_str: str) -> Set[str]:
         """Parse hotkey string into a set of canonical names."""
-        parts = hotkey_str.lower().split('+')
-        norm_map = {'ctrl': 'ctrl', 'control': 'ctrl', 'alt': 'alt', 'shift': 'shift', 'win': 'cmd', 'cmd': 'cmd'}
+        parts = hotkey_str.lower().split("+")
+        norm_map = {
+            "ctrl": "ctrl",
+            "control": "ctrl",
+            "alt": "alt",
+            "shift": "shift",
+            "win": "cmd",
+            "cmd": "cmd",
+        }
         return {norm_map.get(p.strip(), p.strip()) for p in parts if p.strip()}
 
     def _get_canonical_name(self, key) -> str:
@@ -66,16 +72,21 @@ class AppCoordinator:
                     return chr(key.vk).lower()
                 return f"<{key.vk}>"
             return ""
-        
+
         name = str(key).lower()
-        if name.startswith('key.'):
+        if name.startswith("key."):
             name = name[4:]
-        
+
         mapping = {
-            'ctrl_l': 'ctrl', 'ctrl_r': 'ctrl',
-            'alt_l': 'alt', 'alt_r': 'alt', 'alt_gr': 'alt',
-            'shift_l': 'shift', 'shift_r': 'shift',
-            'cmd_l': 'cmd', 'cmd_r': 'cmd',
+            "ctrl_l": "ctrl",
+            "ctrl_r": "ctrl",
+            "alt_l": "alt",
+            "alt_r": "alt",
+            "alt_gr": "alt",
+            "shift_l": "shift",
+            "shift_r": "shift",
+            "cmd_l": "cmd",
+            "cmd_r": "cmd",
         }
         return mapping.get(name, name)
 
@@ -93,7 +104,7 @@ class AppCoordinator:
     async def _delayed_inject(self, text: str):
         # Wait a bit for the user to release keys (Ctrl/Alt) to avoid shortcut interference
         await asyncio.sleep(0.3)
-        
+
         # Check again after sleep in case session was cancelled during delay
         if self.session_cancelled:
             return
@@ -111,17 +122,15 @@ class AppCoordinator:
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
             return
-        
+
         print("\n[EVENT] Starting listening...")
         self.is_connecting = True
         self.session_cancelled = False
-        
+
         self.provider = TranscriptionFactory.create(
-            self.config, 
-            on_partial=self.on_partial, 
-            on_final=self.on_final
+            self.config, on_partial=self.on_partial, on_final=self.on_final
         )
-        
+
         try:
             await self.provider.start()
             self.streamer.start()
@@ -141,14 +150,14 @@ class AppCoordinator:
     async def stop_listening(self):
         if not self.is_listening:
             return
-        
+
         print("\n[EVENT] Stopping listening...")
         self.is_listening = False
         self.interaction_monitor.stop()
 
         if self.ui:
             self.ui.set_state(AppState.IDLE)
-        
+
         self.streamer.stop()
         if self.provider:
             await self.provider.stop()
@@ -164,9 +173,9 @@ class AppCoordinator:
         name = self._get_canonical_name(key)
         if not name:
             return
-            
+
         self.current_keys.add(name)
-        
+
         if self.target_hotkey.issubset(self.current_keys):
             if self.config.hotkeys.hold_mode:
                 if not self.hotkey_pressed:
@@ -184,7 +193,7 @@ class AppCoordinator:
         name = self._get_canonical_name(key)
         if name in self.current_keys:
             self.current_keys.remove(name)
-            
+
         if name in self.target_hotkey:
             if self.hotkey_pressed:
                 self.hotkey_pressed = False
@@ -201,7 +210,7 @@ async def main_async():
 
     handler = ShutdownHandler()
     signal.signal(signal.SIGINT, handler.handle)
-    
+
     coordinator = AppCoordinator(config)
     coordinator.loop = asyncio.get_running_loop()
 
@@ -215,7 +224,7 @@ async def main_async():
     app = TrayApp(
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
-        initial_provider=config.active_provider
+        initial_provider=config.active_provider,
     )
     coordinator.ui = app
 
@@ -224,10 +233,12 @@ async def main_async():
 
     listener = keyboard.Listener(on_press=coordinator.on_press, on_release=coordinator.on_release)
     listener.start()
-    print(f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})")
+    print(
+        f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
+    )
 
     print("Application running. Press Ctrl+C twice within 3s to exit.")
-    
+
     try:
         while not handler.should_exit:
             await asyncio.sleep(0.1)

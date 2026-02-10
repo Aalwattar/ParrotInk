@@ -36,9 +36,10 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 ### 2.6. Configuration
 - All settings will be managed through a local configuration file in TOML format for easy editing.
 - Configurable options will include:
-    - API provider selection and API keys.
+    - API provider selection, API keys, and **Test Mode** toggle.
     - Hotkey assignment and "hold_mode" boolean.
     - Transcription language.
+    - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
     - Custom word overrides or vocabulary lists to improve accuracy.
     - Simple post-processing rules for the transcribed text.
 
