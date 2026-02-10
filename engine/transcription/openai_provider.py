@@ -72,9 +72,19 @@ class OpenAIProvider(BaseProvider):
         logger.info("Disconnected from OpenAI.")
 
     async def send_audio(self, audio_chunk: np.ndarray):
-        """Send audio chunk as base64 encoded PCM16."""
+        """Send audio chunk as base64 encoded PCM16, with resampling if needed."""
         if not self.ws or not self.is_running:
             return
+
+        source_rate = self.config.audio.capture_sample_rate
+        target_rate = self.config.providers.openai.core.input_audio_rate
+
+        # Resample if capture rate differs from OpenAI target rate (usually 16k -> 24k)
+        if source_rate != target_rate:
+            num_samples = int(len(audio_chunk) * target_rate / source_rate)
+            x_new = np.linspace(0, len(audio_chunk) - 1, num_samples)
+            x_old = np.arange(len(audio_chunk))
+            audio_chunk = np.interp(x_new, x_old, audio_chunk)
 
         # Convert float32 [-1.0, 1.0] to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)

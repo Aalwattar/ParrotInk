@@ -9,8 +9,9 @@ from .security import SecurityManager
 
 def migrate_config_file(path: Path | str):
     """
-    Automatically migrates 16000 sample rates to 24000 in the config file
-    while preserving comments.
+    Automatically migrates config file values to current best practices.
+    - Standardizes capture_sample_rate to 16000.
+    - Standardizes OpenAI input_audio_rate to 24000.
     """
     path = Path(path)
     if not path.exists():
@@ -18,17 +19,19 @@ def migrate_config_file(path: Path | str):
 
     try:
         content = path.read_text(encoding="utf-8")
-        # Replace sample rates specifically in keys that likely hold them
-        # capture_sample_rate, sample_rate, input_audio_rate
-        new_content = re.sub(r'(\bcapture_sample_rate\s*=\s*)16000\b', r'\g<1>24000', content)
-        new_content = re.sub(r'(\bsample_rate\s*=\s*)16000\b', r'\g<1>24000', new_content)
+        
+        # 1. capture_sample_rate -> 16000 (standard efficiency)
+        new_content = re.sub(r'(\bcapture_sample_rate\s*=\s*)24000\b', r'\g<1>16000', content)
+        
+        # 2. transcription.sample_rate -> 16000
+        new_content = re.sub(r'(\bsample_rate\s*=\s*)24000\b', r'\g<1>16000', new_content)
+
+        # 3. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
         new_content = re.sub(r'(\binput_audio_rate\s*=\s*)16000\b', r'\g<1>24000', new_content)
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")
-            # We don't have a logger easily accessible here without circular imports
-            # but we can print for visibility since this is a one-time migration.
-            print(f"Migrated {path} from 16000Hz to 24000Hz.")
+            print(f"Migrated {path} to standardized sample rates (16kHz capture, 24kHz OpenAI input).")
     except Exception as e:
         print(f"Warning: Failed to migrate config file {path}: {e}")
 
@@ -39,13 +42,13 @@ class HotkeysConfig(BaseModel):
 
 
 class AudioConfig(BaseModel):
-    capture_sample_rate: int = 24000
+    capture_sample_rate: int = 16000
     chunk_ms: int = 100
 
 
 class TranscriptionConfig(BaseModel):
     language: str = "en"
-    sample_rate: int = 24000
+    sample_rate: int = 16000
 
 
 class AppTestConfig(BaseModel):
@@ -90,7 +93,7 @@ class OpenAIConfig(BaseModel):
 
 class AssemblyAICoreConfig(BaseModel):
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
-    sample_rate: int = 24000
+    sample_rate: int = 16000
     vad_threshold: float = 0.4
     encoding: str = "pcm_s16le"
     speech_model: str = "universal-streaming-english"
