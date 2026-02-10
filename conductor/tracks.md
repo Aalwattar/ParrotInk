@@ -15,7 +15,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Advanced Configuration & Test Mode** [checkpoint: 360cb22]
-  *Link: [./tracks/advanced_config_20260210/](./tracks/advanced_config_20260210/)*
+  *Link: [./archive/advanced_config_20260210/](./archive/advanced_config_20260210/)*
 
 ---
 
