@@ -13,7 +13,7 @@ class InteractionMonitor:
 
     def _on_press(self, key):
         if self._any_key_callback:
-            self._any_key_callback()
+            self._any_key_callback(key)
 
     def start(self):
         if self._listener is None:

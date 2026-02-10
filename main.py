@@ -63,11 +63,16 @@ class AppCoordinator:
             "assemblyai": bool(self.config.get_assemblyai_key()),
         }
 
-    def _on_manual_stop(self):
+    def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
-        # Cooldown to avoid catching the release of the hotkey itself
+        # Cooldown to avoid catching the release/repeat of the hotkey itself
         if time.time() - self.start_time < 0.5:
             return
+
+        if key:
+            name = self._get_canonical_name(key)
+            if name in self.target_hotkey:
+                return
 
         # Ignore keyboard events if they are coming from our own injection
         if self.is_listening and not self.injection_lock.locked():

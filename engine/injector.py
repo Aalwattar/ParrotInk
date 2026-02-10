@@ -2,43 +2,30 @@ import time
 
 import win32api
 import win32con
+from engine.logging import get_logger
 
+logger = get_logger("Injector")
 
 def inject_text(text: str):
     """Inject text at the current cursor position using simulated keyboard events."""
     if not text:
         return
 
-    print(f"Injecting text: {text}")
-
-    # We use a slightly more robust approach:
-    # 1. Type the characters using SendInput (simulated by keybd_event or similar in win32)
-    # 2. For Unicode characters, we might need a different approach,
-    # but for basic text, this works well.
+    logger.debug(f"Injecting text: {text}")
 
     for char in text:
-        # Get the virtual key code for the character
-        res = win32api.VkKeyScan(char)
-        if res == -1:
-            # For characters not in the current keyboard layout, we might need to send them as unicode
-            # However, for simplicity and speed, we'll focus on standard characters first.
-            continue
-
-        vk = res & 0xFF
-        shift = (res >> 8) & 0xFF
-
-        if shift & 1:  # Shift key required
-            win32api.keybd_event(win32con.VK_SHIFT, 0, 0, 0)
-
-        win32api.keybd_event(vk, 0, 0, 0)
-        win32api.keybd_event(vk, 0, win32con.KEYEVENTF_KEYUP, 0)
-
-        if shift & 1:
-            win32api.keybd_event(win32con.VK_SHIFT, 0, win32con.KEYEVENTF_KEYUP, 0)
+        # Unicode support using KEYEVENTF_UNICODE
+        # This is more robust than VkKeyScan for non-standard characters
+        try:
+            # We use 0 as the virtual-key code and the character code as the scan code
+            # with the KEYEVENTF_UNICODE flag.
+            codepoint = ord(char)
+            # KEYEVENTF_UNICODE is 0x0004
+            # We send down and up events
+            win32api.keybd_event(0, codepoint, win32con.KEYEVENTF_UNICODE, 0)
+            win32api.keybd_event(0, codepoint, win32con.KEYEVENTF_UNICODE | win32con.KEYEVENTF_KEYUP, 0)
+        except Exception as e:
+            logger.error(f"Failed to inject character '{char}': {e}")
 
         # Small delay to prevent overwhelming the target app
         time.sleep(0.005)
-
-
-# Alternative robust approach for unicode using SendInput (via ctypes if needed)
-# But let's start with this win32api approach and refine if needed.
