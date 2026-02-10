@@ -50,6 +50,7 @@ class AssemblyAIProvider(BaseProvider):
             "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
             "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
             "max_end_of_turn_silence": adv.max_turn_silence_ms,
+            "utterance_silence_threshold": 300,
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
@@ -109,24 +110,28 @@ class AssemblyAIProvider(BaseProvider):
 
         send_start = time.perf_counter()
         lag_ms = (send_start - capture_time) * 1000
-        logger.debug(f"Audio chunk age before send: {lag_ms:.1f}ms")
+        if lag_ms > 500:
+            logger.warning(f"Audio chunk is very old: {lag_ms:.1f}ms")
 
         # Convert float32 [-1.0, 1.0] to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
         
         # In V3, we send the raw bytes directly, not JSON.
         try:
-            logger.debug(f"Sending binary audio chunk ({len(audio_int16.tobytes())} bytes)")
-            await self.ws.send(audio_int16.tobytes())
+            # Wrap in create_task so we don't wait for the actual network send to finish 
+            # before we can process the next chunk in the main loop.
+            asyncio.create_task(self.ws.send(audio_int16.tobytes()))
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")
             self.is_running = False
+        except Exception as e:
+            logger.error(f"Error sending audio: {e}")
 
     async def _receive_loop(self):
         """Listen for transcription events."""
         try:
             async for message in self.ws:
-                logger.debug(f"Received message: {message}")
+                # logger.debug(f"Received message: {message}")
                 event = json.loads(message)
                 await self._handle_event(event)
         except websockets.exceptions.ConnectionClosed:
@@ -144,7 +149,6 @@ class AssemblyAIProvider(BaseProvider):
         if text is not None:
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
-                # Call on_partial immediately for real-time responsiveness.
                 if text.strip():
                     self.on_partial(text)
 

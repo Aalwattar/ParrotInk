@@ -8,32 +8,34 @@ from typing import Optional, Set
 from pynput import keyboard
 
 from engine.audio import AudioStreamer
-from engine.config import Config, load_config, ConfigError
-from engine.interaction import InteractionMonitor
-from engine.transcription.factory import TranscriptionFactory
-from engine.transcription.base import BaseProvider
-from engine.ui import TrayApp, AppState
-from engine.security import SecurityManager
+from engine.config import Config, ConfigError, load_config
 from engine.credential_ui import ask_key
-from engine.injector import inject_text, inject_backspaces
-from engine.logging import get_logger, configure_logging
+from engine.injector import inject_backspaces, inject_text
+from engine.interaction import InteractionMonitor
+from engine.logging import configure_logging, get_logger
+from engine.security import SecurityManager
+from engine.transcription.base import BaseProvider
+from engine.transcription.factory import TranscriptionFactory
+from engine.ui import AppState, TrayApp
 
 logger = get_logger("Main")
+
 
 class AppCoordinator:
     def __init__(self, config: Config):
         self.config = config
-        
+
         # Calculate chunk size from ms
         sample_rate = config.audio.capture_sample_rate
         chunk_ms = config.audio.chunk_ms
         chunk_size = (sample_rate * chunk_ms) // 1000
-        
+
         self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
         self.provider: Optional[BaseProvider] = None
         self.is_listening = False
         self.is_connecting = False
         self.loop: Optional[asyncio.AbstractEventLoop] = None
+        self._audio_task: Optional[asyncio.Task] = None
         self.ui: Optional[TrayApp] = None
 
         # Hotkey state
@@ -49,7 +51,9 @@ class AppCoordinator:
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
+        self.is_injecting = False
         self.last_injected_text = ""
+        self.last_injection_time = 0.0
 
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
@@ -66,11 +70,17 @@ class AppCoordinator:
     def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
         # Cooldown to avoid catching the release/repeat of the hotkey itself
-        if time.time() - self.start_time < 0.2:
+        now = time.time()
+        if now - self.start_time < 0.5:
+            return
+
+        # Ignore keyboard events if they are coming from our own injection
+        # Increase safety window to 0.5s to account for system lag in event delivery
+        if self.is_injecting or (now - self.last_injection_time < 0.5):
             return
 
         # If we are in Toggle mode, ANY key press should stop the session.
-        # If we are in Hold mode, only NON-hotkey keys should stop it (though 
+        # If we are in Hold mode, only NON-hotkey keys should stop it (though
         # normally hold mode stops on release).
         if not self.config.hotkeys.hold_mode:
             # Toggle Mode: Stop on ANY key.
@@ -86,7 +96,9 @@ class AppCoordinator:
                     return
 
             if self.is_listening and not self.is_connecting and not self.injection_lock.locked():
-                logger.info(f"Manual key press detected ({key}). Stopping and cancelling injection...")
+                logger.info(
+                    f"Manual key press detected ({key}). Stopping and cancelling injection..."
+                )
                 self.session_cancelled = True
                 if self.loop:
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
@@ -115,9 +127,12 @@ class AppCoordinator:
                     return chr(key.vk).lower()
                 # 160-165 are shift/ctrl/alt
                 vk_map = {
-                    160: "shift", 161: "shift",
-                    162: "ctrl", 163: "ctrl",
-                    164: "alt", 165: "alt",
+                    160: "shift",
+                    161: "shift",
+                    162: "ctrl",
+                    163: "ctrl",
+                    164: "alt",
+                    165: "alt",
                 }
                 if key.vk in vk_map:
                     return vk_map[key.vk]
@@ -163,43 +178,62 @@ class AppCoordinator:
 
         # Ensure final text is fully synchronized and add a trailing space
         if self.loop:
-            asyncio.run_coroutine_threadsafe(self._smart_inject(text + " "), self.loop)
+            asyncio.run_coroutine_threadsafe(self._smart_inject(text + " ", is_final=True), self.loop)
 
-        # Reset for next turn
-        self.last_injected_text = ""
-
-    async def _smart_inject(self, text: str):
+    async def _smart_inject(self, text: str, is_final: bool = False):
         """Inject text using backspaces for corrections if needed."""
         if self.session_cancelled:
+            return
+
+        # De-duplicate: don't process if text hasn't changed unless it's the final signal
+        if text == self.last_injected_text and not is_final:
             return
 
         async with self.injection_lock:
             if not self.loop:
                 return
 
-            # Find common prefix length
-            common_len = 0
-            for i in range(min(len(self.last_injected_text), len(text))):
-                if self.last_injected_text[i] == text[i]:
-                    common_len += 1
+            self.is_injecting = True
+            try:
+                # Find common prefix length
+                common_len = 0
+                for i in range(min(len(self.last_injected_text), len(text))):
+                    if self.last_injected_text[i] == text[i]:
+                        common_len += 1
+                    else:
+                        break
+
+                # Safety: If we are in a new Turn (last_injected_text was empty),
+                # but text starts with a space, strip it if needed or just accept it.
+                # Actually, our on_final adds a trailing space.
+
+                # Number of backspaces needed
+                backspaces = len(self.last_injected_text) - common_len
+
+                # New text to append
+                new_text = text[common_len:]
+
+                if backspaces > 0:
+                    # Limit backspaces to 100 to avoid runaway deletions in edge cases
+                    backspaces = min(backspaces, 100)
+                    logger.debug(f"Smart Inject: Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')")
+                    await self.loop.run_in_executor(None, inject_backspaces, backspaces)
+
+                if new_text:
+                    logger.debug(f"Smart Inject: Injecting '{new_text}'")
+                    await self.loop.run_in_executor(None, inject_text, new_text)
+
+                # If final, we add a space to the buffer so the NEXT turn knows it's there
+                if is_final:
+                    if not text.endswith(" "):
+                        await self.loop.run_in_executor(None, inject_text, " ")
+                    self.last_injected_text = "" # Start fresh for next Turn
                 else:
-                    break
-            
-            # Number of backspaces needed
-            backspaces = len(self.last_injected_text) - common_len
-            
-            # New text to append
-            new_text = text[common_len:]
-            
-            if backspaces > 0:
-                logger.debug(f"Smart Inject: Backspacing {backspaces} chars")
-                await self.loop.run_in_executor(None, inject_backspaces, backspaces)
-            
-            if new_text:
-                logger.debug(f"Smart Inject: Injecting '{new_text}'")
-                await self.loop.run_in_executor(None, inject_text, new_text)
-            
-            self.last_injected_text = text
+                    self.last_injected_text = text
+
+            finally:
+                self.last_injection_time = time.time()
+                self.is_injecting = False
 
     async def _inject_direct(self, text: str):
         if self.session_cancelled:
@@ -207,11 +241,16 @@ class AppCoordinator:
 
         async with self.injection_lock:
             if self.loop:
-                # Log timing for latency debugging
-                t0 = time.perf_counter()
-                await self.loop.run_in_executor(None, inject_text, text)
-                t1 = time.perf_counter()
-                logger.debug(f"Direct injection of '{text}' took {(t1-t0)*1000:.2f}ms")
+                self.is_injecting = True
+                try:
+                    # Log timing for latency debugging
+                    t0 = time.perf_counter()
+                    await self.loop.run_in_executor(None, inject_text, text)
+                    t1 = time.perf_counter()
+                    logger.debug(f"Direct injection of '{text}' took {(t1 - t0) * 1000:.2f}ms")
+                finally:
+                    self.last_injection_time = time.time()
+                    self.is_injecting = False
 
     async def _delayed_inject(self, text: str):
         if self.session_cancelled:
@@ -223,7 +262,7 @@ class AppCoordinator:
                 t0 = time.perf_counter()
                 await self.loop.run_in_executor(None, inject_text, text)
                 t1 = time.perf_counter()
-                logger.debug(f"Injection call completed in {(t1-t0)*1000:.2f}ms")
+                logger.debug(f"Injection call completed in {(t1 - t0) * 1000:.2f}ms")
 
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
@@ -258,35 +297,57 @@ class AppCoordinator:
             self.is_listening = True
             if self.ui:
                 self.ui.set_state(AppState.LISTENING)
-            asyncio.create_task(self._audio_pipe())
+            self._audio_task = asyncio.create_task(self._audio_pipe())
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
             self.is_listening = False
             if self.ui:
                 self.ui.set_state(AppState.ERROR)
                 if "401" in str(e) or "unauthorized" in str(e).lower():
-                     self.ui.notify(f"Invalid API Key for {self.config.default_provider.title()}. Please check your credentials.", "Authentication Failed")
+                    self.ui.notify(
+                        f"Invalid API Key for {self.config.default_provider.title()}. Please check your credentials.",
+                        "Authentication Failed",
+                    )
         finally:
             self.is_connecting = False
 
     async def stop_listening(self):
-        if not self.is_listening:
+        if not self.is_listening and not self.is_connecting:
             return
 
         logger.info("Stopping listening...")
         self.is_listening = False
+        self.is_connecting = False
         self.interaction_monitor.stop()
 
         if self.ui:
             self.ui.set_state(AppState.IDLE)
 
+        # 1. Stop the streamer first
         self.streamer.stop()
+
+        # 2. Cancel the pipe task
+        if self._audio_task:
+            self._audio_task.cancel()
+            try:
+                await self._audio_task
+            except asyncio.CancelledError:
+                pass
+            self._audio_task = None
+
+        # 3. Stop provider
         if self.provider:
             await self.provider.stop()
             self.provider = None
 
+        # 4. Clean up injection state
+        async with self.injection_lock:
+            self.last_injected_text = ""
+            self.is_injecting = False
+
     async def _audio_pipe(self):
-        for chunk, capture_time in self.streamer.generator():
+        # Finally the delay issue resolved by using an async generator to avoid blocking the event loop.
+        async for chunk, capture_time in self.streamer.async_generator():
             if not self.is_listening or not self.provider:
                 break
             await self.provider.send_audio(chunk, capture_time)
@@ -325,6 +386,7 @@ class AppCoordinator:
 
 def handle_cli():
     import argparse
+
     parser = argparse.ArgumentParser(
         description="Voice2Text: A real-time voice-to-text system tray application.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -359,21 +421,22 @@ Examples:
     if args.command == "set-key":
         account_map = {
             "openai": ("openai_api_key", "OpenAI"),
-            "assemblyai": ("assemblyai_api_key", "AssemblyAI")
+            "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
         }
         account_id, provider_name = account_map[args.provider]
-        
+
         print(f"Setting credential for {provider_name}...")
         key = ask_key(provider_name)
-        
+
         if key:
             SecurityManager.set_key(account_id, key)
             print(f"Successfully saved API key for {provider_name}.")
         else:
             print("Operation cancelled.")
         sys.exit(0)
-    
+
     return args
+
 
 async def main_async(cli_args):
     try:
@@ -443,6 +506,7 @@ async def main_async(cli_args):
         app.stop()
         await asyncio.sleep(0.5)
 
+
 class ShutdownHandler:
     def __init__(self):
         self.should_exit = False
@@ -457,8 +521,10 @@ class ShutdownHandler:
         print("\nCtrl+C received. Press Ctrl+C again within 3 seconds to force exit.")
         self.should_exit = True
 
+
 if __name__ == "__main__":
     from engine.config import migrate_config_file
+
     migrate_config_file("config.toml")
 
     cli_args = handle_cli()

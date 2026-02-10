@@ -1,6 +1,7 @@
+import asyncio
 import queue
 import time
-from typing import Generator, Tuple
+from typing import Generator, Tuple, AsyncGenerator
 
 import numpy as np
 import sounddevice as sd
@@ -28,6 +29,13 @@ class AudioStreamer:
         """Starts the audio capture stream."""
         if self.is_running:
             return
+
+        # Clear any stale audio from previous sessions
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+            except queue.Empty:
+                break
 
         # sounddevice starts a background thread for the callback.
         self._stream = sd.InputStream(
@@ -71,18 +79,22 @@ class AudioStreamer:
         
         return chunk.flatten()
 
-    def generator(self) -> Generator[Tuple[np.ndarray, float], None, None]:
-        """Yields (audio_chunk, timestamp) tuples from the queue."""
+    async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
+        """Yields (audio_chunk, timestamp) tuples asynchronously without blocking the loop."""
         while self.is_running:
             try:
-                # Use a timeout to avoid blocking indefinitely so we can check is_running
-                chunk, capture_time = self.queue.get(timeout=0.1)
-                
-                # Robust normalization (Mono + 1D)
-                chunk = self._normalize_audio(chunk)
-                
-                duration_ms = (len(chunk) / self.sample_rate) * 1000
-                logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms) | Age: {(time.perf_counter() - capture_time)*1000:.1f}ms")
-                yield chunk, capture_time
+                # Non-blocking get
+                chunk, capture_time = self.queue.get_nowait()
             except queue.Empty:
+                # Important: Yield control to the event loop if queue is empty
+                await asyncio.sleep(0.01)
                 continue
+            
+            # Robust normalization (Mono + 1D)
+            chunk = self._normalize_audio(chunk)
+            
+            # Debug log only if needed (commented out to reduce noise, or keep if crucial)
+            # duration_ms = (len(chunk) / self.sample_rate) * 1000
+            # logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
+            
+            yield chunk, capture_time

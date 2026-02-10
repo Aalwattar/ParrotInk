@@ -1,74 +1,78 @@
 import numpy as np
 import pytest
-
+import asyncio
 from engine.audio import AudioStreamer
 
-
-def test_audio_streamer_initialization():
-    """Test that AudioStreamer initializes with correct parameters."""
+def test_audio_init():
+    """Test initialization of AudioStreamer."""
     streamer = AudioStreamer(sample_rate=16000, chunk_size=1024)
     assert streamer.sample_rate == 16000
     assert streamer.chunk_size == 1024
     assert not streamer.is_running
+    assert streamer.queue.empty()
 
-
-def test_audio_callback(mocker):
+def test_audio_callback():
     """Test the audio callback processing."""
     streamer = AudioStreamer()
     # Mock data: 1024 frames of 1 channel float32
     indata = np.random.uniform(-1, 1, (1024, 1)).astype(np.float32)
-
+    
     # We want to verify that data is put into the queue
     streamer._callback(indata, 1024, None, None)
-
+    
     # Check if queue has data
     assert not streamer.queue.empty()
-    queued_data = streamer.queue.get()
+    queued_data, capture_time = streamer.queue.get()
     assert np.array_equal(queued_data, indata)
-
+    assert isinstance(capture_time, float)
 
 def test_normalize_audio_mono():
+    """Test normalization of already mono audio."""
     streamer = AudioStreamer()
-    # (N, 1) -> (N,)
-    chunk = np.ones((10, 1), dtype=np.float32)
-    norm = streamer._normalize_audio(chunk)
-    assert norm.shape == (10,)
-    assert norm.ndim == 1
-
+    chunk = np.random.uniform(-1, 1, 1024).astype(np.float32)
+    normalized = streamer._normalize_audio(chunk)
+    assert normalized.shape == (1024,)
+    assert np.array_equal(normalized, chunk)
 
 def test_normalize_audio_stereo():
+    """Test normalization (downmixing) of stereo audio."""
     streamer = AudioStreamer()
-    # (N, 2) -> (N,) via mean
-    chunk = np.array([[1.0, 3.0], [2.0, 4.0]], dtype=np.float32) # Mean should be [2.0, 3.0]
-    norm = streamer._normalize_audio(chunk)
-    assert norm.shape == (2,)
-    assert np.array_equal(norm, np.array([2.0, 3.0], dtype=np.float32))
+    # 1024 frames, 2 channels
+    chunk = np.random.uniform(-1, 1, (1024, 2)).astype(np.float32)
+    normalized = streamer._normalize_audio(chunk)
+    assert normalized.shape == (1024,)
+    # Should be average of channels
+    expected = np.mean(chunk, axis=1)
+    assert np.allclose(normalized, expected)
 
-
-def test_audio_generator(mocker):
-    """Test that the generator yields data from the queue."""
+@pytest.mark.asyncio
+async def test_audio_async_generator():
+    """Test that the async_generator yields data from the queue."""
     streamer = AudioStreamer()
     streamer.is_running = True
 
-    # Put two chunks in the queue
+    # Put two chunks in the queue with dummy timestamps
     chunk1 = np.zeros((1024, 1), dtype=np.float32)
     chunk2 = np.ones((1024, 1), dtype=np.float32)
-    streamer.queue.put(chunk1)
-    streamer.queue.put(chunk2)
+    streamer.queue.put((chunk1, 1.0))
+    streamer.queue.put((chunk2, 2.0))
 
-    gen = streamer.generator()
-
-    # Get first chunk - should be flattened (1D)
-    received1 = next(gen)
-    assert received1.ndim == 1
-    assert np.array_equal(received1, chunk1.flatten())
+    gen = streamer.async_generator()
+    
+    # Get first chunk
+    val1, t1 = await gen.__anext__()
+    assert val1.shape == (1024,)
+    assert np.all(val1 == 0)
+    assert t1 == 1.0
 
     # Get second chunk
-    received2 = next(gen)
-    assert received2.ndim == 1
-    assert np.array_equal(received2, chunk2.flatten())
+    val2, t2 = await gen.__anext__()
+    assert val2.shape == (1024,)
+    assert np.all(val2 == 1)
+    assert t2 == 2.0
 
-    # Stop streamer and ensure generator terminates
+    # Stop and verify it exits
     streamer.is_running = False
-    with pytest.raises(StopIteration):
-        next(gen)
+    # The generator should finish now
+    with pytest.raises(StopAsyncIteration):
+        await gen.__anext__()
