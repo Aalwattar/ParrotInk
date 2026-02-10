@@ -75,13 +75,6 @@ default_provider = "openai"
     assert config.test.openai_mock_url == "ws://localhost:8081"
     assert config.test.assemblyai_mock_url == "ws://localhost:8081"
 
-    # Advanced section defaults
-    assert (
-        config.advanced.openai_url
-        == "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
-    )
-    assert config.advanced.assemblyai_url == "wss://api.assemblyai.com/v2/realtime/ws"
-
 
 def test_config_overrides(tmp_path):
     config_file = tmp_path / "overrides.toml"
@@ -91,17 +84,12 @@ default_provider = "openai"
 [test]
 enabled = true
 openai_mock_url = "ws://127.0.0.1:9000"
-
-[advanced]
-openai_url = "ws://proxy:1234"
 """)
     config = load_config(config_file)
 
     assert config.test.enabled is True
     assert config.test.openai_mock_url == "ws://127.0.0.1:9000"
     assert config.test.assemblyai_mock_url == "ws://localhost:8081"  # default
-    assert config.advanced.openai_url == "ws://proxy:1234"
-    assert config.advanced.assemblyai_url == "wss://api.assemblyai.com/v2/realtime/ws"  # default
 
 def test_config_key_resolution(mocker):
     config = load_config("non_existent.toml")

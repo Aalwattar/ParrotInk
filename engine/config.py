@@ -1,6 +1,6 @@
 import tomllib
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, List, Union
 
 from pydantic import AliasChoices, BaseModel, Field, ValidationError
 from .security import SecurityManager
@@ -9,6 +9,11 @@ from .security import SecurityManager
 class HotkeysConfig(BaseModel):
     hotkey: str = "ctrl+alt+v"
     hold_mode: bool = True
+
+
+class AudioConfig(BaseModel):
+    capture_sample_rate: int = 16000
+    chunk_ms: int = 100
 
 
 class TranscriptionConfig(BaseModel):
@@ -22,9 +27,60 @@ class TestConfig(BaseModel):
     assemblyai_mock_url: str = "ws://localhost:8081"
 
 
-class AdvancedConfig(BaseModel):
-    openai_url: str = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
-    assemblyai_url: str = "wss://api.assemblyai.com/v2/realtime/ws"
+# --- OpenAI Configuration ---
+
+class OpenAICoreConfig(BaseModel):
+    realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
+    realtime_ws_model: str = "gpt-4o-realtime-preview-2024-10-01"
+    transcription_model: str = "whisper-1"
+    language: str = "en"
+    prompt: str = ""
+    input_audio_type: str = "audio/pcm"
+    input_audio_rate: int = 24000
+
+
+class OpenAIAdvancedConfig(BaseModel):
+    noise_reduction: str = "off"
+    turn_detection_type: str = "server_vad"
+    vad_threshold: float = 0.5
+    prefix_padding_ms: int = 300
+    silence_duration_ms: int = 500
+    include_logprobs: bool = False
+
+
+class OpenAIConfig(BaseModel):
+    core: OpenAICoreConfig = Field(default_factory=OpenAICoreConfig, validation_alias=AliasChoices("core", "tier1"))
+    advanced: OpenAIAdvancedConfig = Field(default_factory=OpenAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2"))
+
+
+# --- AssemblyAI Configuration ---
+
+class AssemblyAICoreConfig(BaseModel):
+    ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
+    sample_rate: int = 16000
+    vad_threshold: float = 0.4
+    encoding: str = "pcm_s16le"
+    speech_model: str = "universal-streaming-english"
+    keyterms_prompt: List[str] = Field(default_factory=list)
+    inactivity_timeout_seconds: int = 0
+
+
+class AssemblyAIAdvancedConfig(BaseModel):
+    end_of_turn_confidence_threshold: float = 0.4
+    min_end_of_turn_silence_when_confident_ms: int = 400
+    max_turn_silence_ms: int = 1280
+    format_turns: bool = False
+    language_detection: bool = False
+
+
+class AssemblyAIConfig(BaseModel):
+    core: AssemblyAICoreConfig = Field(default_factory=AssemblyAICoreConfig, validation_alias=AliasChoices("core", "tier1"))
+    advanced: AssemblyAIAdvancedConfig = Field(default_factory=AssemblyAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2"))
+
+
+class ProvidersConfig(BaseModel):
+    openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+    assemblyai: AssemblyAIConfig = Field(default_factory=AssemblyAIConfig)
 
 
 class Config(BaseModel):
@@ -32,9 +88,10 @@ class Config(BaseModel):
         default="openai", validation_alias=AliasChoices("default_provider", "active_provider")
     )
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
+    audio: AudioConfig = Field(default_factory=AudioConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: TestConfig = Field(default_factory=TestConfig)
-    advanced: AdvancedConfig = Field(default_factory=AdvancedConfig)
+    providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     def get_openai_key(self) -> Optional[str]:
         """Resolves OpenAI API key."""
@@ -52,7 +109,6 @@ class Config(BaseModel):
             return cls(**data)
         except FileNotFoundError:
             # If config doesn't exist, we return a default config
-            # instead of crashing, as keys are now elsewhere.
             return cls()
         except tomllib.TOMLDecodeError as e:
             raise ConfigError(f"Invalid TOML format in {path}: {e}") from e
