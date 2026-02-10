@@ -35,7 +35,11 @@ def main():
 
     # Wait for UI thread to finish with a timeout
     ui_thread.join(timeout=2.0)
-    print("Exited cleanly.", flush=True)
+    if ui_thread.is_alive():
+        print("Warning: UI thread did not terminate within 2 seconds.", flush=True)
+        print("Forcing exit.", flush=True)
+    else:
+        print("Exited cleanly.", flush=True)
 
 
 if __name__ == "__main__":

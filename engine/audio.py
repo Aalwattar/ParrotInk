@@ -24,6 +24,7 @@ class AudioStreamer:
         if self.is_running:
             return
 
+        # sounddevice starts a background thread for the callback.
         self._stream = sd.InputStream(
             samplerate=self.sample_rate,
             channels=1,
