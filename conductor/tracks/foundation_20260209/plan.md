@@ -1,16 +1,16 @@
 # Implementation Plan: Foundation & Core Engine
 
-## Phase 1: Project Skeleton & Configuration [checkpoint: c09726d]
+## Phase 1: Project Skeleton & Configuration [checkpoint: ff90a51]
 Establish the project structure and implement a robust configuration loader.
 
 - [x] Task: Set up project structure and initial `main.py` entry point (43bea15)
-    - [ ] Create `engine/` directory and `main.py`
-    - [ ] Verify environment with a simple "Hello Tray" script
+    - [x] Create `engine/` directory and `main.py`
+    - [x] Verify environment with a simple "Hello Tray" script
 - [x] Task: Implement TOML configuration loader in `engine/config.py` (ec26af5)
-    - [ ] **Red:** Write tests for loading and validating `config.toml` (missing keys, invalid types)
-    - [ ] **Green:** Implement `Config` class using `pydantic` or `tomllib`
-    - [ ] **Refactor:** Ensure clean error reporting for user-friendly notifications
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Project Skeleton & Configuration' (Protocol in workflow.md)
+    - [x] **Red:** Write tests for loading and validating `config.toml` (missing keys, invalid types)
+    - [x] **Green:** Implement `Config` class using `pydantic` or `tomllib`
+    - [x] **Refactor:** Ensure clean error reporting for user-friendly notifications
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Project Skeleton & Configuration' (Protocol in workflow.md)
 
 ## Phase 2: System Tray & State Management [checkpoint: 735730e]
 Implement the background utility and visual feedback.
