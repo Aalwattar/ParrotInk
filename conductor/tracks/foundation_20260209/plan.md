@@ -1,6 +1,6 @@
 # Implementation Plan: Foundation & Core Engine
 
-## Phase 1: Project Skeleton & Configuration
+## Phase 1: Project Skeleton & Configuration [checkpoint: c09726d]
 Establish the project structure and implement a robust configuration loader.
 
 - [x] Task: Set up project structure and initial `main.py` entry point (43bea15)
