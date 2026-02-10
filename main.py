@@ -21,7 +21,13 @@ from engine.credential_ui import ask_key
 class AppCoordinator:
     def __init__(self, config: Config):
         self.config = config
-        self.streamer = AudioStreamer(sample_rate=config.transcription.sample_rate)
+        
+        # Calculate chunk size from ms
+        sample_rate = config.audio.capture_sample_rate
+        chunk_ms = config.audio.chunk_ms
+        chunk_size = (sample_rate * chunk_ms) // 1000
+        
+        self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
         self.provider: Optional[BaseProvider] = None
         self.is_listening = False
         self.is_connecting = False

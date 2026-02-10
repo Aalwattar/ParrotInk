@@ -21,7 +21,7 @@ class TranscriptionConfig(BaseModel):
     sample_rate: int = 16000
 
 
-class TestConfig(BaseModel):
+class AppTestConfig(BaseModel):
     enabled: bool = False
     openai_mock_url: str = "ws://localhost:8081"
     assemblyai_mock_url: str = "ws://localhost:8081"
@@ -90,7 +90,7 @@ class Config(BaseModel):
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
-    test: TestConfig = Field(default_factory=TestConfig)
+    test: AppTestConfig = Field(default_factory=AppTestConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     def get_openai_key(self) -> Optional[str]:

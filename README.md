@@ -60,14 +60,16 @@ You can use the CLI to manage your API keys securely:
 
 ## Configuration
 
-The application uses `config.toml` for non-sensitive settings. See `config.example.toml` for a full list of options.
+The application uses `config.toml` for settings. See `config.example.toml` for a detailed template.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `default_provider` | `openai` | Initial provider to use. |
+| `default_provider` | `openai` | Initial provider (`openai` or `assemblyai`). |
 | `hotkeys.hotkey` | `ctrl+alt+v` | Global hotkey. |
 | `hotkeys.hold_mode` | `true` | Hold to talk vs. Press to toggle. |
-| `transcription.language` | `en` | Target language. |
+| `audio.chunk_ms` | `100` | Audio chunk size in milliseconds. |
+| `providers.openai.core` | - | OpenAI model and language settings. |
+| `providers.assemblyai.core`| - | AssemblyAI V3 settings and model. |
 | `test.enabled` | `false` | Enable/disable mock mode. |
 
 ## License

@@ -1,15 +1,13 @@
 from unittest.mock import MagicMock
-
 import pytest
-
-from engine.config import Config, HotkeysConfig, TranscriptionConfig
+from engine.config import Config, HotkeysConfig, TranscriptionConfig, AudioConfig, AppTestConfig
 from main import AppCoordinator
-
 
 def test_coordinator_initialization():
     config = Config(
         default_provider="openai",
         hotkeys=HotkeysConfig(hotkey="ctrl+alt+v", hold_mode=True),
+        audio=AudioConfig(capture_sample_rate=16000, chunk_ms=100),
         transcription=TranscriptionConfig(sample_rate=16000),
     )
     coordinator = AppCoordinator(config)
@@ -18,15 +16,12 @@ def test_coordinator_initialization():
     assert "alt" in coordinator.target_hotkey
     assert "v" in coordinator.target_hotkey
 
-
 @pytest.mark.asyncio
 async def test_coordinator_basic_state():
-    config = MagicMock(spec=Config)
-    # Setup nested mock
-    config.transcription = MagicMock(spec=TranscriptionConfig)
-    config.transcription.sample_rate = 16000
+    config = Config()
+    config.audio.capture_sample_rate = 16000
+    config.audio.chunk_ms = 100
     config.default_provider = "openai"
-    config.hotkeys = MagicMock(spec=HotkeysConfig)
     config.hotkeys.hotkey = "ctrl+alt+v"
 
     coordinator = AppCoordinator(config)

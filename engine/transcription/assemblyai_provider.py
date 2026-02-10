@@ -1,58 +1,79 @@
 import asyncio
 import base64
 import json
+import urllib.parse
 from typing import Callable, Optional
 
 import numpy as np
 import websockets
 
 from .base import BaseProvider
+from engine.config import Config
 
 
 class AssemblyAIProvider(BaseProvider):
-    """AssemblyAI real-time transcription provider."""
+    """AssemblyAI transcription provider using Streaming V3."""
 
     def __init__(
         self,
         api_key: str,
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
-        base_url: str,
-        sample_rate: int = 16000,
+        config: Config,
     ):
-        super().__init__(api_key, on_partial, on_final, base_url)
-        self.sample_rate = sample_rate
-        self.url = base_url
+        super().__init__(api_key, on_partial, on_final, "")
+        self.config = config
+        self.url = self._build_url()
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
+
+    def _build_url(self) -> str:
+        if self.config.test.enabled:
+            return self.config.test.assemblyai_mock_url
+
+        core = self.config.providers.assemblyai.core
+        adv = self.config.providers.assemblyai.advanced
+        
+        # Build V3 query parameters
+        params = {
+            "sample_rate": core.sample_rate,
+            "word_boost": json.dumps(core.keyterms_prompt) if core.keyterms_prompt else None,
+            "speech_model": core.speech_model,
+            "encoding": core.encoding,
+            "vad_threshold": core.vad_threshold,
+            "inactivity_timeout": core.inactivity_timeout_seconds if core.inactivity_timeout_seconds > 0 else None,
+            "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
+            "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
+            "max_end_of_turn_silence": adv.max_turn_silence_ms,
+            "format_turns": "true" if adv.format_turns else "false",
+            "detect_language": "true" if adv.language_detection else "false",
+        }
+        
+        # Remove None values
+        params = {k: v for k, v in params.items() if v is not None}
+        
+        query_string = urllib.parse.urlencode(params)
+        return f"{core.ws_url}?{query_string}"
 
     async def start(self):
         """Connect to AssemblyAI and start receiving events."""
         headers = {"Authorization": self.api_key}
         try:
-            self.ws = await websockets.connect(self.url)
+            self.ws = await websockets.connect(
+                self.url, 
+                additional_headers=headers if not self.config.test.enabled else None
+            )
             self.is_running = True
-
-            # AssemblyAI sends a 'SessionBegins' message first
             self._receive_task = asyncio.create_task(self._receive_loop())
-            print("Connected to AssemblyAI Realtime API.")
+            print(f"Connected to AssemblyAI at {self.url}")
         except Exception as e:
-            print(f"Failed to connect to AssemblyAI: {e}")
+            print(f"Failed to connect to AssemblyAI at {self.url}: {e}")
             raise
 
     async def stop(self):
         """Close connection and stop tasks."""
         self.is_running = False
-        if self.ws:
-            # AssemblyAI expects a 'TerminateSession' message
-            try:
-                await self.ws.send(json.dumps({"terminate_session": True}))
-                # Wait a bit for the connection to close gracefully
-                await asyncio.sleep(0.5)
-            except:
-                pass
-
         if self._receive_task:
             self._receive_task.cancel()
             try:
@@ -92,20 +113,16 @@ class AssemblyAIProvider(BaseProvider):
 
     async def _handle_event(self, event: dict):
         """Process incoming events."""
-        message_type = event.get("message_type")
-
-        if message_type == "PartialTranscript":
-            transcript = event.get("text", "")
-            if transcript:
-                self.on_partial(transcript)
-
-        elif message_type == "FinalTranscript":
-            transcript = event.get("text", "")
-            if transcript:
-                self.on_final(transcript)
-
-        elif message_type == "SessionTerminated":
-            print("AssemblyAI session terminated.")
-
-        elif event.get("error"):
+        # V3 returns 'text' in FinalTranscript and PartialTranscript
+        if "text" in event:
+            text = event["text"]
+            # message_type is the standard field for V3 response types
+            m_type = event.get("message_type")
+            if m_type == "FinalTranscript":
+                self.on_final(text)
+            elif m_type == "PartialTranscript":
+                self.on_partial(text)
+        elif "error" in event:
             print(f"AssemblyAI API Error: {event.get('error')}")
+        elif event.get("message_type") == "SessionBegins":
+            print(f"AssemblyAI Session Started: {event.get('session_id')}")

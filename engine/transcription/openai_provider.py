@@ -7,6 +7,7 @@ import numpy as np
 import websockets
 
 from .base import BaseProvider
+from engine.config import Config
 
 
 class OpenAIProvider(BaseProvider):
@@ -17,28 +18,42 @@ class OpenAIProvider(BaseProvider):
         api_key: str,
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
-        base_url: str,
+        config: Config,
     ):
-        super().__init__(api_key, on_partial, on_final, base_url)
-        self.url = base_url
+        # We still call base constructor, but base_url is now resolved internally
+        super().__init__(api_key, on_partial, on_final, "")
+        self.config = config
+        self.url = self._build_url()
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
+
+    def _build_url(self) -> str:
+        if self.config.test.enabled:
+            return self.config.test.openai_mock_url
+        
+        core = self.config.providers.openai.core
+        return f"{core.realtime_ws_url_base}?model={core.realtime_ws_model}"
 
     async def start(self):
         """Connect to OpenAI and start receiving events."""
         headers = {"Authorization": f"Bearer {self.api_key}", "OpenAI-Beta": "realtime=v1"}
         try:
-            self.ws = await websockets.connect(self.url)
+            # Fix: use 'additional_headers' or 'extra_headers' correctly depending on version. 
+            # In websockets 14+, it is 'additional_headers'.
+            self.ws = await websockets.connect(
+                self.url, 
+                additional_headers=headers if not self.config.test.enabled else None
+            )
             self.is_running = True
 
             # Initialize session for transcription only
             await self._initialize_session()
 
             self._receive_task = asyncio.create_task(self._receive_loop())
-            print("Connected to OpenAI Realtime API.")
+            print(f"Connected to OpenAI Realtime API at {self.url}")
         except Exception as e:
-            print(f"Failed to connect to OpenAI: {e}")
+            print(f"Failed to connect to OpenAI at {self.url}: {e}")
             raise
 
     async def stop(self):
@@ -70,13 +85,22 @@ class OpenAIProvider(BaseProvider):
 
     async def _initialize_session(self):
         """Configure session for audio-to-text only (no voice response needed)."""
+        core = self.config.providers.openai.core
+        adv = self.config.providers.openai.advanced
+        
         session_update = {
             "type": "session.update",
             "session": {
                 "modalities": ["text"],
-                "input_audio_format": "pcm16",
-                "input_audio_transcription": {"model": "whisper-1"},
-                "turn_detection": None,  # We handle manual start/stop
+                "instructions": core.prompt if core.prompt else "Transmit transcribed text only.",
+                "input_audio_format": core.input_audio_type.replace("audio/", ""), # e.g. "pcm"
+                "input_audio_transcription": {"model": core.transcription_model},
+                "turn_detection": {
+                    "type": adv.turn_detection_type,
+                    "threshold": adv.vad_threshold,
+                    "prefix_padding_ms": adv.prefix_padding_ms,
+                    "silence_duration_ms": adv.silence_duration_ms,
+                } if adv.turn_detection_type != "off" else None,
             },
         }
         await self.ws.send(json.dumps(session_update))

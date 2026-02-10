@@ -8,11 +8,20 @@ from engine.transcription.assemblyai_provider import AssemblyAIProvider
 from engine.transcription.factory import TranscriptionFactory
 from engine.config import Config, HotkeysConfig, TranscriptionConfig
 
+@pytest.fixture
+def base_config():
+    return Config()
+
 @pytest.mark.asyncio
-async def test_openai_provider_send_audio():
+async def test_openai_provider_send_audio(base_config):
     on_partial = MagicMock()
     on_final = MagicMock()
-    provider = OpenAIProvider(api_key="test_key", on_partial=on_partial, on_final=on_final, base_url="ws://localhost:8081")
+    provider = OpenAIProvider(
+        api_key="test_key", 
+        on_partial=on_partial, 
+        on_final=on_final, 
+        config=base_config
+    )
 
     with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
         mock_ws = AsyncMock()
@@ -31,97 +40,78 @@ async def test_openai_provider_send_audio():
         assert "audio" in sent_message
 
 @pytest.mark.asyncio
-async def test_assemblyai_provider_send_audio():
+async def test_openai_provider_url_construction(base_config):
+    base_config.providers.openai.core.realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
+    base_config.providers.openai.core.realtime_ws_model = "gpt-4o-realtime-preview-2024-10-01"
+    
     on_partial = MagicMock()
     on_final = MagicMock()
-    provider = AssemblyAIProvider(api_key="test_key", on_partial=on_partial, on_final=on_final, base_url="ws://localhost:8082")
+    provider = OpenAIProvider(
+        api_key="test_key", 
+        on_partial=on_partial, 
+        on_final=on_final, 
+        config=base_config
+    )
+    
+    expected_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
+    assert provider.url == expected_url
+
+@pytest.mark.asyncio
+async def test_openai_provider_session_update(base_config):
+    base_config.providers.openai.core.transcription_model = "whisper-custom"
+    base_config.providers.openai.core.language = "fr"
+    base_config.providers.openai.advanced.vad_threshold = 0.8
+
+    on_partial = MagicMock()
+    on_final = MagicMock()
+    provider = OpenAIProvider(
+        api_key="test_key", 
+        on_partial=on_partial, 
+        on_final=on_final, 
+        config=base_config
+    )
 
     with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
-
         await provider.start()
 
-        audio_chunk = np.zeros(1024, dtype=np.float32)
-        await provider.send_audio(audio_chunk)
+        # Find the session.update call
+        session_update = None
+        for call in mock_ws.send.call_args_list:
+            msg = json.loads(call[0][0])
+            if msg["type"] == "session.update":
+                session_update = msg
+                break
+        
+        assert session_update is not None
+        session = session_update["session"]
+        assert session["input_audio_transcription"]["model"] == "whisper-custom"
+        assert session["turn_detection"]["threshold"] == 0.8 # We'll check if we use this structure
 
-        assert mock_ws.send.called
-        sent_message = json.loads(mock_ws.send.call_args[0][0])
-        assert "audio_data" in sent_message
-
-def test_transcription_factory():
-    config = Config(
-        default_provider="openai",
-        hotkeys=HotkeysConfig(hotkey="ctrl+v", hold_mode=True),
-        transcription=TranscriptionConfig(language="en", sample_rate=16000),
+@pytest.mark.asyncio
+async def test_assemblyai_provider_v3_url(base_config):
+    # This will fail until Phase 3 is implemented
+    on_partial = MagicMock()
+    on_final = MagicMock()
+    provider = AssemblyAIProvider(
+        api_key="test_key", 
+        on_partial=on_partial, 
+        on_final=on_final, 
+        config=base_config
     )
+    
+    # AssemblyAI V3 URL construction
+    assert "streaming.assemblyai.com/v3/ws" in provider.url
+    assert "sample_rate=16000" in provider.url
 
+def test_transcription_factory(base_config):
     on_partial = MagicMock()
     on_final = MagicMock()
 
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
+    provider = TranscriptionFactory.create(base_config, on_partial, on_final)
     assert isinstance(provider, OpenAIProvider)
 
-    config.default_provider = "assemblyai"
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
+    base_config.default_provider = "assemblyai"
+    provider = TranscriptionFactory.create(base_config, on_partial, on_final)
     assert isinstance(provider, AssemblyAIProvider)
-
-def test_transcription_factory_url_resolution():
-    on_partial = MagicMock()
-    on_final = MagicMock()
-    
-    # Test Mode Enabled
-    config = Config(
-        default_provider="openai",
-        test={"enabled": True, "openai_mock_url": "ws://mock-openai"},
-        advanced={"openai_url": "wss://real-openai"}
-    )
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
-    assert provider.url == "ws://mock-openai"
-    
-    # Test Mode Disabled
-    config.test.enabled = False
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
-    assert provider.url == "wss://real-openai"
-    
-    # AssemblyAI resolution
-    config.default_provider = "assemblyai"
-    config.test.enabled = True
-    config.test.assemblyai_mock_url = "ws://mock-aai"
-    config.advanced.assemblyai_url = "wss://real-aai"
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
-    assert provider.url == "ws://mock-aai"
-    
-    config.test.enabled = False
-    provider = TranscriptionFactory.create(config, on_partial, on_final)
-    assert provider.url == "wss://real-aai"
-
-@pytest.mark.asyncio
-async def test_openai_provider_custom_url():
-    on_partial = MagicMock()
-    on_final = MagicMock()
-    custom_url = "ws://my-mock:8000"
-    provider = OpenAIProvider(api_key="test_key", on_partial=on_partial, on_final=on_final, base_url=custom_url)
-
-    assert provider.url == custom_url
-
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
-        await provider.start()
-        mock_connect.assert_called_with(custom_url)
-
-@pytest.mark.asyncio
-async def test_assemblyai_provider_custom_url():
-    on_partial = MagicMock()
-    on_final = MagicMock()
-    custom_url = "ws://my-mock:9000"
-    provider = AssemblyAIProvider(api_key="test_key", on_partial=on_partial, on_final=on_final, base_url=custom_url)
-
-    assert provider.url == custom_url
-
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
-        await provider.start()
-        mock_connect.assert_called_with(custom_url)

@@ -1,30 +1,84 @@
 # Voice2Text Configuration Template
+# Use this as a reference for your config.toml
 
 # Initial transcription provider to use ("openai" or "assemblyai")
-default_provider = "openai"
+default_provider = "assemblyai"
 
 [hotkeys]
 # Global hotkey for triggering transcription
 hotkey = "ctrl+alt+v"
 # If true, listen while holding. If false, toggle with a press.
-hold_mode = true
+hold_mode = false
+
+# Provider-agnostic capture settings
+[audio]
+capture_sample_rate = 16000
+# Duration of each audio chunk sent to the provider (in milliseconds)
+chunk_ms = 100
 
 [transcription]
-# Target language for transcription
+# Default language for transcription (provider-specific overrides exist below)
 language = "en"
-# Audio sample rate in Hz (16000 is recommended for most providers)
 sample_rate = 16000
 
 [test]
 # Enable mock transcription for testing without using real API credits
 enabled = false
-# Mock WebSocket URL for OpenAI
 openai_mock_url = "ws://localhost:8081"
-# Mock WebSocket URL for AssemblyAI
 assemblyai_mock_url = "ws://localhost:8081"
 
-[advanced]
-# Production WebSocket URL for OpenAI Realtime API
-openai_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
-# Production WebSocket URL for AssemblyAI Realtime API
-assemblyai_url = "wss://api.assemblyai.com/v2/realtime/ws"
+# -----------------------------
+# Provider Settings
+# -----------------------------
+
+[providers.openai.core]
+# WebSocket connection target
+realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
+realtime_ws_model = "gpt-4o-realtime-preview-2024-10-01"
+
+# Models: whisper-1, gpt-4o-transcribe-latest
+transcription_model = "whisper-1"
+language = "en"
+prompt = "" # optional context/keywords
+
+# Input audio format (Only 24000 supported for audio/pcm in Realtime)
+input_audio_type = "audio/pcm"
+input_audio_rate = 24000
+
+[providers.openai.advanced]
+# noise_reduction: near_field | far_field | off
+noise_reduction = "off"
+# turn_detection_type: server_vad | off
+turn_detection_type = "server_vad"
+vad_threshold = 0.5
+prefix_padding_ms = 300
+silence_duration_ms = 500
+include_logprobs = false
+
+[providers.assemblyai.core]
+# Streaming v3 endpoint
+ws_url = "wss://streaming.assemblyai.com/v3/ws"
+
+# Required parameters for V3
+sample_rate = 16000
+vad_threshold = 0.4
+
+# encoding: pcm_s16le | pcm_mulaw
+encoding = "pcm_s16le"
+# speech_model: universal-streaming-english | universal-streaming-multi
+speech_model = "universal-streaming-english"
+# word/phrase boosting list
+keyterms_prompt = []
+# 0 = disabled
+inactivity_timeout_seconds = 0
+
+[providers.assemblyai.advanced]
+# Latency vs accuracy tradeoffs (0.0 to 1.0)
+end_of_turn_confidence_threshold = 0.4
+min_end_of_turn_silence_when_confident_ms = 400
+max_turn_silence_ms = 1280
+
+# Return formatted final transcripts
+format_turns = false
+# Detect language (multilingual model only)
+language_detection = false
