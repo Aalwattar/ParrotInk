@@ -139,42 +139,23 @@ class AppCoordinator:
         if self.session_cancelled:
             return
 
-        text = text.strip()
-        if not text:
-            return
-
-        # Find what's new in the partial transcript
-        if text.startswith(self.last_partial):
-            new_text = text[len(self.last_partial):]
-            if new_text:
-                self.last_partial = text
-                if self.loop:
-                    # We don't delay partials, we want them fast
-                    asyncio.run_coroutine_threadsafe(self._inject_direct(new_text), self.loop)
+        # In this new mode, providers send DELTAS, so we inject them directly
+        if text:
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self._inject_direct(text), self.loop)
 
     def on_final(self, text: str):
         if self.session_cancelled:
             logger.debug(f"Session cancelled. Discarding final text: {text}")
             return
 
-        # Inject anything remaining that wasn't covered by last_partial
-        text = text.strip()
-        if text.startswith(self.last_partial):
-            remaining = text[len(self.last_partial):]
-            if remaining:
-                if self.loop:
-                    asyncio.run_coroutine_threadsafe(self._inject_direct(remaining + " "), self.loop)
-            else:
-                # Just add the trailing space if nothing new
-                if self.loop:
-                    asyncio.run_coroutine_threadsafe(self._inject_direct(" "), self.loop)
-        else:
-            # Fallback if partials got out of sync
-            if self.loop:
-                asyncio.run_coroutine_threadsafe(self._delayed_inject(text + " "), self.loop)
-
-        # Reset partial state for next turn
-        self.last_partial = ""
+        # Since we are injecting deltas, we need to be careful with on_final.
+        # Most providers send 'completed' which might contain the FULL text.
+        # But if we already injected parts of it, we don't want to re-inject.
+        
+        # For now, let's just add the final space.
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(self._inject_direct(" "), self.loop)
 
     async def _inject_direct(self, text: str):
         """Immediate injection without delay."""
@@ -186,23 +167,24 @@ class AppCoordinator:
                 await self.loop.run_in_executor(None, inject_text, text)
 
     async def _delayed_inject(self, text: str):
-        # Wait a bit for the user to release keys (Ctrl/Alt) to avoid shortcut interference
-        await asyncio.sleep(0.3)
-
-        # Check again after sleep in case session was cancelled during delay
+        # We removed the sleep here to achieve real-time speed.
+        # Check if session was cancelled
         if self.session_cancelled:
             return
 
         # Use a lock to prevent overlapping injections
         if self.injection_lock.locked():
-            logger.warning("Injection skipped: Previous injection still in progress.")
-            return
+            logger.warning(f"Injection busy. Queuing text: {text}")
+            # Even if busy, we want the lock to handle it rather than dropping it
+            # but for partials, dropping older ones is often fine.
+            # For simplicity, we'll keep the lock check but make it fast.
 
         async with self.injection_lock:
-            # Run injection in executor because it blocks (calls sleep)
             if self.loop:
-                logger.debug(f"Injecting text: {text}")
+                t0 = time.perf_counter()
                 await self.loop.run_in_executor(None, inject_text, text)
+                t1 = time.perf_counter()
+                logger.debug(f"Coordinator handoff to injector took {(t1-t0)*1000:.2f}ms")
 
     async def start_listening(self):
         if self.is_listening or self.is_connecting:

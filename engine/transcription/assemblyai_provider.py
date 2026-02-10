@@ -29,6 +29,7 @@ class AssemblyAIProvider(BaseProvider):
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
+        self.last_transcript = ""
 
     def _build_url(self) -> str:
         if self.config.test.enabled:
@@ -142,17 +143,36 @@ class AssemblyAIProvider(BaseProvider):
             # Handle V3 'Turn' objects
             if msg_type == "Turn":
                 if event.get("end_of_turn"):
-                    if text: # Only send if not empty
-                        logger.info(f"Final transcript received (Turn): {text}")
-                        self.on_final(text)
+                    # Calculate final delta
+                    if text.startswith(self.last_transcript):
+                        final_delta = text[len(self.last_transcript):]
+                    else:
+                        final_delta = text
+                    
+                    if final_delta:
+                        self.on_final(final_delta)
+                    
+                    # Reset for next turn
+                    self.last_transcript = ""
                 else:
-                    self.on_partial(text)
+                    # Calculate partial delta
+                    if text.startswith(self.last_transcript):
+                        delta = text[len(self.last_transcript):]
+                        if delta:
+                            self.last_transcript = text
+                            self.on_partial(delta)
+                    elif len(text) > len(self.last_transcript):
+                        # Fallback if it doesn't strictly start with (rare but possible with corrections)
+                        self.on_partial(text)
+                        self.last_transcript = text
             
             # Handle explicit Transcript types
             elif msg_type == "FinalTranscript":
                 logger.info(f"Final transcript received: {text}")
                 self.on_final(text)
+                self.last_transcript = ""
             elif msg_type == "PartialTranscript":
+                # For simplicity, we only do complex delta logic for Turn types which are standard in V3
                 self.on_partial(text)
 
         elif "error" in event:

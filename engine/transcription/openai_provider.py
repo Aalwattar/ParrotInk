@@ -152,8 +152,8 @@ class OpenAIProvider(BaseProvider):
         elif event_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta", "")
             if delta:
-                self.current_partial += delta
-                self.on_partial(self.current_partial)
+                # Send the incremental delta immediately for real-time feel
+                self.on_partial(delta)
 
         elif event_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
