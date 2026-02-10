@@ -44,7 +44,7 @@ Connect to OpenAI and AssemblyAI.
     - [x] **Green:** Implement `AssemblyAIProvider`
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Transcription Integration' (Protocol in workflow.md)
 
-## Phase 5: Final Integration & Hotkeys
+## Phase 5: Final Integration & Hotkeys [checkpoint: 300b4c3]
 Bring all components together.
 
 - [x] Task: Implement Text Injection in `engine/injector.py` (a306e08)
