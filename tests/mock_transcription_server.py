@@ -1,53 +1,58 @@
 import asyncio
 import json
 import websockets
+import sys
+import os
 
 async def mock_openai_handler(websocket):
-    print("Mock OpenAI Client connected")
+    print("OpenAI Client connected", flush=True)
+    last_send_time = 0
     try:
         async for message in websocket:
             data = json.loads(message)
-            msg_type = data.get("type")
-            
-            if msg_type == "session.update":
-                print("Mock OpenAI: Session updated")
-            elif msg_type == "input_audio_buffer.append":
-                # Simulate a final transcription after receiving some audio
-                response = {
-                    "type": "conversation.item.input_audio_transcription.completed",
-                    "transcript": "Hello from mock OpenAI!"
-                }
-                await websocket.send(json.dumps(response))
-    except websockets.exceptions.ConnectionClosed:
-        print("Mock OpenAI Client disconnected")
+            if data.get("type") == "input_audio_buffer.append":
+                current_time = asyncio.get_event_loop().time()
+                # Rate limit: Only send a response every 3 seconds max
+                if current_time - last_send_time > 3.0:
+                    last_send_time = current_time
+                    await websocket.send(json.dumps({
+                        "type": "conversation.item.input_audio_transcription.completed",
+                        "transcript": "Hello from mock OpenAI!"
+                    }))
+    except Exception as e:
+        print(f"OpenAI Handler Error: {e}", flush=True)
 
 async def mock_assemblyai_handler(websocket):
-    print("Mock AssemblyAI Client connected")
+    print("AssemblyAI Client connected", flush=True)
+    last_send_time = 0
     try:
         async for message in websocket:
             data = json.loads(message)
-            
             if "audio_data" in data:
-                # Simulate partial and then final
-                partial = {
-                    "message_type": "PartialTranscript",
-                    "text": "Hello"
-                }
-                await websocket.send(json.dumps(partial))
-                
-                final = {
-                    "message_type": "FinalTranscript",
-                    "text": "Hello from mock AssemblyAI!"
-                }
-                await websocket.send(json.dumps(final))
-    except websockets.exceptions.ConnectionClosed:
-        print("Mock AssemblyAI Client disconnected")
+                current_time = asyncio.get_event_loop().time()
+                if current_time - last_send_time > 3.0:
+                    last_send_time = current_time
+                    await websocket.send(json.dumps({
+                        "message_type": "PartialTranscript",
+                        "text": "Hello"
+                    }))
+                    await asyncio.sleep(0.1)
+                    await websocket.send(json.dumps({
+                        "message_type": "FinalTranscript",
+                        "text": "Hello from mock AssemblyAI!"
+                    }))
+    except Exception as e:
+        print(f"AssemblyAI Handler Error: {e}", flush=True)
 
 async def main():
-    async with websockets.serve(mock_openai_handler, "0.0.0.0", 8081):
-        async with websockets.serve(mock_assemblyai_handler, "0.0.0.0", 8082):
-            print("Mock servers running on 0.0.0.0: OpenAI on :8081, AssemblyAI on :8082")
-            await asyncio.Future()  # run forever
+    print(f"Starting mock servers on PID {os.getpid()}...", flush=True)
+    try:
+        server1 = await websockets.serve(mock_openai_handler, "127.0.0.1", 8081)
+        server2 = await websockets.serve(mock_assemblyai_handler, "127.0.0.1", 8082)
+        print("Mock servers are now LISTENING on 127.0.0.1:8081 and 8082", flush=True)
+        await asyncio.Future()  # run forever
+    except Exception as e:
+        print(f"FATAL Server Error: {e}", flush=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
