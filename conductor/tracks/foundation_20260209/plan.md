@@ -33,16 +33,16 @@ Capture and process microphone input.
     - [x] **Refactor:** Optimize buffer sizes and handling of sample rates
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Audio Capture Engine' (Protocol in workflow.md)
 
-## Phase 4: Transcription Integration
+## Phase 4: Transcription Integration [checkpoint: cb69717]
 Connect to OpenAI and AssemblyAI.
 
-- [ ] Task: Implement Transcription Base and OpenAI Provider in `engine/transcription/`
-    - [ ] **Red:** Write tests for OpenAI client interaction (mocking `websockets`/`openai`)
-    - [ ] **Green:** Implement `OpenAIProvider`
-- [ ] Task: Implement AssemblyAI Provider in `engine/transcription/`
-    - [ ] **Red:** Write tests for AssemblyAI WebSocket interaction
-    - [ ] **Green:** Implement `AssemblyAIProvider`
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Transcription Integration' (Protocol in workflow.md)
+- [x] Task: Implement Transcription Base and OpenAI Provider in `engine/transcription/` (cb69717)
+    - [x] **Red:** Write tests for OpenAI client interaction (mocking `websockets`/`openai`)
+    - [x] **Green:** Implement `OpenAIProvider`
+- [x] Task: Implement AssemblyAI Provider in `engine/transcription/` (cb69717)
+    - [x] **Red:** Write tests for AssemblyAI WebSocket interaction
+    - [x] **Green:** Implement `AssemblyAIProvider`
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Transcription Integration' (Protocol in workflow.md)
 
 ## Phase 5: Final Integration & Hotkeys
 Bring all components together.
