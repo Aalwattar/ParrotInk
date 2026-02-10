@@ -80,7 +80,7 @@ class OpenAIAdvancedConfig(BaseModel):
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.5
     prefix_padding_ms: int = 300
-    silence_duration_ms: int = 300 # Reduced from 500
+    silence_duration_ms: int = 350 # Reduced from 500
     include_logprobs: bool = False
 
 
@@ -94,7 +94,7 @@ class OpenAIConfig(BaseModel):
 class AssemblyAICoreConfig(BaseModel):
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     sample_rate: int = 16000
-    vad_threshold: float = 0.2
+    vad_threshold: float = 0.4
     encoding: str = "pcm_s16le"
     speech_model: str = "universal-streaming-english"
     keyterms_prompt: List[str] = Field(default_factory=list)
@@ -103,8 +103,8 @@ class AssemblyAICoreConfig(BaseModel):
 
 class AssemblyAIAdvancedConfig(BaseModel):
     end_of_turn_confidence_threshold: float = 0.4
-    min_end_of_turn_silence_when_confident_ms: int = 300 # Reduced from 400
-    max_turn_silence_ms: int = 500 # Reduced from 800
+    min_end_of_turn_silence_when_confident_ms: int = 400 # Default 400
+    max_turn_silence_ms: int = 1000 # Default 1280
     format_turns: bool = False
     language_detection: bool = False
 

@@ -203,24 +203,35 @@ class AppCoordinator:
                     else:
                         break
 
-                # Safety: If we are in a new Turn (last_injected_text was empty),
-                # but text starts with a space, strip it if needed or just accept it.
-                # Actually, our on_final adds a trailing space.
+                # Case 1: Pure Append (most common for OpenAI or stable AssemblyAI partials)
+                # If everything we already typed is at the start of the new text, just type the delta.
+                if common_len == len(self.last_injected_text):
+                    new_text = text[common_len:]
+                    if new_text:
+                        logger.debug(f"Smart Inject (Append): Injecting '{new_text}'")
+                        await self.loop.run_in_executor(None, inject_text, new_text)
+                    
+                    if is_final:
+                        if not text.endswith(" "):
+                            await self.loop.run_in_executor(None, inject_text, " ")
+                        self.last_injected_text = ""
+                    else:
+                        self.last_injected_text = text
+                    return
 
+                # Case 2: Correction (Common for AssemblyAI "Turn" updates)
                 # Number of backspaces needed
                 backspaces = len(self.last_injected_text) - common_len
-
-                # New text to append
                 new_text = text[common_len:]
 
                 if backspaces > 0:
-                    # Limit backspaces to 100 to avoid runaway deletions in edge cases
+                    # Limit backspaces to 100 to avoid runaway deletions
                     backspaces = min(backspaces, 100)
-                    logger.debug(f"Smart Inject: Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')")
+                    logger.debug(f"Smart Inject (Correct): Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')")
                     await self.loop.run_in_executor(None, inject_backspaces, backspaces)
 
                 if new_text:
-                    logger.debug(f"Smart Inject: Injecting '{new_text}'")
+                    logger.debug(f"Smart Inject (Correct): Injecting '{new_text}'")
                     await self.loop.run_in_executor(None, inject_text, new_text)
 
                 # If final, we add a space to the buffer so the NEXT turn knows it's there
@@ -462,6 +473,10 @@ async def main_async(cli_args):
         handler.should_exit = True
 
     def on_provider_change(provider_name):
+        if coordinator.is_listening or coordinator.is_connecting:
+            logger.info(f"Stopping active session before changing provider to {provider_name}")
+            asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
+
         config.default_provider = provider_name
         logger.info(f"Provider changed to: {provider_name}")
 

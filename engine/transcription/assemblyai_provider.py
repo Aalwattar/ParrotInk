@@ -50,7 +50,7 @@ class AssemblyAIProvider(BaseProvider):
             "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
             "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
             "max_end_of_turn_silence": adv.max_turn_silence_ms,
-            "utterance_silence_threshold": 300,
+            "utterance_silence_threshold": 700,
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
@@ -118,9 +118,9 @@ class AssemblyAIProvider(BaseProvider):
         
         # In V3, we send the raw bytes directly, not JSON.
         try:
-            # Wrap in create_task so we don't wait for the actual network send to finish 
-            # before we can process the next chunk in the main loop.
-            asyncio.create_task(self.ws.send(audio_int16.tobytes()))
+            # IMPORTANT: We MUST await here to ensure audio chunks are sent in the correct order.
+            # Scrambled chunks will destroy transcription accuracy.
+            await self.ws.send(audio_int16.tobytes())
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")
             self.is_running = False
