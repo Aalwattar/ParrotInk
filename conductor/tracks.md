@@ -10,4 +10,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Smart Toggle Logic & Interaction Refinement** [checkpoint: c03c5e1]
+
   *Link: [./archive/smart_interaction_20260210/](./archive/smart_interaction_20260210/)*
+
+
+
+---
+
+
+
+- [ ] **Track: Advanced Configuration & Test Mode**
+
+  *Link: [./tracks/advanced_config_20260210/](./tracks/advanced_config_20260210/)*
