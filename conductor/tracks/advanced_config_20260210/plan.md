@@ -37,10 +37,10 @@ Update the factory logic to resolve URLs based on the test mode state.
     - [x] **Green:** Ensure integration tests pass.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Factory and Integration' (Protocol in workflow.md)
 
-## Phase 4: Final Smoke Test
+## Phase 4: Final Smoke Test [checkpoint: 360cb22]
 Verify the system switches correctly between mock and live endpoints.
 
-- [~] Task: Perform end-to-end smoke test
-    - [ ] Run with `test.enabled = true` and verify connection to mock server.
-    - [ ] Run with `test.enabled = false` and verify connection attempt to real OpenAI.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Smoke Test' (Protocol in workflow.md)
+- [x] Task: Perform end-to-end smoke test [360cb22]
+    - [x] Run with `test.enabled = true` and verify connection to mock server.
+    - [x] Run with `test.enabled = false` and verify connection attempt to real OpenAI.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Final Smoke Test' (Protocol in workflow.md)
