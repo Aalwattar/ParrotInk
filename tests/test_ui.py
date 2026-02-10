@@ -22,3 +22,30 @@ def test_tray_app_state_change(mocker):
     app = TrayApp()
     app.set_state(AppState.LISTENING)
     assert app.state == AppState.LISTENING
+
+
+def test_on_provider_change(mocker):
+    """Test the callback for provider change."""
+    mock_cb = mocker.Mock()
+    mocker.patch("pystray.Icon")
+    app = TrayApp(on_provider_change=mock_cb)
+
+    # Simulate a menu item selection
+    app._on_provider_selection(None, "openai")
+    mock_cb.assert_called_once_with("openai")
+
+
+def test_open_config(mocker, tmp_path):
+    """Test the open config functionality."""
+    mock_startfile = mocker.patch("os.startfile", create=True)
+    mocker.patch("pystray.Icon")
+
+    # Mock current working directory to use tmp_path
+    mocker.patch("os.getcwd", return_value=str(tmp_path))
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("dummy content")
+
+    app = TrayApp()
+    app._open_config(None, None)
+
+    mock_startfile.assert_called_once()

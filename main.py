@@ -3,11 +3,16 @@ import sys
 from engine.ui import TrayApp
 
 
+def on_provider_change(provider: str):
+    print(f"Provider switched to: {provider}")
+    # In future tasks, we will update the engine's active provider here
+
+
 def main():
     print("Starting Voice2Text...")
     print("Press Ctrl+C in this terminal or select 'Quit' from the tray icon to exit.")
 
-    app = TrayApp()
+    app = TrayApp(on_provider_change=on_provider_change)
 
     try:
         app.run()
