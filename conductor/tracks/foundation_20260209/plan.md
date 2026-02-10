@@ -3,7 +3,7 @@
 ## Phase 1: Project Skeleton & Configuration
 Establish the project structure and implement a robust configuration loader.
 
-- [ ] Task: Set up project structure and initial `main.py` entry point
+- [x] Task: Set up project structure and initial `main.py` entry point (43bea15)
     - [ ] Create `engine/` directory and `main.py`
     - [ ] Verify environment with a simple "Hello Tray" script
 - [ ] Task: Implement TOML configuration loader in `engine/config.py`
