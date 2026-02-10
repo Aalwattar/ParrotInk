@@ -149,13 +149,29 @@ class AssemblyAIProvider(BaseProvider):
         if text is not None:
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
+                if text == self.last_transcript and not event.get("end_of_turn"):
+                    return
+
+                # Level 2 debug: show every raw turn text
+                logger.debug(f"AssemblyAI Turn [End={event.get('end_of_turn')}]: '{text}'")
+
                 if text.strip():
+                    # Normalize for correction detection (strip leading/trailing space)
+                    clean_text = text.strip()
+                    clean_last = self.last_transcript.strip()
+
+                    # Log if it's a correction (non-incremental change in the core text)
+                    if clean_last and not clean_text.startswith(clean_last):
+                        logger.info(f"Live Correction: '{clean_last}' -> '{clean_text}'")
+                    
                     self.on_partial(text)
+                    self.last_transcript = text
 
                 if event.get("end_of_turn"):
                     if text.strip():
                         logger.info(f"End of Turn received: {text}")
                         self.on_final(text)
+                    self.last_transcript = ""
             
             elif msg_type == "FinalTranscript":
                 logger.info(f"Final transcript received: {text}")
