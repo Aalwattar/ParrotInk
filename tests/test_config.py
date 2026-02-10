@@ -1,19 +1,18 @@
 import pytest
-
+import os
 from engine.config import ConfigError, load_config
 
 
 def test_load_config_missing_file():
-    with pytest.raises(ConfigError, match="Configuration file not found"):
-        load_config("non_existent.toml")
+    # Now returns a default config instead of raising error
+    config = load_config("non_existent.toml")
+    assert config.active_provider == "openai"
 
 
 def test_load_config_invalid_toml(tmp_path):
     config_file = tmp_path / "invalid.toml"
-    # Misspelled key or corrupted structure
-    config_file.write_text(
-        'active_provider = "openai\nopenai_api_key = "test"'
-    )  # Missing closing quote
+    # Missing closing quote
+    config_file.write_text('active_provider = "openai')
     with pytest.raises(ConfigError, match="Invalid TOML format"):
         load_config(config_file)
 
@@ -23,8 +22,6 @@ def test_load_config_misspelled_value(tmp_path):
     # Boolean value with typo
     config_file.write_text("""
 active_provider = "openai"
-openai_api_key = "key"
-assemblyai_api_key = "key"
 [hotkeys]
 hotkey = "v"
 hold_mode = fakse
@@ -38,7 +35,6 @@ def test_load_config_invalid_types(tmp_path):
     # active_provider must be a literal
     config_file.write_text("""
 active_provider = "invalid_provider"
-openai_api_key = 123
 [hotkeys]
 hold_mode = "true"
 """)
@@ -50,8 +46,6 @@ def test_load_config_valid(tmp_path):
     config_file = tmp_path / "config.toml"
     config_file.write_text("""
 active_provider = "assemblyai"
-openai_api_key = "op_key"
-assemblyai_api_key = "as_key"
 
 [hotkeys]
 hotkey = "ctrl+v"
@@ -63,8 +57,6 @@ sample_rate = 44100
 """)
     config = load_config(config_file)
     assert config.active_provider == "assemblyai"
-    assert config.openai_api_key == "op_key"
-    assert config.assemblyai_api_key == "as_key"
     assert config.hotkeys.hotkey == "ctrl+v"
     assert config.hotkeys.hold_mode is False
     assert config.transcription.language == "es"
@@ -110,3 +102,12 @@ openai_url = "ws://proxy:1234"
     assert config.test.assemblyai_mock_url == "ws://localhost:8081"  # default
     assert config.advanced.openai_url == "ws://proxy:1234"
     assert config.advanced.assemblyai_url == "wss://api.assemblyai.com/v2/realtime/ws"  # default
+
+def test_config_key_resolution(mocker):
+    config = load_config("non_existent.toml")
+    
+    mock_get = mocker.patch("engine.security.SecurityManager.get_key")
+    mock_get.side_effect = lambda x: "secret-key" if x == "openai_api_key" else None
+    
+    assert config.get_openai_key() == "secret-key"
+    assert config.get_assemblyai_key() is None

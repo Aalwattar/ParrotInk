@@ -14,7 +14,7 @@ class TranscriptionFactory:
             base_url = config.test.openai_mock_url if config.test.enabled else config.advanced.openai_url
             
             return OpenAIProvider(
-                api_key=config.openai_api_key,
+                api_key=config.get_openai_key() or "",
                 on_partial=on_partial,
                 on_final=on_final,
                 base_url=base_url
@@ -24,7 +24,7 @@ class TranscriptionFactory:
             base_url = config.test.assemblyai_mock_url if config.test.enabled else config.advanced.assemblyai_url
             
             return AssemblyAIProvider(
-                api_key=config.assemblyai_api_key,
+                api_key=config.get_assemblyai_key() or "",
                 on_partial=on_partial,
                 on_final=on_final,
                 base_url=base_url,

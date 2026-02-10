@@ -1,8 +1,9 @@
 import tomllib
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, ValidationError
+from .security import SecurityManager
 
 
 class HotkeysConfig(BaseModel):
@@ -28,12 +29,18 @@ class AdvancedConfig(BaseModel):
 
 class Config(BaseModel):
     active_provider: Literal["openai", "assemblyai"] = "openai"
-    openai_api_key: str = ""
-    assemblyai_api_key: str = ""
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: TestConfig = Field(default_factory=TestConfig)
     advanced: AdvancedConfig = Field(default_factory=AdvancedConfig)
+
+    def get_openai_key(self) -> Optional[str]:
+        """Resolves OpenAI API key."""
+        return SecurityManager.get_key("openai_api_key")
+
+    def get_assemblyai_key(self) -> Optional[str]:
+        """Resolves AssemblyAI API key."""
+        return SecurityManager.get_key("assemblyai_api_key")
 
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":
@@ -42,7 +49,9 @@ class Config(BaseModel):
                 data = tomllib.load(f)
             return cls(**data)
         except FileNotFoundError:
-            raise ConfigError(f"Configuration file not found at: {path}") from None
+            # If config doesn't exist, we return a default config
+            # instead of crashing, as keys are now elsewhere.
+            return cls()
         except tomllib.TOMLDecodeError as e:
             raise ConfigError(f"Invalid TOML format in {path}: {e}") from e
         except ValidationError as e:

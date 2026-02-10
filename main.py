@@ -13,6 +13,7 @@ from engine.interaction import InteractionMonitor
 from engine.signals import ShutdownHandler
 from engine.transcription import BaseProvider, TranscriptionFactory
 from engine.ui import AppState, TrayApp
+from engine.security import SecurityManager
 
 
 class AppCoordinator:
@@ -123,7 +124,21 @@ class AppCoordinator:
         if self.is_listening or self.is_connecting:
             return
 
-        print("\n[EVENT] Starting listening...")
+        # Credential check
+        key = None
+        if self.config.active_provider == "openai":
+            key = self.config.get_openai_key()
+        elif self.config.active_provider == "assemblyai":
+            key = self.config.get_assemblyai_key()
+            
+        if not key and not self.config.test.enabled:
+            print(f"\n[ERROR] Missing API Key for {self.config.active_provider}")
+            if self.ui:
+                self.ui.notify(f"Please set your {self.config.active_provider.title()} API Key in the Credentials menu.", "Missing API Key")
+                self.ui.set_state(AppState.ERROR)
+            return
+
+        print(f"\n[EVENT] Starting listening with {self.config.active_provider}...")
         self.is_connecting = True
         self.session_cancelled = False
 
@@ -144,6 +159,8 @@ class AppCoordinator:
             self.is_listening = False
             if self.ui:
                 self.ui.set_state(AppState.ERROR)
+                if "401" in str(e) or "unauthorized" in str(e).lower():
+                     self.ui.notify(f"Invalid API Key for {self.config.active_provider.title()}. Please check your credentials.", "Authentication Failed")
         finally:
             self.is_connecting = False
 
@@ -221,9 +238,16 @@ async def main_async():
         config.active_provider = provider_name
         print(f"\nProvider changed to: {provider_name}")
 
+    def on_set_key(account_id, key):
+        SecurityManager.set_key(account_id, key)
+        print(f"\nAPI Key updated for: {account_id}")
+        if coordinator.ui:
+            coordinator.ui.notify(f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.", "Key Saved")
+
     app = TrayApp(
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
+        on_set_key=on_set_key,
         initial_provider=config.active_provider,
     )
     coordinator.ui = app
