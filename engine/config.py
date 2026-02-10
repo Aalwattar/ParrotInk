@@ -1,0 +1,51 @@
+import tomllib
+from pathlib import Path
+from typing import Literal
+
+from pydantic import BaseModel, Field, ValidationError
+
+
+class HotkeysConfig(BaseModel):
+    hold_to_talk: str
+    toggle_listen: str
+
+
+class TranscriptionConfig(BaseModel):
+    language: str = "en"
+    sample_rate: int = 16000
+
+
+class Config(BaseModel):
+    active_provider: Literal["openai", "assemblyai"]
+    openai_api_key: str
+    assemblyai_api_key: str
+    hotkeys: HotkeysConfig
+    transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
+
+    @classmethod
+    def from_file(cls, path: Path | str) -> "Config":
+        try:
+            with open(path, "rb") as f:
+                data = tomllib.load(f)
+            return cls(**data)
+        except FileNotFoundError:
+            raise ConfigError(f"Configuration file not found at: {path}") from None
+        except tomllib.TOMLDecodeError as e:
+            raise ConfigError(f"Invalid TOML format in {path}: {e}") from e
+        except ValidationError as e:
+            # Format pydantic validation errors into a more readable summary
+            error_messages = []
+            for error in e.errors():
+                loc = ".".join(str(item) for item in error["loc"])
+                msg = error["msg"]
+                error_messages.append(f"{loc}: {msg}")
+            error_summary = "\n".join(error_messages)
+            raise ConfigError(f"Configuration validation failed:\n{error_summary}") from e
+        except Exception as e:
+            raise ConfigError(f"An unexpected error occurred while loading config: {e}") from e
+
+
+class ConfigError(Exception):
+    """Raised when there is an error in the configuration."""
+
+    pass
