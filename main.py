@@ -1,6 +1,7 @@
 import asyncio
 import signal
 import sys
+import argparse
 import threading
 from typing import Optional, Set
 
@@ -14,6 +15,7 @@ from engine.signals import ShutdownHandler
 from engine.transcription import BaseProvider, TranscriptionFactory
 from engine.ui import AppState, TrayApp
 from engine.security import SecurityManager
+from engine.credential_ui import ask_key
 
 
 class AppCoordinator:
@@ -218,6 +220,38 @@ class AppCoordinator:
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
 
+def handle_cli():
+    parser = argparse.ArgumentParser(description="Voice2Text Application")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Command: set-key
+    set_key_parser = subparsers.add_parser("set-key", help="Set an API key")
+    set_key_parser.add_argument("provider", choices=["openai", "assemblyai"], help="The provider to set the key for")
+
+    args = parser.parse_args()
+
+    if args.command == "set-key":
+        account_map = {
+            "openai": ("openai_api_key", "OpenAI"),
+            "assemblyai": ("assemblyai_api_key", "AssemblyAI")
+        }
+        account_id, provider_name = account_map[args.provider]
+        
+        # Use our new UI helper, forcing console if needed or just letting it decide
+        # Since we are running from CLI, the user likely expects console input.
+        # However, our shared helper defaults to GUI if available.
+        # We can implement a specific console call here or reuse the helper.
+        # Let's reuse the helper but maybe print a hint.
+        print(f"Setting credential for {provider_name}...")
+        key = ask_key(provider_name)
+        
+        if key:
+            SecurityManager.set_key(account_id, key)
+            print(f"Successfully saved API key for {provider_name}.")
+        else:
+            print("Operation cancelled.")
+        sys.exit(0)
+
 async def main_async():
     try:
         config = load_config()
@@ -276,6 +310,7 @@ async def main_async():
 
 
 if __name__ == "__main__":
+    handle_cli()
     try:
         asyncio.run(main_async())
     except KeyboardInterrupt:

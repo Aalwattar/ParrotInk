@@ -6,7 +6,7 @@ from typing import Callable, Literal, Optional
 
 import pystray
 from PIL import Image, ImageDraw
-from .security import CredentialDialog
+from .credential_ui import ask_key
 
 
 class AppState(Enum):
@@ -54,9 +54,14 @@ class TrayApp:
             self.on_provider_change(provider)
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
-        key = CredentialDialog.ask_key(provider_name)
-        if key and self.on_set_key:
-            self.on_set_key(provider_id, key)
+        # We launch this in a thread because showing a dialog (console or GUI)
+        # from the pystray callback might block the tray icon loop or not work well.
+        def prompt():
+            key = ask_key(provider_name)
+            if key and self.on_set_key:
+                self.on_set_key(provider_id, key)
+        
+        threading.Thread(target=prompt, daemon=True).start()
 
     def _open_config(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         # Check current dir first
