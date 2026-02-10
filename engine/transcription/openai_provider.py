@@ -79,6 +79,9 @@ class OpenAIProvider(BaseProvider):
         source_rate = self.config.audio.capture_sample_rate
         target_rate = self.config.providers.openai.core.input_audio_rate
 
+        # Ensure we have a 1D float array for resampling
+        audio_chunk = audio_chunk.astype(np.float64).flatten()
+
         # Resample if capture rate differs from OpenAI target rate (usually 16k -> 24k)
         if source_rate != target_rate:
             num_samples = int(len(audio_chunk) * target_rate / source_rate)
@@ -86,7 +89,7 @@ class OpenAIProvider(BaseProvider):
             x_old = np.arange(len(audio_chunk))
             audio_chunk = np.interp(x_new, x_old, audio_chunk)
 
-        # Convert float32 [-1.0, 1.0] to int16
+        # Convert float32 [-1.0, 1.0] or float64 to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
         audio_base64 = base64.b64encode(audio_int16.tobytes()).decode("utf-8")
 

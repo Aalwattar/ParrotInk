@@ -58,6 +58,8 @@ class AudioStreamer:
             try:
                 # Use a timeout to avoid blocking indefinitely so we can check is_running
                 chunk = self.queue.get(timeout=0.1)
+                # Ensure the chunk is 1D (sounddevice returns (N, Channels))
+                chunk = chunk.flatten()
                 duration_ms = (len(chunk) / self.sample_rate) * 1000
                 logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
                 yield chunk

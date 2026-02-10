@@ -40,13 +40,15 @@ def test_audio_generator(mocker):
 
     gen = streamer.generator()
 
-    # Get first chunk
+    # Get first chunk - should be flattened (1D)
     received1 = next(gen)
-    assert np.array_equal(received1, chunk1)
+    assert received1.ndim == 1
+    assert np.array_equal(received1, chunk1.flatten())
 
     # Get second chunk
     received2 = next(gen)
-    assert np.array_equal(received2, chunk2)
+    assert received2.ndim == 1
+    assert np.array_equal(received2, chunk2.flatten())
 
     # Stop streamer and ensure generator terminates
     streamer.is_running = False
