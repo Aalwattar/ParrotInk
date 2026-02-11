@@ -3,7 +3,7 @@ import logging.handlers
 import queue
 import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from platformdirs import user_log_dir
 
@@ -66,11 +66,11 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
 
-    log_queue = queue.Queue(-1)
+    log_queue: queue.Queue = queue.Queue(-1)
     queue_handler = logging.handlers.QueueHandler(log_queue)
     logger.addHandler(queue_handler)
 
-    handlers = []
+    handlers: List[logging.Handler] = []
 
     # 1. Console Handler
     if not quiet:

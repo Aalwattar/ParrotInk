@@ -74,7 +74,8 @@ class AudioStreamer:
             if channels > 1:
                 # Downmix: average across channels to produce mono
                 # We specify dtype to ensure we stay in float32
-                return np.mean(chunk, axis=1, dtype=np.float32)
+                mono_chunk = np.mean(chunk, axis=1, dtype=np.float32)
+                return np.asarray(mono_chunk)
             else:
                 # Squeeze (N, 1) to (N,)
                 return chunk.squeeze()

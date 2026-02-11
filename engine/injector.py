@@ -19,7 +19,7 @@ IS_64_BIT = ctypes.sizeof(ctypes.c_void_p) == 8
 ULONG_PTR = ctypes.c_ulonglong if IS_64_BIT else ctypes.c_ulong
 
 
-class MOUSEINPUT(ctypes.Structure):
+class MOUSEINPUT(ctypes.Structure):  # noqa: N801
     _fields_ = [
         ("dx", ctypes.c_long),
         ("dy", ctypes.c_long),
@@ -30,7 +30,7 @@ class MOUSEINPUT(ctypes.Structure):
     ]
 
 
-class KEYBDINPUT(ctypes.Structure):
+class KEYBDINPUT(ctypes.Structure):  # noqa: N801
     _fields_ = [
         ("wVk", wintypes.WORD),
         ("wScan", wintypes.WORD),
@@ -40,7 +40,7 @@ class KEYBDINPUT(ctypes.Structure):
     ]
 
 
-class HARDWAREINPUT(ctypes.Structure):
+class HARDWAREINPUT(ctypes.Structure):  # noqa: N801
     _fields_ = [
         ("uMsg", wintypes.DWORD),
         ("wParamL", wintypes.WORD),
@@ -48,7 +48,7 @@ class HARDWAREINPUT(ctypes.Structure):
     ]
 
 
-class INPUT_UNION(ctypes.Union):
+class INPUT_UNION(ctypes.Union):  # noqa: N801
     _fields_ = [
         ("mi", MOUSEINPUT),
         ("ki", KEYBDINPUT),
@@ -56,7 +56,7 @@ class INPUT_UNION(ctypes.Union):
     ]
 
 
-class INPUT(ctypes.Structure):
+class INPUT(ctypes.Structure):  # noqa: N801
     _fields_ = [
         ("type", wintypes.DWORD),
         # On 64-bit, this union will be padded to start at 8 bytes
@@ -136,3 +136,56 @@ def inject_backspaces(count: int):
     end_time = time.perf_counter()
     duration_ms = (end_time - start_time) * 1000
     logger.debug(f"Backspaces injection completed in {duration_ms:.2f}ms")
+
+
+class SmartInjector:
+    """
+    Handles stateful text injection, calculating deltas and backspaces
+    to transform previous text into new text.
+    """
+
+    def __init__(self):
+        self.last_text = ""
+
+    def reset(self):
+        """Reset the injection state (usually at the start/end of a turn)."""
+        self.last_text = ""
+
+    def inject(self, text: str, is_final: bool = False):
+        """
+        Calculates the difference between last_text and new text,
+        then performs the necessary backspaces and typing.
+        """
+        # De-duplicate
+        if text == self.last_text and not is_final:
+            return
+
+        # Find common prefix length
+        common_len = 0
+        for i in range(min(len(self.last_text), len(text))):
+            if self.last_text[i] == text[i]:
+                common_len += 1
+            else:
+                break
+
+        # Calculate backspaces needed
+        backspaces = len(self.last_text) - common_len
+        new_text = text[common_len:]
+
+        # Perform Backspaces
+        if backspaces > 0:
+            # Safety cap
+            backspaces = min(backspaces, 100)
+            inject_backspaces(backspaces)
+
+        # Perform Typing
+        if new_text:
+            inject_text(new_text)
+
+        # If it's final, we usually add a space and reset for the next phrase
+        if is_final:
+            if not text.endswith(" "):
+                inject_text(" ")
+            self.last_text = ""
+        else:
+            self.last_text = text

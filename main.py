@@ -14,22 +14,23 @@ from engine.audio import AudioStreamer
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.credential_ui import ask_key
-from engine.indicator_ui import FloatingIndicator
-from engine.injector import inject_backspaces, inject_text
+from engine.injector import SmartInjector, inject_text
 from engine.interaction import InteractionMonitor
 from engine.logging import configure_logging, get_logger
 from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
-from engine.ui import AppState, TrayApp
+from engine.types import AppState
+from engine.ui_bridge import UIBridge
 
 logger = get_logger("Main")
 
 
 class AppCoordinator:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, ui_bridge: Optional[UIBridge] = None):
         self.config = config
+        self.ui_bridge = ui_bridge or UIBridge()  # Fallback for tests
 
         # Calculate chunk size from ms
         sample_rate = config.audio.capture_sample_rate
@@ -42,7 +43,6 @@ class AppCoordinator:
         self.is_connecting = False
         self.loop: Optional[asyncio.AbstractEventLoop] = None
         self._audio_task: Optional[asyncio.Task] = None
-        self.ui: Optional[TrayApp] = None
 
         # Hotkey state
         self.hotkey_pressed = False
@@ -57,25 +57,13 @@ class AppCoordinator:
         self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
         self.anchor: Optional[Anchor] = None
 
-        # Floating Indicator
-        self.indicator: Optional[FloatingIndicator] = None
-        if self.config.ui.floating_indicator.enabled:
-            ind_cfg = self.config.ui.floating_indicator
-            self.indicator = FloatingIndicator(
-                x=ind_cfg.x,
-                y=ind_cfg.y,
-                opacity_idle=ind_cfg.opacity_idle,
-                opacity_active=ind_cfg.opacity_active,
-            )
-            threading.Thread(target=self.indicator.run, daemon=True).start()
-
         self.session_cancelled = False
         self.start_time = 0
 
         # Injection safety
         self.injection_lock = asyncio.Lock()
-        self.is_injecting = False
-        self.last_injected_text = ""
+        self.injector = SmartInjector()
+        self.is_injecting = False  # Restored flag
         self.last_injection_time = 0.0
 
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
@@ -113,7 +101,7 @@ class AppCoordinator:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
         else:
             # Hold Mode: The "Stop on Any Key" feature is DISABLED.
-            # We rely strictly on the hotkey release event (handled in on_release) to stop recording.
+            # We rely strictly on the hotkey release event (handled in on_release).
             return
 
     def _parse_hotkey(self, hotkey_str: str) -> Set[str]:
@@ -196,12 +184,8 @@ class AppCoordinator:
             )
 
     async def _smart_inject(self, text: str, is_final: bool = False):
-        """Inject text using backspaces for corrections if needed."""
+        """Inject text using the stateful injector."""
         if self.session_cancelled:
-            return
-
-        # De-duplicate: don't process if text hasn't changed unless it's the final signal
-        if text == self.last_injected_text and not is_final:
             return
 
         async with self.injection_lock:
@@ -210,75 +194,11 @@ class AppCoordinator:
 
             self.is_injecting = True
             try:
-                # Find common prefix length
-                common_len = 0
-                for i in range(min(len(self.last_injected_text), len(text))):
-                    if self.last_injected_text[i] == text[i]:
-                        common_len += 1
-                    else:
-                        break
-
-                # Case 1: Pure Append (most common for OpenAI or stable AssemblyAI partials)
-                # If everything we already typed is at the start of the new text, just type the delta.
-                if common_len == len(self.last_injected_text):
-                    new_text = text[common_len:]
-                    if new_text:
-                        logger.debug(f"Smart Inject (Append): Injecting '{new_text}'")
-                        await self.loop.run_in_executor(None, inject_text, new_text)
-
-                    if is_final:
-                        if not text.endswith(" "):
-                            await self.loop.run_in_executor(None, inject_text, " ")
-                        self.last_injected_text = ""
-                    else:
-                        self.last_injected_text = text
-                    return
-
-                # Case 2: Correction (Common for AssemblyAI "Turn" updates)
-                # Number of backspaces needed
-                backspaces = len(self.last_injected_text) - common_len
-                new_text = text[common_len:]
-
-                if backspaces > 0:
-                    # Limit backspaces to 100 to avoid runaway deletions
-                    backspaces = min(backspaces, 100)
-                    logger.debug(
-                        f"Smart Inject (Correct): Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')"
-                    )
-                    await self.loop.run_in_executor(None, inject_backspaces, backspaces)
-
-                if new_text:
-                    logger.debug(f"Smart Inject (Correct): Injecting '{new_text}'")
-                    await self.loop.run_in_executor(None, inject_text, new_text)
-
-                # If final, we add a space to the buffer so the NEXT turn knows it's there
-                if is_final:
-                    if not text.endswith(" "):
-                        await self.loop.run_in_executor(None, inject_text, " ")
-                    self.last_injected_text = ""  # Start fresh for next Turn
-                else:
-                    self.last_injected_text = text
-
+                # Note: SmartInjector handles its own delta calculation
+                await self.loop.run_in_executor(None, self.injector.inject, text, is_final)
             finally:
-                self.last_injection_time = time.time()
                 self.is_injecting = False
-
-    async def _inject_direct(self, text: str):
-        if self.session_cancelled:
-            return
-
-        async with self.injection_lock:
-            if self.loop:
-                self.is_injecting = True
-                try:
-                    # Log timing for latency debugging
-                    t0 = time.perf_counter()
-                    await self.loop.run_in_executor(None, inject_text, text)
-                    t1 = time.perf_counter()
-                    logger.debug(f"Direct injection of '{text}' took {(t1 - t0) * 1000:.2f}ms")
-                finally:
-                    self.last_injection_time = time.time()
-                    self.is_injecting = False
+                self.last_injection_time = time.time()
 
     async def _delayed_inject(self, text: str):
         if self.session_cancelled:
@@ -329,12 +249,10 @@ class AppCoordinator:
         availability = self.get_provider_availability()
         if not availability.get(self.config.default_provider, False):
             logger.error(f"Missing API Key for {self.config.default_provider}")
-            if self.ui:
-                self.ui.notify(
-                    f"Please set your {self.config.default_provider.title()} API Key in the Credentials menu.",
-                    "Missing API Key",
-                )
-                self.ui.set_state(AppState.ERROR)
+            provider_title = self.config.default_provider.title()
+            msg = f"Please set your {provider_title} API Key in the Credentials menu."
+            self.ui_bridge.notify(msg, "Missing API Key")
+            self.ui_bridge.set_state(AppState.ERROR)
             return
 
         logger.info(f"Starting listening with {self.config.default_provider}...")
@@ -364,28 +282,21 @@ class AppCoordinator:
             self.interaction_monitor.start()
             self.is_listening = True
 
-            if self.indicator:
-                self.indicator.set_recording(True)
-
-            if self.ui:
-                self.ui.set_state(AppState.LISTENING)
+            self.ui_bridge.set_state(AppState.LISTENING)
             self._audio_task = asyncio.create_task(self._audio_pipe())
         except TimeoutError:
             logger.error("Timeout starting provider connection.")
             self.is_listening = False
-            if self.ui:
-                self.ui.set_state(AppState.ERROR)
-                self.ui.notify("Connection timed out.", "Error")
+            self.ui_bridge.set_state(AppState.ERROR)
+            self.ui_bridge.notify("Connection timed out.", "Error")
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
             self.is_listening = False
-            if self.ui:
-                self.ui.set_state(AppState.ERROR)
-                if "401" in str(e) or "unauthorized" in str(e).lower():
-                    self.ui.notify(
-                        f"Invalid API Key for {self.config.default_provider.title()}. Please check your credentials.",
-                        "Authentication Failed",
-                    )
+            self.ui_bridge.set_state(AppState.ERROR)
+            if "401" in str(e) or "unauthorized" in str(e).lower():
+                provider_title = self.config.default_provider.title()
+                msg = f"Invalid API Key for {provider_title}. Please check your credentials."
+                self.ui_bridge.notify(msg, "Authentication Failed")
         finally:
             self.is_connecting = False
 
@@ -400,11 +311,7 @@ class AppCoordinator:
         self.mouse_monitor.stop()
         self.anchor = None
 
-        if self.indicator:
-            self.indicator.set_recording(False)
-
-        if self.ui:
-            self.ui.set_state(AppState.IDLE)
+        self.ui_bridge.set_state(AppState.IDLE)
 
         # 1. Stop the streamer first
         try:
@@ -439,7 +346,8 @@ class AppCoordinator:
             self.is_injecting = False
 
     async def _audio_pipe(self):
-        # Finally the delay issue resolved by using an async generator to avoid blocking the event loop.
+        # Finally the delay issue resolved by using an async generator
+        # to avoid blocking the event loop.
         try:
             async for chunk, capture_time in self.streamer.async_generator():
                 if not self.is_listening or not self.provider:
@@ -551,19 +459,11 @@ async def main_async(cli_args):
     handler = ShutdownHandler()
     signal.signal(signal.SIGINT, handler.handle)
 
-    coordinator = AppCoordinator(config)
+    ui_bridge = UIBridge()
+    coordinator = AppCoordinator(config, ui_bridge)
     coordinator.loop = asyncio.get_running_loop()
 
     def on_quit():
-        # Log indicator position if enabled for persistence awareness
-        if coordinator.indicator and coordinator.indicator.root:
-            try:
-                x = coordinator.indicator.root.winfo_x()
-                y = coordinator.indicator.root.winfo_y()
-                logger.info(f"Indicator last position: ({x}, {y})")
-                # In a future version, we would save this to config.toml here.
-            except Exception:
-                pass
         handler.should_exit = True
 
     def on_provider_change(provider_name):
@@ -577,18 +477,21 @@ async def main_async(cli_args):
     def on_set_key(account_id, key):
         SecurityManager.set_key(account_id, key)
         logger.info(f"API Key updated for: {account_id}")
-        if coordinator.ui:
-            coordinator.ui.update_availability(coordinator.get_provider_availability())
-            coordinator.ui.notify(
-                f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.",
-                "Key Saved",
-            )
+        ui_bridge.update_availability(coordinator.get_provider_availability())
+        ui_bridge.notify(
+            f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.",
+            "Key Saved",
+        )
 
     def on_toggle_sounds(enabled):
         config.interaction.sounds.enabled = enabled
         logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
 
+    # Import TrayApp here to keep AppCoordinator decoupled from UI module
+    from engine.ui import TrayApp
+
     app = TrayApp(
+        bridge=ui_bridge,
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
         on_set_key=on_set_key,
@@ -597,7 +500,6 @@ async def main_async(cli_args):
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
     )
-    coordinator.ui = app
 
     ui_thread = threading.Thread(target=app.run, daemon=True)
     ui_thread.start()

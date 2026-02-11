@@ -50,8 +50,8 @@ class HotkeysConfig(BaseModel):
 class SoundsConfig(BaseModel):
     enabled: bool = True
     volume: float = 0.5
-    start_sound_path: str = "assets/sounds/start.wav"
-    stop_sound_path: str = "assets/sounds/stop.wav"
+    start_sound_path: str = r"C:\Windows\Media\Windows Speech On.wav"
+    stop_sound_path: str = r"C:\Windows\Media\Windows Speech Off.wav"
 
 
 class FloatingIndicatorConfig(BaseModel):
@@ -192,7 +192,8 @@ class Config(BaseModel):
         # We convert to dict, but Pydantic's model_dump is better
         data = self.model_dump()
 
-        # Remove keys that shouldn't be persisted if any (e.g. keys are already handled by SecurityManager)
+        # Remove keys that shouldn't be persisted if any
+        # (e.g. keys are already handled by SecurityManager)
 
         try:
             content = tomli_w.dumps(data)

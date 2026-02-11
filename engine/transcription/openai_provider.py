@@ -5,7 +5,8 @@ import time
 from typing import Callable, Optional
 
 import numpy as np
-import websockets
+import websockets.asyncio.client
+from websockets.asyncio.client import ClientConnection
 
 from engine.config import Config
 from engine.logging import get_logger
@@ -28,7 +29,7 @@ class OpenAIProvider(BaseProvider):
         super().__init__(api_key, on_partial, on_final, "")
         self.config = config
         self.url = self._build_url()
-        self.ws: Optional[websockets.WebSocketClientProtocol] = None
+        self.ws: Optional[ClientConnection] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
         self.current_partial = ""

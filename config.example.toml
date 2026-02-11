@@ -23,8 +23,8 @@
 # Playback volume (0.0 to 1.0)
 # volume = 0.5
 # Built-in sound asset paths
-# start_sound_path = "assets/sounds/start.wav"
-# stop_sound_path = "assets/sounds/stop.wav"
+# start_sound_path = "C:\\Windows\\Media\\Windows Speech On.wav"
+# stop_sound_path = "C:\\Windows\\Media\\Windows Speech Off.wav"
 
 [ui.floating_indicator]
 # Enable/Disable the small floating circle that pulses while recording

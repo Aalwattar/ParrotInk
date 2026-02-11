@@ -53,10 +53,14 @@ no_implicit_optional = true
 module = [
     "sounddevice",
     "pywin32",
+    "win32gui",
+    "win32process",
     "pystray",
+    "pynput.*",
     "websockets.*",
     "assemblyai.*",
-    "openai.*"
+    "openai.*",
+    "tomli_w.*"
 ]
 ignore_missing_imports = true
 
