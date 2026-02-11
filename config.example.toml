@@ -10,6 +10,21 @@ hotkey = "ctrl+alt+v"
 # If true, listen while holding. If false, toggle with a press.
 hold_mode = false
 
+[interaction]
+# Enable/Disable cancelling dictation when clicking outside the target control
+cancel_on_click_outside_anchor = true
+# Scope: "control" (target widget) or "window" (whole application)
+anchor_scope = "control"
+
+[interaction.sounds]
+# Enable subtle auditory feedback for start/stop events
+enabled = true
+# Playback volume (0.0 to 1.0)
+volume = 0.5
+# Built-in sound asset paths
+start_sound_path = "assets/sounds/start.wav"
+stop_sound_path = "assets/sounds/stop.wav"
+
 # Provider-agnostic capture settings
 [audio]
 capture_sample_rate = 16000

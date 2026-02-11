@@ -41,6 +41,22 @@ class HotkeysConfig(BaseModel):
     hold_mode: bool = True
 
 
+class SoundsConfig(BaseModel):
+    enabled: bool = True
+    volume: float = 0.5
+    start_sound_path: str = "assets/sounds/start.wav"
+    stop_sound_path: str = "assets/sounds/stop.wav"
+
+
+class InteractionConfig(BaseModel):
+    # From cancel_click_away_20260210
+    cancel_on_click_outside_anchor: bool = True
+    anchor_scope: Literal["control", "window"] = "control"
+    
+    # From auditory_feedback_20260210
+    sounds: SoundsConfig = Field(default_factory=SoundsConfig)
+
+
 class AudioConfig(BaseModel):
     capture_sample_rate: int = 16000
     chunk_ms: int = 100
@@ -124,6 +140,7 @@ class Config(BaseModel):
         default="openai", validation_alias=AliasChoices("default_provider", "active_provider")
     )
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
+    interaction: InteractionConfig = Field(default_factory=InteractionConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: AppTestConfig = Field(default_factory=AppTestConfig)

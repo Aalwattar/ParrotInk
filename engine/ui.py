@@ -24,14 +24,18 @@ class TrayApp:
         on_quit_callback: Callable | None = None,
         on_provider_change: Callable[[ProviderType], None] | None = None,
         on_set_key: Callable[[str, str], None] | None = None,
+        on_toggle_sounds: Callable[[bool], None] | None = None,
         initial_provider: ProviderType = "openai",
+        initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
     ):
         self.state = AppState.IDLE
         self.default_provider: ProviderType = initial_provider
+        self.sounds_enabled = initial_sounds_enabled
         self.on_quit_callback = on_quit_callback
         self.on_provider_change = on_provider_change
         self.on_set_key = on_set_key
+        self.on_toggle_sounds = on_toggle_sounds
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -54,6 +58,11 @@ class TrayApp:
         self.default_provider = provider
         if self.on_provider_change:
             self.on_provider_change(provider)
+
+    def _on_toggle_sounds_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        self.sounds_enabled = not self.sounds_enabled
+        if self.on_toggle_sounds:
+            self.on_toggle_sounds(self.sounds_enabled)
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
         # We launch this in a thread because showing a dialog (console or GUI)
@@ -93,6 +102,13 @@ class TrayApp:
             pystray.MenuItem("Credentials", pystray.Menu(
                 pystray.MenuItem("Set OpenAI Key...", lambda: self._on_set_key_clicked("openai_api_key", "OpenAI")),
                 pystray.MenuItem("Set AssemblyAI Key...", lambda: self._on_set_key_clicked("assemblyai_api_key", "AssemblyAI")),
+            )),
+            pystray.MenuItem("Settings", pystray.Menu(
+                pystray.MenuItem(
+                    "Enable Audio Feedback",
+                    self._on_toggle_sounds_clicked,
+                    checked=lambda item: self.sounds_enabled
+                ),
             )),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Open Config", self._open_config),

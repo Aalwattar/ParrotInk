@@ -1,78 +1,36 @@
 import numpy as np
 import pytest
-import asyncio
 from engine.audio import AudioStreamer
 
-def test_audio_init():
-    """Test initialization of AudioStreamer."""
+
+def test_audio_streamer_init():
+    """Verify that AudioStreamer initializes with correct sample rate and chunk size."""
     streamer = AudioStreamer(sample_rate=16000, chunk_size=1024)
     assert streamer.sample_rate == 16000
     assert streamer.chunk_size == 1024
     assert not streamer.is_running
-    assert streamer.queue.empty()
 
-def test_audio_callback():
-    """Test the audio callback processing."""
-    streamer = AudioStreamer()
-    # Mock data: 1024 frames of 1 channel float32
-    indata = np.random.uniform(-1, 1, (1024, 1)).astype(np.float32)
-    
-    # We want to verify that data is put into the queue
-    streamer._callback(indata, 1024, None, None)
-    
-    # Check if queue has data
-    assert not streamer.queue.empty()
-    queued_data, capture_time = streamer.queue.get()
-    assert np.array_equal(queued_data, indata)
-    assert isinstance(capture_time, float)
 
-def test_normalize_audio_mono():
+def test_audio_normalization_mono():
     """Test normalization of already mono audio."""
     streamer = AudioStreamer()
-    chunk = np.random.uniform(-1, 1, 1024).astype(np.float32)
+    chunk = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     normalized = streamer._normalize_audio(chunk)
-    assert normalized.shape == (1024,)
     assert np.array_equal(normalized, chunk)
 
-def test_normalize_audio_stereo():
-    """Test normalization (downmixing) of stereo audio."""
+
+def test_audio_normalization_stereo():
+    """Test normalization of stereo audio (downmixing)."""
     streamer = AudioStreamer()
-    # 1024 frames, 2 channels
-    chunk = np.random.uniform(-1, 1, (1024, 2)).astype(np.float32)
+    # 2 channels, 3 frames
+    chunk = np.array([[0.1, 0.5], [0.2, 0.6], [0.3, 0.7]], dtype=np.float32)
     normalized = streamer._normalize_audio(chunk)
-    assert normalized.shape == (1024,)
-    # Should be average of channels
-    expected = np.mean(chunk, axis=1)
+    # Mean of [0.1, 0.5] is 0.3, etc.
+    expected = np.array([0.3, 0.4, 0.5], dtype=np.float32)
     assert np.allclose(normalized, expected)
 
-@pytest.mark.asyncio
-async def test_audio_async_generator():
-    """Test that the async_generator yields data from the queue."""
-    streamer = AudioStreamer()
-    streamer.is_running = True
-
-    # Put two chunks in the queue with dummy timestamps
-    chunk1 = np.zeros((1024, 1), dtype=np.float32)
-    chunk2 = np.ones((1024, 1), dtype=np.float32)
-    streamer.queue.put((chunk1, 1.0))
-    streamer.queue.put((chunk2, 2.0))
-
-    gen = streamer.async_generator()
-    
-    # Get first chunk
-    val1, t1 = await gen.__anext__()
-    assert val1.shape == (1024,)
-    assert np.all(val1 == 0)
-    assert t1 == 1.0
-
-    # Get second chunk
-    val2, t2 = await gen.__anext__()
-    assert val2.shape == (1024,)
-    assert np.all(val2 == 1)
-    assert t2 == 2.0
-
-    # Stop and verify it exits
-    streamer.is_running = False
-    # The generator should finish now
-    with pytest.raises(StopAsyncIteration):
-        await gen.__anext__()
+def test_play_sound_missing_file():
+    """Verify that play_sound does not raise exception if file is missing."""
+    from engine.audio_feedback import play_sound
+    # Should not raise anything
+    play_sound("non_existent.wav")

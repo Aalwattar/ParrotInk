@@ -8,6 +8,7 @@ from typing import Optional, Set
 from pynput import keyboard
 
 from engine.audio import AudioStreamer
+from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.credential_ui import ask_key
 from engine.injector import inject_backspaces, inject_text
@@ -265,6 +266,16 @@ class AppCoordinator:
                 t1 = time.perf_counter()
                 logger.debug(f"Injection call completed in {(t1 - t0) * 1000:.2f}ms")
 
+    def _play_feedback_sound(self, sound_type: Literal["start", "stop"]):
+        """Plays the configured sound feedback if enabled."""
+        sounds = self.config.interaction.sounds
+        if not sounds.enabled:
+            return
+
+        path = sounds.start_sound_path if sound_type == "start" else sounds.stop_sound_path
+        # We don't need to await this as it runs in its own thread in engine/audio_feedback.py
+        play_sound(path, volume=sounds.volume)
+
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
             return
@@ -293,6 +304,10 @@ class AppCoordinator:
 
         try:
             await self.provider.start()
+            
+            # Play start sound AFTER successful connection
+            self._play_feedback_sound("start")
+
             self.streamer.start()
             self.interaction_monitor.start()
             self.is_listening = True
@@ -340,6 +355,9 @@ class AppCoordinator:
         if self.provider:
             await self.provider.stop()
             self.provider = None
+
+        # Play stop sound after everything is closed
+        self._play_feedback_sound("stop")
 
         # 4. Clean up injection state
         async with self.injection_lock:
@@ -480,11 +498,17 @@ async def main_async(cli_args):
                 "Key Saved",
             )
 
+    def on_toggle_sounds(enabled):
+        config.interaction.sounds.enabled = enabled
+        logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
+
     app = TrayApp(
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
         on_set_key=on_set_key,
+        on_toggle_sounds=on_toggle_sounds,
         initial_provider=config.default_provider,
+        initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
     )
     coordinator.ui = app
