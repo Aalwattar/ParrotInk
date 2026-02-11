@@ -63,3 +63,17 @@ def test_tray_app_availability(mocker):
     new_availability = {"openai": False, "assemblyai": True}
     app.update_availability(new_availability)
     assert app.availability == new_availability
+
+def test_tray_menu_structure(mocker):
+    """Verify that the tray menu does NOT contain the redundant Status: Ready item."""
+    mock_icon = mocker.patch("pystray.Icon")
+    app = TrayApp()
+    
+    args, kwargs = mock_icon.call_args
+    menu = args[3]
+    items = list(menu)
+    
+    # After fix: items[0].text should be "OpenAI"
+    assert items[0].text == "OpenAI"
+    # Ensure it's NOT the old label
+    assert items[0].text != "Status: Ready"

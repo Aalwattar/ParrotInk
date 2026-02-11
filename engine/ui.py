@@ -75,8 +75,6 @@ class TrayApp:
 
     def _create_icon(self) -> pystray.Icon:
         menu = pystray.Menu(
-            pystray.MenuItem("Status: Ready", lambda: None, enabled=False),
-            pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 "OpenAI",
                 lambda icon, item: self._on_provider_selection(icon, "openai"),
