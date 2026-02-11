@@ -3,10 +3,11 @@ import signal
 import sys
 import threading
 import time
-from typing import Optional, Set
+from typing import Literal, Optional, Set
 
 from pynput import keyboard
 
+from engine.anchor import Anchor
 from engine.audio import AudioStreamer
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
@@ -14,6 +15,7 @@ from engine.credential_ui import ask_key
 from engine.injector import inject_backspaces, inject_text
 from engine.interaction import InteractionMonitor
 from engine.logging import configure_logging, get_logger
+from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
@@ -47,6 +49,11 @@ class AppCoordinator:
         # Interaction monitoring
         self.interaction_monitor = InteractionMonitor()
         self.interaction_monitor.set_any_key_callback(self._on_manual_stop)
+
+        # Mouse monitoring for click-away
+        self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
+        self.anchor: Optional[Anchor] = None
+
         self.session_cancelled = False
         self.start_time = 0
 
@@ -111,7 +118,7 @@ class AppCoordinator:
         """Get canonical name for a pynput key and normalize modifiers."""
         if isinstance(key, keyboard.KeyCode):
             if key.char:
-                return key.char.lower()
+                return str(key.char.lower())
             if key.vk:
                 # 65-90 are A-Z
                 if 65 <= key.vk <= 90:
@@ -201,7 +208,7 @@ class AppCoordinator:
                     if new_text:
                         logger.debug(f"Smart Inject (Append): Injecting '{new_text}'")
                         await self.loop.run_in_executor(None, inject_text, new_text)
-                    
+
                     if is_final:
                         if not text.endswith(" "):
                             await self.loop.run_in_executor(None, inject_text, " ")
@@ -276,6 +283,20 @@ class AppCoordinator:
         # We don't need to await this as it runs in its own thread in engine/audio_feedback.py
         play_sound(path, volume=sounds.volume)
 
+    def _on_mouse_click(self, x: int, y: int):
+        """Callback for mouse clicks to detect click-away."""
+        if not self.is_listening or self.session_cancelled:
+            return
+
+        if not self.config.interaction.cancel_on_click_outside_anchor:
+            return
+
+        if self.anchor and not self.anchor.is_match(x, y):
+            logger.info(f"Click away detected at ({x}, {y}) outside anchor. Cancelling session.")
+            # Trigger manual stop logic
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
             return
@@ -298,13 +319,18 @@ class AppCoordinator:
         self.start_time = time.time()
         self.last_injected_text = ""
 
+        # Capture Anchor
+        if self.config.interaction.cancel_on_click_outside_anchor:
+            self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
+            self.mouse_monitor.start()
+
         self.provider = TranscriptionFactory.create(
             self.config, on_partial=self.on_partial, on_final=self.on_final
         )
 
         try:
             await self.provider.start()
-            
+
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
 
@@ -335,6 +361,8 @@ class AppCoordinator:
         self.is_listening = False
         self.is_connecting = False
         self.interaction_monitor.stop()
+        self.mouse_monitor.stop()
+        self.anchor = None
 
         if self.ui:
             self.ui.set_state(AppState.IDLE)
