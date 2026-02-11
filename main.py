@@ -331,10 +331,10 @@ class AppCoordinator:
         # 3. Stop provider
         if self.provider:
             try:
-                async with asyncio.timeout(2.0):
+                async with asyncio.timeout(5.0):
                     await self.provider.stop()
             except Exception as e:
-                logger.error(f"Error stopping provider: {e}")
+                logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
             self.provider = None
 
         # Play stop sound after everything is closed

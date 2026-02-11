@@ -44,7 +44,7 @@ def migrate_config_file(path: Path | str):
 
 class HotkeysConfig(BaseModel):
     hotkey: str = "ctrl+alt+v"
-    hold_mode: bool = True
+    hold_mode: bool = False
 
 
 class SoundsConfig(BaseModel):

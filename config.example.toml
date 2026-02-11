@@ -9,7 +9,7 @@
 # Global hotkey for triggering transcription
 # hotkey = "ctrl+alt+v"
 # If true, listen while holding. If false, toggle with a press.
-# hold_mode = true
+# hold_mode = false
 
 [interaction]
 # Enable/Disable cancelling dictation when clicking outside the target control
