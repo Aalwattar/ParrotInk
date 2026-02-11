@@ -7,10 +7,12 @@ from engine.logging import get_logger
 
 logger = get_logger("Anchor")
 
+
 class Anchor:
     """
     Represents the 'target' context where dictation started.
     """
+
     def __init__(self, scope: Literal["control", "window"]):
         self.scope = scope
         self.hwnd: Optional[int] = None
@@ -34,7 +36,9 @@ class Anchor:
                 # GetGUIThreadInfo is the way.
                 anchor.control_hwnd = cls._get_focused_control(anchor.hwnd)
 
-        logger.debug(f"Captured anchor: scope={scope}, hwnd={anchor.hwnd}, control={anchor.control_hwnd}")
+        logger.debug(
+            f"Captured anchor: scope={scope}, hwnd={anchor.hwnd}, control={anchor.control_hwnd}"
+        )
         return anchor
 
     @staticmethod

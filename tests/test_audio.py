@@ -1,5 +1,5 @@
 import numpy as np
-import pytest
+
 from engine.audio import AudioStreamer
 
 
@@ -29,8 +29,10 @@ def test_audio_normalization_stereo():
     expected = np.array([0.3, 0.4, 0.5], dtype=np.float32)
     assert np.allclose(normalized, expected)
 
+
 def test_play_sound_missing_file():
     """Verify that play_sound does not raise exception if file is missing."""
     from engine.audio_feedback import play_sound
+
     # Should not raise anything
     play_sound("non_existent.wav")

@@ -1,12 +1,14 @@
 import os
-import keyring
 from typing import Optional
+
+import keyring
+
 
 class SecurityManager:
     """Manages secure storage and resolution of API keys."""
-    
+
     SERVICE_NAME = "voice2text"
-    
+
     @classmethod
     def get_key(cls, account_name: str) -> Optional[str]:
         """
@@ -22,7 +24,7 @@ class SecurityManager:
         except Exception as e:
             # Fallback gracefully if keyring fails
             print(f"Warning: Keyring lookup failed for {account_name}: {e}")
-            
+
         # 2. Environment Variable
         env_var = account_name.upper()
         return os.environ.get(env_var)
@@ -35,7 +37,7 @@ class SecurityManager:
             try:
                 keyring.delete_password(cls.SERVICE_NAME, account_name)
             except keyring.errors.PasswordDeleteError:
-                pass # Already deleted
+                pass  # Already deleted
             return
 
         keyring.set_password(cls.SERVICE_NAME, account_name, key)

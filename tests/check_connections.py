@@ -7,7 +7,7 @@ import websockets
 async def check_url(name, url):
     print(f"Checking {name} at {url}...")
     try:
-        async with websockets.connect(url, open_timeout=2) as ws:
+        async with websockets.connect(url, open_timeout=2):
             print(f"  SUCCESS: Handshake complete for {name}")
             return True
     except Exception as e:

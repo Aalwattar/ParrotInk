@@ -1,13 +1,15 @@
 import asyncio
 import queue
 import time
-from typing import Generator, Tuple, AsyncGenerator
+from typing import AsyncGenerator, Tuple
 
 import numpy as np
 import sounddevice as sd
+
 from engine.logging import get_logger
 
 logger = get_logger("Audio")
+
 
 class AudioStreamer:
     def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
@@ -66,7 +68,7 @@ class AudioStreamer:
         """Ensures audio is mono (1D array) by downmixing if necessary."""
         if chunk.ndim == 1:
             return chunk
-        
+
         if chunk.ndim == 2:
             channels = chunk.shape[1]
             if channels > 1:
@@ -76,7 +78,7 @@ class AudioStreamer:
             else:
                 # Squeeze (N, 1) to (N,)
                 return chunk.squeeze()
-        
+
         return chunk.flatten()
 
     async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
@@ -89,12 +91,12 @@ class AudioStreamer:
                 # Important: Yield control to the event loop if queue is empty
                 await asyncio.sleep(0.01)
                 continue
-            
+
             # Robust normalization (Mono + 1D)
             chunk = self._normalize_audio(chunk)
-            
+
             # Debug log only if needed (commented out to reduce noise, or keep if crucial)
             # duration_ms = (len(chunk) / self.sample_rate) * 1000
             # logger.debug(f"Yielding audio chunk: {len(chunk)} samples ({duration_ms:.1f}ms)")
-            
+
             yield chunk, capture_time

@@ -1,10 +1,14 @@
-import tomllib
 import re
+import tomllib
 from pathlib import Path
-from typing import Literal, Optional, List, Union
+from typing import List, Literal, Optional
 
 from pydantic import AliasChoices, BaseModel, Field, ValidationError
+
+from .logging import get_logger
 from .security import SecurityManager
+
+logger = get_logger("Config")
 
 
 def migrate_config_file(path: Path | str):
@@ -19,19 +23,21 @@ def migrate_config_file(path: Path | str):
 
     try:
         content = path.read_text(encoding="utf-8")
-        
+
         # 1. capture_sample_rate -> 16000 (standard efficiency)
-        new_content = re.sub(r'(\bcapture_sample_rate\s*=\s*)24000\b', r'\g<1>16000', content)
-        
+        new_content = re.sub(r"(\bcapture_sample_rate\s*=\s*)24000\b", r"\g<1>16000", content)
+
         # 2. transcription.sample_rate -> 16000
-        new_content = re.sub(r'(\bsample_rate\s*=\s*)24000\b', r'\g<1>16000', new_content)
+        new_content = re.sub(r"(\bsample_rate\s*=\s*)24000\b", r"\g<1>16000", new_content)
 
         # 3. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
-        new_content = re.sub(r'(\binput_audio_rate\s*=\s*)16000\b', r'\g<1>24000', new_content)
+        new_content = re.sub(r"(\binput_audio_rate\s*=\s*)16000\b", r"\g<1>24000", new_content)
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")
-            print(f"Migrated {path} to standardized sample rates (16kHz capture, 24kHz OpenAI input).")
+            print(
+                f"Migrated {path} to standardized sample rates (16kHz capture, 24kHz OpenAI input)."
+            )
     except Exception as e:
         print(f"Warning: Failed to migrate config file {path}: {e}")
 
@@ -60,7 +66,7 @@ class InteractionConfig(BaseModel):
     # From cancel_click_away_20260210
     cancel_on_click_outside_anchor: bool = True
     anchor_scope: Literal["control", "window"] = "control"
-    
+
     # From auditory_feedback_20260210
     sounds: SoundsConfig = Field(default_factory=SoundsConfig)
 
@@ -89,6 +95,7 @@ class LoggingConfig(BaseModel):
 
 # --- OpenAI Configuration ---
 
+
 class OpenAICoreConfig(BaseModel):
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
     realtime_ws_model: str = "gpt-4o-realtime-preview-2024-10-01"
@@ -104,16 +111,21 @@ class OpenAIAdvancedConfig(BaseModel):
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.5
     prefix_padding_ms: int = 300
-    silence_duration_ms: int = 350 # Reduced from 500
+    silence_duration_ms: int = 350  # Reduced from 500
     include_logprobs: bool = False
 
 
 class OpenAIConfig(BaseModel):
-    core: OpenAICoreConfig = Field(default_factory=OpenAICoreConfig, validation_alias=AliasChoices("core", "tier1"))
-    advanced: OpenAIAdvancedConfig = Field(default_factory=OpenAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2"))
+    core: OpenAICoreConfig = Field(
+        default_factory=OpenAICoreConfig, validation_alias=AliasChoices("core", "tier1")
+    )
+    advanced: OpenAIAdvancedConfig = Field(
+        default_factory=OpenAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2")
+    )
 
 
 # --- AssemblyAI Configuration ---
+
 
 class AssemblyAICoreConfig(BaseModel):
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
@@ -127,15 +139,19 @@ class AssemblyAICoreConfig(BaseModel):
 
 class AssemblyAIAdvancedConfig(BaseModel):
     end_of_turn_confidence_threshold: float = 0.4
-    min_end_of_turn_silence_when_confident_ms: int = 400 # Default 400
-    max_turn_silence_ms: int = 1000 # Default 1280
+    min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
+    max_turn_silence_ms: int = 1000  # Default 1280
     format_turns: bool = False
     language_detection: bool = False
 
 
 class AssemblyAIConfig(BaseModel):
-    core: AssemblyAICoreConfig = Field(default_factory=AssemblyAICoreConfig, validation_alias=AliasChoices("core", "tier1"))
-    advanced: AssemblyAIAdvancedConfig = Field(default_factory=AssemblyAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2"))
+    core: AssemblyAICoreConfig = Field(
+        default_factory=AssemblyAICoreConfig, validation_alias=AliasChoices("core", "tier1")
+    )
+    advanced: AssemblyAIAdvancedConfig = Field(
+        default_factory=AssemblyAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2")
+    )
 
 
 class ProvidersConfig(BaseModel):
@@ -171,12 +187,13 @@ class Config(BaseModel):
     def save(self, path: Path | str = "config.toml"):
         """Saves the current configuration to a TOML file."""
         import tomli_w
+
         path = Path(path)
         # We convert to dict, but Pydantic's model_dump is better
         data = self.model_dump()
-        
+
         # Remove keys that shouldn't be persisted if any (e.g. keys are already handled by SecurityManager)
-        
+
         try:
             content = tomli_w.dumps(data)
             path.write_text(content, encoding="utf-8")

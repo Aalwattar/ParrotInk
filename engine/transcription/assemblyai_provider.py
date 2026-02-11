@@ -1,18 +1,19 @@
 import asyncio
-import base64
 import json
-import urllib.parse
 import time
+import urllib.parse
 from typing import Callable, Optional
 
 import numpy as np
 import websockets
 
-from .base import BaseProvider
 from engine.config import Config
 from engine.logging import get_logger
 
+from .base import BaseProvider
+
 logger = get_logger("AssemblyAI")
+
 
 class AssemblyAIProvider(BaseProvider):
     """AssemblyAI transcription provider using Streaming V3."""
@@ -38,7 +39,7 @@ class AssemblyAIProvider(BaseProvider):
 
         core = self.config.providers.assemblyai.core
         adv = self.config.providers.assemblyai.advanced
-        
+
         # Build V3 query parameters
         params = {
             "sample_rate": core.sample_rate,
@@ -46,7 +47,9 @@ class AssemblyAIProvider(BaseProvider):
             "speech_model": core.speech_model,
             "encoding": core.encoding,
             "vad_threshold": core.vad_threshold,
-            "inactivity_timeout": core.inactivity_timeout_seconds if core.inactivity_timeout_seconds > 0 else None,
+            "inactivity_timeout": core.inactivity_timeout_seconds
+            if core.inactivity_timeout_seconds > 0
+            else None,
             "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
             "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
             "max_end_of_turn_silence": adv.max_turn_silence_ms,
@@ -54,10 +57,10 @@ class AssemblyAIProvider(BaseProvider):
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
-        
+
         # Remove None values
         params = {k: v for k, v in params.items() if v is not None}
-        
+
         query_string = urllib.parse.urlencode(params)
         return f"{core.ws_url}?{query_string}"
 
@@ -67,8 +70,7 @@ class AssemblyAIProvider(BaseProvider):
         logger.info(f"Connecting to AssemblyAI at {self.url}...")
         try:
             self.ws = await websockets.connect(
-                self.url, 
-                additional_headers=headers if not self.config.test.enabled else None
+                self.url, additional_headers=headers if not self.config.test.enabled else None
             )
             self.is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -115,7 +117,7 @@ class AssemblyAIProvider(BaseProvider):
 
         # Convert float32 [-1.0, 1.0] to int16
         audio_int16 = (audio_chunk * 32767).astype(np.int16)
-        
+
         # In V3, we send the raw bytes directly, not JSON.
         try:
             # IMPORTANT: We MUST await here to ensure audio chunks are sent in the correct order.
@@ -145,7 +147,7 @@ class AssemblyAIProvider(BaseProvider):
         """Process incoming events."""
         msg_type = event.get("type") or event.get("message_type")
         text = event.get("transcript") or event.get("text")
-        
+
         if text is not None:
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
@@ -163,7 +165,7 @@ class AssemblyAIProvider(BaseProvider):
                     # Log if it's a correction (non-incremental change in the core text)
                     if clean_last and not clean_text.startswith(clean_last):
                         logger.info(f"Live Correction: '{clean_last}' -> '{clean_text}'")
-                    
+
                     self.on_partial(text)
                     self.last_transcript = text
 
@@ -172,7 +174,7 @@ class AssemblyAIProvider(BaseProvider):
                         logger.info(f"End of Turn received: {text}")
                         self.on_final(text)
                     self.last_transcript = ""
-            
+
             elif msg_type == "FinalTranscript":
                 logger.info(f"Final transcript received: {text}")
                 self.on_final(text)

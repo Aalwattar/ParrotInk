@@ -7,11 +7,13 @@ from typing import Callable, Optional
 import numpy as np
 import websockets
 
-from .base import BaseProvider
 from engine.config import Config
 from engine.logging import get_logger
 
+from .base import BaseProvider
+
 logger = get_logger("OpenAI")
+
 
 class OpenAIProvider(BaseProvider):
     """OpenAI Realtime API transcription provider."""
@@ -34,7 +36,7 @@ class OpenAIProvider(BaseProvider):
     def _build_url(self) -> str:
         if self.config.test.enabled:
             return self.config.test.openai_mock_url
-        
+
         core = self.config.providers.openai.core
         return f"{core.realtime_ws_url_base}?model={core.realtime_ws_model}"
 
@@ -44,8 +46,7 @@ class OpenAIProvider(BaseProvider):
         logger.info(f"Connecting to OpenAI at {self.url}...")
         try:
             self.ws = await websockets.connect(
-                self.url, 
-                additional_headers=headers if not self.config.test.enabled else None
+                self.url, additional_headers=headers if not self.config.test.enabled else None
             )
             self.is_running = True
 
@@ -77,7 +78,7 @@ class OpenAIProvider(BaseProvider):
         """Send audio chunk as base64 encoded PCM16, with resampling if needed."""
         if not self.ws or not self.is_running:
             return
-        
+
         send_start = time.perf_counter()
         lag_ms = (send_start - capture_time) * 1000
         logger.debug(f"Audio chunk age before send: {lag_ms:.1f}ms")
@@ -108,7 +109,7 @@ class OpenAIProvider(BaseProvider):
         """Configure session for audio-to-text only (no voice response needed)."""
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
-        
+
         session_update = {
             "type": "session.update",
             "session": {
@@ -121,7 +122,9 @@ class OpenAIProvider(BaseProvider):
                     "threshold": adv.vad_threshold,
                     "prefix_padding_ms": adv.prefix_padding_ms,
                     "silence_duration_ms": adv.silence_duration_ms,
-                } if adv.turn_detection_type != "off" else None,
+                }
+                if adv.turn_detection_type != "off"
+                else None,
             },
         }
         event_str = json.dumps(session_update)
@@ -152,7 +155,7 @@ class OpenAIProvider(BaseProvider):
                 logger.info(f"Final transcript received: {transcript}")
                 self.on_final(transcript)
             self.current_partial = ""
-        
+
         elif event_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta", "")
             if delta:

@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
+
 from pynput import keyboard
+
 from engine.config import Config, HotkeysConfig, TranscriptionConfig
 from main import AppCoordinator
 

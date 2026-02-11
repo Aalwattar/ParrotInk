@@ -1,119 +1,93 @@
 # Voice2Text Configuration Template
-# Use this as a reference for your config.toml
+# All values shown below are the defaults. Commented out lines will be ignored,
+# and the application will use the built-in defaults.
 
 # Initial transcription provider to use ("openai" or "assemblyai")
-default_provider = "assemblyai"
+# default_provider = "openai"
 
 [hotkeys]
 # Global hotkey for triggering transcription
-hotkey = "ctrl+alt+v"
+# hotkey = "ctrl+alt+v"
 # If true, listen while holding. If false, toggle with a press.
-hold_mode = false
+# hold_mode = true
 
 [interaction]
 # Enable/Disable cancelling dictation when clicking outside the target control
-cancel_on_click_outside_anchor = true
+# cancel_on_click_outside_anchor = true
 # Scope: "control" (target widget) or "window" (whole application)
-anchor_scope = "control"
+# anchor_scope = "control"
 
 [interaction.sounds]
 # Enable subtle auditory feedback for start/stop events
-enabled = true
+# enabled = true
 # Playback volume (0.0 to 1.0)
-volume = 0.5
+# volume = 0.5
 # Built-in sound asset paths
-start_sound_path = "assets/sounds/start.wav"
-stop_sound_path = "assets/sounds/stop.wav"
+# start_sound_path = "assets/sounds/start.wav"
+# stop_sound_path = "assets/sounds/stop.wav"
 
 [ui.floating_indicator]
 # Enable/Disable the small floating circle that pulses while recording
-enabled = true
+# enabled = true
 # Opacity when not recording (0.0 to 1.0)
-opacity_idle = 0.3
+# opacity_idle = 0.3
 # Max opacity during pulse while recording
-opacity_active = 0.8
+# opacity_active = 0.8
 # Screen coordinates
-x = 500
-y = 50
+# x = 500
+# y = 50
 
 # Provider-agnostic capture settings
 [audio]
-capture_sample_rate = 16000
+# capture_sample_rate = 16000
 # Duration of each audio chunk sent to the provider (in milliseconds)
-chunk_ms = 100
+# chunk_ms = 100
 
 [transcription]
-# Default language for transcription (provider-specific overrides exist below)
-language = "en"
-sample_rate = 16000
+# Default language for transcription
+# language = "en"
+# sample_rate = 16000
 
 [test]
 # Enable mock transcription for testing without using real API credits
-enabled = false
-openai_mock_url = "ws://localhost:8081"
-assemblyai_mock_url = "ws://localhost:8081"
+# enabled = false
+# openai_mock_url = "ws://localhost:8081"
+# assemblyai_mock_url = "ws://localhost:8081"
 
 # -----------------------------
 # Provider Settings
 # -----------------------------
 
 [providers.openai.core]
-# WebSocket connection target
-realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
-realtime_ws_model = "gpt-4o-realtime-preview-2024-10-01"
-
-# Models: whisper-1, gpt-4o-transcribe-latest
-transcription_model = "whisper-1"
-language = "en"
-prompt = "" # optional context/keywords
-
-# Input audio format (Only 24000 supported for audio/pcm in Realtime)
-input_audio_type = "audio/pcm16"
-input_audio_rate = 24000
+# realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
+# realtime_ws_model = "gpt-4o-realtime-preview-2024-10-01"
+# transcription_model = "whisper-1"
+# language = "en"
+# prompt = ""
 
 [providers.openai.advanced]
-# noise_reduction: near_field | far_field | off
-noise_reduction = "off"
-# turn_detection_type: server_vad | off
-turn_detection_type = "server_vad"
-vad_threshold = 0.5
-prefix_padding_ms = 300
-silence_duration_ms = 350
-include_logprobs = false
+# noise_reduction = "off"
+# turn_detection_type = "server_vad"
+# vad_threshold = 0.5
+# prefix_padding_ms = 300
+# silence_duration_ms = 350
+# include_logprobs = false
 
 [providers.assemblyai.core]
-# Streaming v3 endpoint
-ws_url = "wss://streaming.assemblyai.com/v3/ws"
-
-# Required parameters for V3
-sample_rate = 16000
-vad_threshold = 0.4
-
-# encoding: pcm_s16le | pcm_mulaw
-encoding = "pcm_s16le"
-# speech_model: universal-streaming-english | universal-streaming-multi
-speech_model = "universal-streaming-english"
-# word/phrase boosting list
-keyterms_prompt = []
-# 0 = disabled
-inactivity_timeout_seconds = 0
+# ws_url = "wss://streaming.assemblyai.com/v3/ws"
+# sample_rate = 16000
+# vad_threshold = 0.4
+# encoding = "pcm_s16le"
+# speech_model = "universal-streaming-english"
+# inactivity_timeout_seconds = 0
 
 [logging]
-# Enable persistent logging to a file
-file_enabled = false
-# Level of detail for file logs (1 = basic, 2 = deep/WebSocket traffic)
-file_level = 1
-# Optional: Override default log file path.
-# Default is %LOCALAPPDATA%\Voice2Text\logs\voice2text.log on Windows.
-# file_path = "C:/path/to/my.log"
+# file_enabled = false
+# file_level = 1
 
 [providers.assemblyai.advanced]
-# Latency vs accuracy tradeoffs (0.0 to 1.0)
-end_of_turn_confidence_threshold = 0.4
-min_end_of_turn_silence_when_confident_ms = 400
-max_turn_silence_ms = 1000
-
-# Return formatted final transcripts
-format_turns = false
-# Detect language (multilingual model only)
-language_detection = false
+# end_of_turn_confidence_threshold = 0.4
+# min_end_of_turn_silence_when_confident_ms = 400
+# max_turn_silence_ms = 1000
+# format_turns = false
+# language_detection = false

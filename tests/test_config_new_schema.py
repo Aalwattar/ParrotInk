@@ -1,5 +1,7 @@
 import pytest
-from engine.config import load_config, ConfigError
+
+from engine.config import load_config
+
 
 def test_load_config_new_audio_section(tmp_path):
     config_file = tmp_path / "audio_config.toml"
@@ -13,6 +15,7 @@ chunk_ms = 50
     config = load_config(config_file)
     assert config.audio.capture_sample_rate == 44100
     assert config.audio.chunk_ms == 50
+
 
 def test_load_config_openai_provider(tmp_path):
     config_file = tmp_path / "openai_config.toml"
@@ -54,6 +57,7 @@ include_logprobs = true
     assert config.providers.openai.advanced.silence_duration_ms == 200
     assert config.providers.openai.advanced.include_logprobs is True
 
+
 def test_load_config_assemblyai_provider(tmp_path):
     config_file = tmp_path / "assemblyai_config.toml"
     config_file.write_text("""
@@ -76,7 +80,7 @@ format_turns = true
 language_detection = true
 """)
     config = load_config(config_file)
-    
+
     # Check core (Tier 1)
     assert config.providers.assemblyai.core.ws_url == "wss://custom.assemblyai.com"
     assert config.providers.assemblyai.core.sample_rate == 48000
@@ -92,6 +96,7 @@ language_detection = true
     assert config.providers.assemblyai.advanced.max_turn_silence_ms == 1000
     assert config.providers.assemblyai.advanced.format_turns is True
     assert config.providers.assemblyai.advanced.language_detection is True
+
 
 def test_legacy_advanced_removed(tmp_path):
     config_file = tmp_path / "legacy.toml"

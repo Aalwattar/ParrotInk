@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import signal
 import sys
@@ -63,7 +65,7 @@ class AppCoordinator:
                 x=ind_cfg.x,
                 y=ind_cfg.y,
                 opacity_idle=ind_cfg.opacity_idle,
-                opacity_active=ind_cfg.opacity_active
+                opacity_active=ind_cfg.opacity_active,
             )
             threading.Thread(target=self.indicator.run, daemon=True).start()
 
@@ -189,7 +191,9 @@ class AppCoordinator:
 
         # Ensure final text is fully synchronized and add a trailing space
         if self.loop:
-            asyncio.run_coroutine_threadsafe(self._smart_inject(text + " ", is_final=True), self.loop)
+            asyncio.run_coroutine_threadsafe(
+                self._smart_inject(text + " ", is_final=True), self.loop
+            )
 
     async def _smart_inject(self, text: str, is_final: bool = False):
         """Inject text using backspaces for corrections if needed."""
@@ -238,7 +242,9 @@ class AppCoordinator:
                 if backspaces > 0:
                     # Limit backspaces to 100 to avoid runaway deletions
                     backspaces = min(backspaces, 100)
-                    logger.debug(f"Smart Inject (Correct): Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')")
+                    logger.debug(
+                        f"Smart Inject (Correct): Backspacing {backspaces} chars ('{self.last_injected_text[common_len:]}')"
+                    )
                     await self.loop.run_in_executor(None, inject_backspaces, backspaces)
 
                 if new_text:
@@ -249,7 +255,7 @@ class AppCoordinator:
                 if is_final:
                     if not text.endswith(" "):
                         await self.loop.run_in_executor(None, inject_text, " ")
-                    self.last_injected_text = "" # Start fresh for next Turn
+                    self.last_injected_text = ""  # Start fresh for next Turn
                 else:
                     self.last_injected_text = text
 
@@ -301,6 +307,11 @@ class AppCoordinator:
         if not self.is_listening or self.session_cancelled:
             return
 
+        # In Hold Mode, we rely strictly on the hotkey release.
+        # Clicks (even outside the anchor) should not cancel the session.
+        if self.config.hotkeys.hold_mode:
+            return
+
         if not self.config.interaction.cancel_on_click_outside_anchor:
             return
 
@@ -342,7 +353,9 @@ class AppCoordinator:
         )
 
         try:
-            await self.provider.start()
+            # Add timeout for connection
+            async with asyncio.timeout(5.0):
+                await self.provider.start()
 
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
@@ -350,13 +363,19 @@ class AppCoordinator:
             self.streamer.start()
             self.interaction_monitor.start()
             self.is_listening = True
-            
+
             if self.indicator:
                 self.indicator.set_recording(True)
 
             if self.ui:
                 self.ui.set_state(AppState.LISTENING)
             self._audio_task = asyncio.create_task(self._audio_pipe())
+        except TimeoutError:
+            logger.error("Timeout starting provider connection.")
+            self.is_listening = False
+            if self.ui:
+                self.ui.set_state(AppState.ERROR)
+                self.ui.notify("Connection timed out.", "Error")
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
             self.is_listening = False
@@ -380,7 +399,7 @@ class AppCoordinator:
         self.interaction_monitor.stop()
         self.mouse_monitor.stop()
         self.anchor = None
-        
+
         if self.indicator:
             self.indicator.set_recording(False)
 
@@ -388,7 +407,10 @@ class AppCoordinator:
             self.ui.set_state(AppState.IDLE)
 
         # 1. Stop the streamer first
-        self.streamer.stop()
+        try:
+            self.streamer.stop()
+        except Exception as e:
+            logger.error(f"Error stopping streamer: {e}")
 
         # 2. Cancel the pipe task
         if self._audio_task:
@@ -401,7 +423,11 @@ class AppCoordinator:
 
         # 3. Stop provider
         if self.provider:
-            await self.provider.stop()
+            try:
+                async with asyncio.timeout(2.0):
+                    await self.provider.stop()
+            except Exception as e:
+                logger.error(f"Error stopping provider: {e}")
             self.provider = None
 
         # Play stop sound after everything is closed
@@ -414,10 +440,13 @@ class AppCoordinator:
 
     async def _audio_pipe(self):
         # Finally the delay issue resolved by using an async generator to avoid blocking the event loop.
-        async for chunk, capture_time in self.streamer.async_generator():
-            if not self.is_listening or not self.provider:
-                break
-            await self.provider.send_audio(chunk, capture_time)
+        try:
+            async for chunk, capture_time in self.streamer.async_generator():
+                if not self.is_listening or not self.provider:
+                    break
+                await self.provider.send_audio(chunk, capture_time)
+        except Exception as e:
+            logger.exception(f"Error in audio pipe: {e}")
 
     def on_press(self, key):
         name = self._get_canonical_name(key)

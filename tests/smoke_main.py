@@ -22,7 +22,7 @@ def test_main_startup():
     try:
         # If it's going to crash on init (like the AttributeError), it will happen immediately
         # We wait 5 seconds to be sure
-        for i in range(5):
+        for _i in range(5):
             time.sleep(1)
             if process.poll() is not None:
                 stdout, stderr = process.communicate()

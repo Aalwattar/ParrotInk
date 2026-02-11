@@ -6,10 +6,12 @@ from engine.logging import get_logger
 
 logger = get_logger("MouseMonitor")
 
+
 class MouseMonitor:
     """
     Monitors global mouse events to detect clicks outside the anchor.
     """
+
     def __init__(self, on_click_event: Callable[[int, int], None]):
         self.on_click_event = on_click_event
         self.listener: Optional[mouse.Listener] = None

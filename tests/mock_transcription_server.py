@@ -57,8 +57,8 @@ async def mock_assemblyai_handler(websocket):
 async def main():
     print(f"Starting mock servers on PID {os.getpid()}...", flush=True)
     try:
-        server1 = await websockets.serve(mock_openai_handler, "127.0.0.1", 8081)
-        server2 = await websockets.serve(mock_assemblyai_handler, "127.0.0.1", 8082)
+        await websockets.serve(mock_openai_handler, "127.0.0.1", 8081)
+        await websockets.serve(mock_assemblyai_handler, "127.0.0.1", 8082)
         print("Mock servers are now LISTENING on 127.0.0.1:8081 and 8082", flush=True)
         await asyncio.Future()  # run forever
     except Exception as e:

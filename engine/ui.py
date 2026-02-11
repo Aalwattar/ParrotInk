@@ -6,6 +6,7 @@ from typing import Callable, Literal, Optional
 
 import pystray
 from PIL import Image, ImageDraw
+
 from .credential_ui import ask_key
 
 
@@ -71,7 +72,7 @@ class TrayApp:
             key = ask_key(provider_name)
             if key and self.on_set_key:
                 self.on_set_key(provider_id, key)
-        
+
         threading.Thread(target=prompt, daemon=True).start()
 
     def _open_config(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
@@ -99,17 +100,29 @@ class TrayApp:
                 radio=True,
             ),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Credentials", pystray.Menu(
-                pystray.MenuItem("Set OpenAI Key...", lambda: self._on_set_key_clicked("openai_api_key", "OpenAI")),
-                pystray.MenuItem("Set AssemblyAI Key...", lambda: self._on_set_key_clicked("assemblyai_api_key", "AssemblyAI")),
-            )),
-            pystray.MenuItem("Settings", pystray.Menu(
-                pystray.MenuItem(
-                    "Enable Audio Feedback",
-                    self._on_toggle_sounds_clicked,
-                    checked=lambda item: self.sounds_enabled
+            pystray.MenuItem(
+                "Credentials",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        "Set OpenAI Key...",
+                        lambda: self._on_set_key_clicked("openai_api_key", "OpenAI"),
+                    ),
+                    pystray.MenuItem(
+                        "Set AssemblyAI Key...",
+                        lambda: self._on_set_key_clicked("assemblyai_api_key", "AssemblyAI"),
+                    ),
                 ),
-            )),
+            ),
+            pystray.MenuItem(
+                "Settings",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        "Enable Audio Feedback",
+                        self._on_toggle_sounds_clicked,
+                        checked=lambda item: self.sounds_enabled,
+                    ),
+                ),
+            ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Open Config", self._open_config),
             pystray.MenuItem("Quit", self.stop),

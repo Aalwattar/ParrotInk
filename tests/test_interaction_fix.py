@@ -1,9 +1,11 @@
 import time
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from main import AppCoordinator
+import pytest
+
 from engine.config import Config
+from main import AppCoordinator
+
 
 @pytest.fixture
 def mock_config():
@@ -13,11 +15,12 @@ def mock_config():
     config.audio.chunk_ms = 30
     config.hotkeys = MagicMock()
     config.hotkeys.hotkey = "ctrl+space"
-    config.hotkeys.hold_mode = True # Set to Hold Mode
+    config.hotkeys.hold_mode = True  # Set to Hold Mode
     config.test = MagicMock()
     config.test.enabled = True
     config.default_provider = "openai"
     return config
+
 
 def test_hold_mode_interruption_bug(mock_config):
     """
@@ -26,24 +29,24 @@ def test_hold_mode_interruption_bug(mock_config):
     Expected behavior (Fix): It ignores the key.
     """
     # Mock AudioStreamer to avoid sounddevice init
-    with patch("main.AudioStreamer") as MockStreamer:
+    with patch("main.AudioStreamer"):
         coordinator = AppCoordinator(mock_config)
-        
+
         # Setup active listening state
         coordinator.stop_listening = AsyncMock()
         coordinator.is_listening = True
         coordinator.is_connecting = False
-        coordinator.start_time = time.time() - 10 # Started 10s ago (past cooldown)
+        coordinator.start_time = time.time() - 10  # Started 10s ago (past cooldown)
         coordinator.last_injection_time = 0
         coordinator.is_injecting = False
         coordinator.injection_lock = MagicMock()
         coordinator.injection_lock.locked.return_value = False
-        coordinator.loop = MagicMock() # Mock the loop
-        
+        coordinator.loop = MagicMock()  # Mock the loop
+
         # Simulate pressing 'a' (not the hotkey)
         # This simulates the "Stop on Any Key" callback
-        coordinator._on_manual_stop(key='a')
-        
+        coordinator._on_manual_stop(key="a")
+
         # ASSERT: verify stop_listening was NOT called
         # This should FAIL currently because the bug exists
         coordinator.stop_listening.assert_not_called()

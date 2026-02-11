@@ -1,7 +1,8 @@
-from unittest.mock import MagicMock
 import pytest
-from engine.config import Config, HotkeysConfig, TranscriptionConfig, AudioConfig, AppTestConfig
+
+from engine.config import AudioConfig, Config, HotkeysConfig, TranscriptionConfig
 from main import AppCoordinator
+
 
 def test_coordinator_initialization():
     config = Config(
@@ -15,6 +16,7 @@ def test_coordinator_initialization():
     assert "ctrl" in coordinator.target_hotkey
     assert "alt" in coordinator.target_hotkey
     assert "v" in coordinator.target_hotkey
+
 
 @pytest.mark.asyncio
 async def test_coordinator_basic_state():

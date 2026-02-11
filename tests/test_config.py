@@ -1,5 +1,5 @@
 import pytest
-import os
+
 from engine.config import ConfigError, load_config
 
 
@@ -91,14 +91,16 @@ openai_mock_url = "ws://127.0.0.1:9000"
     assert config.test.openai_mock_url == "ws://127.0.0.1:9000"
     assert config.test.assemblyai_mock_url == "ws://localhost:8081"  # default
 
+
 def test_config_key_resolution(mocker):
     config = load_config("non_existent.toml")
-    
+
     mock_get = mocker.patch("engine.security.SecurityManager.get_key")
     mock_get.side_effect = lambda x: "secret-key" if x == "openai_api_key" else None
-    
+
     assert config.get_openai_key() == "secret-key"
     assert config.get_assemblyai_key() is None
+
 
 def test_config_backward_compatibility(tmp_path):
     """Should still load if using legacy 'active_provider' name."""
