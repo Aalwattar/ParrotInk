@@ -49,7 +49,7 @@ class OpenAIProvider(BaseProvider):
         if self.config.test.enabled:
             return self.config.test.openai_mock_url
         # Intent=transcription is still required in the URL for this flow
-        return f"{self.config.providers.openai.core.ws_url}?intent=transcription"
+        return f"{self.config.providers.openai.core.realtime_ws_url_base}?intent=transcription"
 
     async def start(self):
         """Connect and configure the session."""
