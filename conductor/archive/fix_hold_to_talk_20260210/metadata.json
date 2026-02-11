@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_hold_to_talk_20260210",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-02-10T18:42:00Z",
+  "updated_at": "2026-02-10T18:42:00Z",
+  "description": "Fix premature session interruption when using 'Hold to Talk' mode by disabling 'Stop on Any Key'."
+}
