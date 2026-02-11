@@ -72,6 +72,14 @@ class AppCoordinator:
         self._shutdown_lock = asyncio.Lock()
         self._is_shutting_down = False
 
+        # Connection lifecycle
+        self._last_activity_time = 0.0
+        self._idle_timer_task: Optional[asyncio.Task] = None
+        self._session_start_time = 0.0
+        self._rotation_pending = False
+        self._backoff_delay = 1.0
+        self._last_fail_time = 0.0
+
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
     def get_provider_availability(self) -> dict[str, bool]:
@@ -247,6 +255,74 @@ class AppCoordinator:
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
+    async def ensure_connected(self):
+        """
+        Idempotent connection management.
+        Ensures the provider is connected based on connection_mode.
+        """
+        if self.provider and self.provider.is_running:
+            # Check for rotation
+            if self.config.default_provider == "openai":
+                age = time.time() - self._session_start_time
+                if age > 3300:  # 55 minutes
+                    if self.is_listening:
+                        if not self._rotation_pending:
+                            logger.info("Session age > 55m, marking rotation pending.")
+                            self._rotation_pending = True
+                    else:
+                        logger.info("Rotating OpenAI session due to age.")
+                        await self.provider.stop()
+                        self.provider = None
+                        # Fall through to reconnect
+                elif self._rotation_pending and not self.is_listening:
+                    logger.info("Performing pending OpenAI session rotation.")
+                    await self.provider.stop()
+                    self.provider = None
+                    self._rotation_pending = False
+                    # Fall through to reconnect
+
+        if self.provider and self.provider.is_running:
+            return
+
+        # Initialize provider if not exists
+        if not self.provider:
+            self.provider = TranscriptionFactory.create(
+                self.config, on_partial=self.on_partial, on_final=self.on_final
+            )
+            self.audio_adapter = AudioAdapter(
+                capture_rate_hz=self.config.audio.capture_sample_rate,
+                provider_spec=self.provider.get_audio_spec(),
+            )
+
+        # Connect
+        # Exponential backoff check
+        now = time.time()
+        time_since_fail = now - self._last_fail_time
+        if time_since_fail < self._backoff_delay:
+            wait_time = self._backoff_delay - time_since_fail
+            logger.warning(f"Connection backoff active. Waiting {wait_time:.1f}s...")
+            await asyncio.sleep(wait_time)
+
+        logger.info(f"Connecting to {self.config.default_provider}...")
+        self.is_connecting = True
+        try:
+            async with asyncio.timeout(10.0):
+                await self.provider.start()
+            self._session_start_time = time.time()
+            self._rotation_pending = False
+            self._backoff_delay = 1.0  # Reset on success
+            logger.info("Connected successfully.")
+        except Exception as e:
+            self._last_fail_time = time.time()
+            # Max 60s backoff
+            self._backoff_delay = min(self._backoff_delay * 2, 60.0)
+            logger.error(f"Failed to connect (backoff updated to {self._backoff_delay}s): {e}")
+            self.provider = None
+            self.audio_adapter = None
+            raise
+        finally:
+            self.is_connecting = False
+
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
             return
@@ -267,38 +343,29 @@ class AppCoordinator:
         self.start_time = time.time()
         self.last_injected_text = ""
 
+        # Cancel idle timer if running
+        if self._idle_timer_task:
+            self._idle_timer_task.cancel()
+            self._idle_timer_task = None
+
         # Capture Anchor
         if self.config.interaction.cancel_on_click_outside_anchor:
             self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
             self.mouse_monitor.start()
 
-        self.provider = TranscriptionFactory.create(
-            self.config, on_partial=self.on_partial, on_final=self.on_final
-        )
-        self.audio_adapter = AudioAdapter(
-            capture_rate_hz=self.config.audio.capture_sample_rate,
-            provider_spec=self.provider.get_audio_spec(),
-        )
-
         try:
-            # Add timeout for connection
-            async with asyncio.timeout(5.0):
-                await self.provider.start()
+            # Ensure connection
+            await self.ensure_connected()
 
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
 
-            self.streamer.start()
+            self.streamer.start(loop=self.loop)
             self.interaction_monitor.start()
             self.is_listening = True
 
             self.ui_bridge.set_state(AppState.LISTENING)
             self._audio_task = asyncio.create_task(self._audio_pipe())
-        except TimeoutError:
-            logger.error("Timeout starting provider connection.")
-            self.is_listening = False
-            self.ui_bridge.set_state(AppState.ERROR)
-            self.ui_bridge.notify("Connection timed out.", "Error")
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
             self.is_listening = False
@@ -338,15 +405,21 @@ class AppCoordinator:
                 pass
             self._audio_task = None
 
-        # 3. Stop provider
+        # 3. Stop provider if on_demand
         if self.provider:
-            try:
-                async with asyncio.timeout(5.0):
-                    await self.provider.stop()
-            except Exception as e:
-                logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
-            self.provider = None
-            self.audio_adapter = None
+            if self.config.audio.connection_mode == "on_demand":
+                try:
+                    async with asyncio.timeout(5.0):
+                        await self.provider.stop()
+                except Exception as e:
+                    logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
+                self.provider = None
+                self.audio_adapter = None
+            else:
+                # WARM or ALWAYS_ON: start idle timer if needed
+                self._last_activity_time = time.time()
+                if self.config.audio.connection_mode == "warm":
+                    self._idle_timer_task = asyncio.create_task(self._idle_timer_check())
 
         # Play stop sound after everything is closed
         self._play_feedback_sound("stop")
@@ -401,12 +474,31 @@ class AppCoordinator:
             logger.info("Shutdown sequence complete.")
             # Note: The caller or main loop handler is responsible for stopping the event loop
 
+    async def _idle_timer_check(self):
+        """Task that waits for idle timeout and closes connection."""
+        timeout = self.config.audio.warm_idle_timeout_seconds
+        try:
+            await asyncio.sleep(timeout)
+            # Check if there was activity while we were sleeping
+            if time.time() - self._last_activity_time >= timeout:
+                if self.provider and self.provider.is_running and not self.is_listening:
+                    logger.info(f"Closing warm connection after {timeout}s idle.")
+                    await self.provider.stop()
+                    self.provider = None
+                    self.audio_adapter = None
+        except asyncio.CancelledError:
+            pass
+
     async def _audio_pipe(self):
         # Finally the delay issue resolved by using an async generator
         # to avoid blocking the event loop.
         try:
             async for chunk, capture_time in self.streamer.async_generator():
-                if not self.is_listening or not self.provider or not self.audio_adapter:
+                # STRICT INVARIANT: Never send audio unless in LISTENING state
+                if not self.is_listening:
+                    continue
+
+                if not self.provider or not self.audio_adapter:
                     break
 
                 processed = self.audio_adapter.process(chunk)

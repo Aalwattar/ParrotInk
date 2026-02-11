@@ -74,6 +74,8 @@ class InteractionConfig(BaseModel):
 class AudioConfig(BaseModel):
     capture_sample_rate: int = 16000
     chunk_ms: int = 100
+    connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
+    warm_idle_timeout_seconds: int = Field(default=300, ge=30, le=1800)
 
 
 class TranscriptionConfig(BaseModel):

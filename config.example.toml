@@ -42,6 +42,10 @@
 # capture_sample_rate = 16000
 # Duration of each audio chunk sent to the provider (in milliseconds)
 # chunk_ms = 100
+# Connection lifecycle: "on_demand", "warm", or "always_on"
+# connection_mode = "warm"
+# In warm mode, seconds to keep connection open after last activity
+# warm_idle_timeout_seconds = 300
 
 [transcription]
 # Default language for transcription
