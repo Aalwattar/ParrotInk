@@ -37,3 +37,24 @@ class Resampler:
     def close(self):
         """Releases the soxr stream resources."""
         self._stream = None
+
+
+class HighPassFilter:
+    """A simple one-pole high-pass filter to remove DC offset and rumble."""
+
+    def __init__(self, cutoff_hz: float = 80.0, sample_rate: int = 16000):
+        # alpha = RC / (RC + dt)
+        rc = 1.0 / (2.0 * np.pi * cutoff_hz)
+        dt = 1.0 / sample_rate
+        self.alpha = rc / (rc + dt)
+        self.prev_x = 0.0
+        self.prev_y = 0.0
+
+    def process(self, chunk: np.ndarray) -> np.ndarray:
+        """Applies the HPF to a 1D audio chunk."""
+        out = np.zeros_like(chunk)
+        for i in range(len(chunk)):
+            out[i] = self.alpha * (self.prev_y + chunk[i] - self.prev_x)
+            self.prev_x = chunk[i]
+            self.prev_y = out[i]
+        return out
