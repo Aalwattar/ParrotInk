@@ -11,11 +11,17 @@ from main import AppCoordinator
 @pytest.mark.asyncio
 async def test_ensure_connected_idempotency():
     config = Config()
+    config.test.enabled = True
+    config.default_provider = "openai"
     coordinator = AppCoordinator(config)
-    mock_provider = AsyncMock()
+    
+    mock_provider = MagicMock()
     mock_provider.is_running = True
-    mock_provider.get_type = MagicMock(return_value="openai")
+    mock_provider.get_type.return_value = "openai"
+    mock_provider.start = AsyncMock() # Must be awaitable if called
+    
     coordinator.provider = mock_provider
+    coordinator._session_start_time = time.time()
 
     # Second call should return immediately without calling start()
     await coordinator.ensure_connected()
@@ -25,6 +31,7 @@ async def test_ensure_connected_idempotency():
 @pytest.mark.asyncio
 async def test_warm_idle_timeout():
     config = Config()
+    config.test.enabled = True
     config.audio.connection_mode = "warm"
     config.audio.warm_idle_timeout_seconds = 0.1  # Very short for test
 
@@ -52,6 +59,7 @@ async def test_openai_rotation_guard():
     from engine.audio.adapter import ProviderAudioSpec
 
     config = Config()
+    config.test.enabled = True
     config.default_provider = "openai"
     coordinator = AppCoordinator(config)
 
@@ -86,33 +94,50 @@ async def test_openai_rotation_guard():
     assert mock_provider.stop.called
     assert coordinator.provider is new_mock
 
+
 @pytest.mark.asyncio
+
+
 async def test_provider_switching():
+
+
     from engine.audio.adapter import ProviderAudioSpec
+
+
     config = Config()
+
+
+    config.test.enabled = True
+
+
     config.default_provider = "openai"
+
+
     coordinator = AppCoordinator(config)
-    
+
+
+
+
     spec_openai = ProviderAudioSpec(sample_rate_hz=24000)
     spec_assembly = ProviderAudioSpec(sample_rate_hz=16000)
-    
+
     mock_openai = AsyncMock()
     mock_openai.is_running = True
     mock_openai.get_type = MagicMock(return_value="openai")
     mock_openai.get_audio_spec = MagicMock(return_value=spec_openai)
     coordinator.provider = mock_openai
-    
+
     # Switch config to assemblyai
     config.default_provider = "assemblyai"
-    
+
     # ensure_connected should detect mismatch and stop openai
     new_mock = AsyncMock()
     new_mock.is_running = False
     new_mock.get_type = MagicMock(return_value="assemblyai")
     new_mock.get_audio_spec = MagicMock(return_value=spec_assembly)
-    
-    with patch('engine.transcription.factory.TranscriptionFactory.create', return_value=new_mock):
+
+    with patch("engine.transcription.factory.TranscriptionFactory.create", return_value=new_mock):
         await coordinator.ensure_connected()
-        
+
     assert mock_openai.stop.called
     assert coordinator.provider is new_mock

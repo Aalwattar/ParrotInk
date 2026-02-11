@@ -100,7 +100,8 @@ class LoggingConfig(BaseModel):
 
 class OpenAICoreConfig(BaseModel):
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
-    model: str = "gpt-4o-mini-transcribe"  # Latest optimized transcription model
+    connection_model: str = "gpt-4o-mini-realtime-preview"  # Model used for the WS connection
+    transcription_model: str = "gpt-4o-mini-transcribe"  # Model used for internal transcription
     language: str = "en"
     prompt: str = ""
     input_audio_type: str = "audio/pcm16"

@@ -11,6 +11,9 @@ default_provider = "openai"
 [audio]
 capture_sample_rate = 44100
 chunk_ms = 50
+
+[providers.openai.tier1]
+model = "foo"
 """)
     config = load_config(config_file)
     assert config.audio.capture_sample_rate == 44100
@@ -24,7 +27,7 @@ default_provider = "openai"
 
 [providers.openai.tier1]
 realtime_ws_url_base = "wss://custom.openai.com"
-model = "gpt-4o-transcribe"
+transcription_model = "gpt-4o-transcribe"
 language = "en"
 prompt = "context"
 input_audio_type = "audio/pcm"
@@ -41,7 +44,7 @@ include_logprobs = true
     config = load_config(config_file)
     # Check core (Tier 1)
     assert config.providers.openai.core.realtime_ws_url_base == "wss://custom.openai.com"
-    assert config.providers.openai.core.model == "gpt-4o-transcribe"
+    assert config.providers.openai.core.transcription_model == "gpt-4o-transcribe"
     assert config.providers.openai.core.language == "en"
     assert config.providers.openai.core.prompt == "context"
     assert config.providers.openai.core.input_audio_type == "audio/pcm"

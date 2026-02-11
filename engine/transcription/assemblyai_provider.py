@@ -159,10 +159,10 @@ class AssemblyAIProvider(BaseProvider):
                 # In V3, transcripts within a Turn are cumulative.
                 if text == self.last_transcript:
                     if event.get("end_of_turn"):
-                         if text.strip():
-                             logger.info(f"End of Turn received: {text}")
-                             self.on_final(text)
-                         self.last_transcript = ""
+                        if text.strip():
+                            logger.info(f"End of Turn received: {text}")
+                            self.on_final(text)
+                        self.last_transcript = ""
                     return
 
                 # Level 2 debug: show every raw turn text

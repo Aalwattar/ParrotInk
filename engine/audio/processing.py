@@ -33,3 +33,7 @@ class Resampler:
 
         # ResampleStream.resample_chunk handles the state
         return cast(np.ndarray, self._stream.resample_chunk(chunk))
+
+    def close(self):
+        """Releases the soxr stream resources."""
+        self._stream = None

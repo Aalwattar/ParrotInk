@@ -428,6 +428,10 @@ class AppCoordinator:
                         await self.provider.stop()
                 except Exception as e:
                     logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
+
+                if self.audio_adapter:
+                    self.audio_adapter.close()
+
                 self.provider = None
                 self.audio_adapter = None
             else:
@@ -462,6 +466,14 @@ class AppCoordinator:
                 # 1. Stop listening immediately
                 logger.debug("Shutdown Step 1: Stopping listening flow...")
                 await self.stop_listening()
+
+                if self.provider:
+                    await self.provider.stop()
+                    self.provider = None
+
+                if self.audio_adapter:
+                    self.audio_adapter.close()
+                    self.audio_adapter = None
 
                 # 2. Stop UI components
                 if self.ui_bridge and self.loop:
@@ -499,6 +511,8 @@ class AppCoordinator:
                 if self.provider and self.provider.is_running and not self.is_listening:
                     logger.info(f"Closing warm connection after {timeout}s idle.")
                     await self.provider.stop()
+                    if self.audio_adapter:
+                        self.audio_adapter.close()
                     self.provider = None
                     self.audio_adapter = None
         except asyncio.CancelledError:

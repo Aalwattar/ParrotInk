@@ -49,3 +49,9 @@ class AudioAdapter:
             return base64.b64encode(raw_bytes).decode("ascii")
 
         return raw_bytes
+
+    def close(self):
+        """Cleanup resources."""
+        if self._resampler:
+            self._resampler.close()
+            self._resampler = None
