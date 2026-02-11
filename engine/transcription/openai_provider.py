@@ -105,21 +105,24 @@ class OpenAIProvider(BaseProvider):
         adv = self.config.providers.openai.advanced
 
         # Note: We use transcription_session.update as specified for intent=transcription
+        # Added 'session' wrapper to resolve "Missing required parameter: 'session'" error
         session_update = {
             "type": "transcription_session.update",
-            "input_audio_format": "pcm16",
-            "input_audio_transcription": {
-                "model": core.model,
-                "language": core.language,
+            "session": {
+                "input_audio_format": "pcm16",
+                "input_audio_transcription": {
+                    "model": core.model,
+                    "language": core.language,
+                },
+                "turn_detection": {
+                    "type": adv.turn_detection_type,
+                    "threshold": adv.vad_threshold,
+                    "prefix_padding_ms": adv.prefix_padding_ms,
+                    "silence_duration_ms": adv.silence_duration_ms,
+                }
+                if adv.turn_detection_type != "off"
+                else None,
             },
-            "turn_detection": {
-                "type": adv.turn_detection_type,
-                "threshold": adv.vad_threshold,
-                "prefix_padding_ms": adv.prefix_padding_ms,
-                "silence_duration_ms": adv.silence_duration_ms,
-            }
-            if adv.turn_detection_type != "off"
-            else None,
         }
         event_str = json.dumps(session_update)
         logger.debug(f"Sending transcription session update: {event_str}")
