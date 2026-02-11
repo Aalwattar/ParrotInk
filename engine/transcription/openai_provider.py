@@ -47,7 +47,8 @@ class OpenAIProvider(BaseProvider):
             return self.config.test.openai_mock_url
 
         core = self.config.providers.openai.core
-        return f"{core.realtime_ws_url_base}?model={core.connection_model}&intent=transcription"
+        # intent=transcription is used for transcription-only sessions
+        return f"{core.realtime_ws_url_base}?intent=transcription"
 
     async def start(self):
         """Connect to OpenAI and start receiving events."""
@@ -99,29 +100,29 @@ class OpenAIProvider(BaseProvider):
         await self.ws.send(event_str)
 
     async def _initialize_session(self):
-        """Configure session for audio-to-text only (no voice response needed)."""
+        """Configure session for audio-to-text only using transcription_session.update."""
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
 
+        # Note: We use transcription_session.update as specified for intent=transcription
         session_update = {
-            "type": "session.update",
-            "session": {
-                "modalities": ["text"],
-                "instructions": core.prompt if core.prompt else "Transmit transcribed text only.",
-                "input_audio_format": core.input_audio_type.split("/")[-1],
-                "input_audio_transcription": {"model": core.transcription_model},
-                "turn_detection": {
-                    "type": adv.turn_detection_type,
-                    "threshold": adv.vad_threshold,
-                    "prefix_padding_ms": adv.prefix_padding_ms,
-                    "silence_duration_ms": adv.silence_duration_ms,
-                }
-                if adv.turn_detection_type != "off"
-                else None,
+            "type": "transcription_session.update",
+            "input_audio_format": "pcm16",
+            "input_audio_transcription": {
+                "model": core.model,
+                "language": core.language,
             },
+            "turn_detection": {
+                "type": adv.turn_detection_type,
+                "threshold": adv.vad_threshold,
+                "prefix_padding_ms": adv.prefix_padding_ms,
+                "silence_duration_ms": adv.silence_duration_ms,
+            }
+            if adv.turn_detection_type != "off"
+            else None,
         }
         event_str = json.dumps(session_update)
-        logger.debug(f"Sending session update: {event_str}")
+        logger.debug(f"Sending transcription session update: {event_str}")
         await self.ws.send(event_str)
 
     async def _receive_loop(self):
