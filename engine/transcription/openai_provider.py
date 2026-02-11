@@ -34,6 +34,7 @@ class OpenAIProvider(BaseProvider):
         self.ws: Optional[ClientConnection] = None
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
+        self.current_transcript = ""
 
     def get_audio_spec(self) -> ProviderAudioSpec:
         # OpenAI Realtime requires 24kHz Mono PCM16 for audio/pcm
@@ -163,7 +164,8 @@ class OpenAIProvider(BaseProvider):
         if ev_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta")
             if delta:
-                self.on_partial(delta)
+                self.current_transcript += delta
+                self.on_partial(self.current_transcript)
 
         # Final segment completed
         elif ev_type == "conversation.item.input_audio_transcription.completed":
@@ -171,10 +173,14 @@ class OpenAIProvider(BaseProvider):
             if transcript:
                 logger.info(f"OpenAI Final: {transcript.strip()}")
                 self.on_final(transcript.strip())
+            self.current_transcript = ""
 
-        # Buffer committed (VAD trigger)
+        # Buffer committed (VAD trigger) - Start of a new potential utterance
         elif ev_type == "input_audio_buffer.committed":
             logger.debug("OpenAI: Audio buffer committed by server VAD.")
+            # We don't necessarily clear here because the item might still be generating deltas,
+            # but usually a commit means the previous segment is done and a new one is starting.
+            # To be safe and prevent "deleting", we only clear on 'completed'.
 
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
