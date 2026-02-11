@@ -34,7 +34,8 @@ async def verify_mode(name, config):
                 print(f"SUCCESS: Received expected mock response for {config.default_provider}")
             else:
                 print(
-                    f"FAILED: Did not receive expected mock response for {config.default_provider}. Got: {final_text}"
+                    f"FAILED: Did not receive expected mock response for "
+                    f"{config.default_provider}. Got: {final_text}"
                 )
                 return False
         return True

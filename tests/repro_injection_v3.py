@@ -42,7 +42,7 @@ class HARDWAREINPUT(ctypes.Structure):
     ]
 
 
-class INPUT_UNION(ctypes.Union):
+class InputUnion(ctypes.Union):
     _fields_ = [
         ("mi", MOUSEINPUT),
         ("ki", KEYBDINPUT),
@@ -53,7 +53,7 @@ class INPUT_UNION(ctypes.Union):
 class INPUT(ctypes.Structure):
     _fields_ = [
         ("type", wintypes.DWORD),
-        ("union", INPUT_UNION),
+        ("union", InputUnion),
     ]
 
 

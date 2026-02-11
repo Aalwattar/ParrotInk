@@ -16,7 +16,8 @@ def test_main_startup():
         stderr=subprocess.PIPE,
         text=True,
         env=env,
-        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,  # Needed for signal handling simulation if we were doing it
+        # Needed for signal handling simulation if we were doing it
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
     )
 
     try:

@@ -50,8 +50,8 @@ class HotkeysConfig(BaseModel):
 class SoundsConfig(BaseModel):
     enabled: bool = True
     volume: float = 0.5
-    start_sound_path: str = r"C:\Windows\Media\Windows Speech On.wav"
-    stop_sound_path: str = r"C:\Windows\Media\Windows Speech Off.wav"
+    start_sound_path: str = r"C:\Windows\Media\Speech On.wav"
+    stop_sound_path: str = r"C:\Windows\Media\Speech Off.wav"
 
 
 class FloatingIndicatorConfig(BaseModel):
