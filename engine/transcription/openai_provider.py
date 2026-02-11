@@ -81,11 +81,11 @@ class OpenAIProvider(BaseProvider):
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
 
-        # Implement exactly the requested nested shape
+        # Implement exactly the requested nested shape, removing 'type': 'transcription' 
+        # which caused an 'unknown_parameter' error in the previous run.
         session_update = {
             "type": "session.update",
             "session": {
-                "type": "transcription",
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
