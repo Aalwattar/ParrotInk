@@ -2,12 +2,12 @@ import asyncio
 import json
 import time
 import urllib.parse
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
-import numpy as np
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
+from engine.audio.adapter import ProviderAudioSpec
 from engine.config import Config
 from engine.logging import get_logger
 
@@ -33,6 +33,12 @@ class AssemblyAIProvider(BaseProvider):
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
         self.last_transcript = ""
+
+    def get_audio_spec(self) -> ProviderAudioSpec:
+        return ProviderAudioSpec(
+            sample_rate_hz=self.config.providers.assemblyai.core.sample_rate,
+            wire_encoding="pcm16_bytes",
+        )
 
     def _build_url(self) -> str:
         if self.config.test.enabled:
@@ -106,7 +112,7 @@ class AssemblyAIProvider(BaseProvider):
             self.ws = None
         logger.info("Disconnected from AssemblyAI.")
 
-    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
+    async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
         """Send audio chunk as raw binary PCM16."""
         if not self.ws or not self.is_running:
             return
@@ -116,14 +122,10 @@ class AssemblyAIProvider(BaseProvider):
         if lag_ms > 500:
             logger.warning(f"Audio chunk is very old: {lag_ms:.1f}ms")
 
-        # Convert float32 [-1.0, 1.0] to int16
-        audio_int16 = (audio_chunk * 32767).astype(np.int16)
-
-        # In V3, we send the raw bytes directly, not JSON.
+        # In V3, we send the raw bytes directly. processed_chunk is already bytes.
         try:
             # IMPORTANT: We MUST await here to ensure audio chunks are sent in the correct order.
-            # Scrambled chunks will destroy transcription accuracy.
-            await self.ws.send(audio_int16.tobytes())
+            await self.ws.send(processed_chunk)
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")
             self.is_running = False

@@ -11,6 +11,7 @@ from pynput import keyboard
 
 from engine.anchor import Anchor
 from engine.audio import AudioStreamer
+from engine.audio.adapter import AudioAdapter
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.credential_ui import ask_key
@@ -39,6 +40,7 @@ class AppCoordinator:
 
         self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
         self.provider: Optional[BaseProvider] = None
+        self.audio_adapter: Optional[AudioAdapter] = None
         self.is_listening = False
         self.is_connecting = False
         self.loop: Optional[asyncio.AbstractEventLoop] = None
@@ -269,6 +271,10 @@ class AppCoordinator:
         self.provider = TranscriptionFactory.create(
             self.config, on_partial=self.on_partial, on_final=self.on_final
         )
+        self.audio_adapter = AudioAdapter(
+            capture_rate_hz=self.config.audio.capture_sample_rate,
+            provider_spec=self.provider.get_audio_spec(),
+        )
 
         try:
             # Add timeout for connection
@@ -336,6 +342,7 @@ class AppCoordinator:
             except Exception as e:
                 logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
             self.provider = None
+            self.audio_adapter = None
 
         # Play stop sound after everything is closed
         self._play_feedback_sound("stop")
@@ -350,9 +357,11 @@ class AppCoordinator:
         # to avoid blocking the event loop.
         try:
             async for chunk, capture_time in self.streamer.async_generator():
-                if not self.is_listening or not self.provider:
+                if not self.is_listening or not self.provider or not self.audio_adapter:
                     break
-                await self.provider.send_audio(chunk, capture_time)
+
+                processed = self.audio_adapter.process(chunk)
+                await self.provider.send_audio(processed, capture_time)
         except Exception as e:
             logger.exception(f"Error in audio pipe: {e}")
 

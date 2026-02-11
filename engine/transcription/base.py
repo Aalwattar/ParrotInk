@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Union
 
-import numpy as np
+from engine.audio.adapter import ProviderAudioSpec
 
 
 class BaseProvider(ABC):
@@ -20,6 +20,11 @@ class BaseProvider(ABC):
         self.base_url = base_url
 
     @abstractmethod
+    def get_audio_spec(self) -> ProviderAudioSpec:
+        """Return the audio specification required by this provider."""
+        pass
+
+    @abstractmethod
     async def start(self):
         """Start the transcription session."""
         pass
@@ -30,6 +35,6 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
-        """Send an audio chunk for transcription."""
+    async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
+        """Send a pre-processed audio chunk (bytes or base64) for transcription."""
         pass

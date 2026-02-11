@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import numpy as np
 import pytest
 
 from engine.config import Config
@@ -50,7 +49,8 @@ async def test_assemblyai_provider_send_audio(base_config):
 
         await provider.start()
 
-        audio_chunk = np.zeros(1024, dtype=np.float32)
+        # Provide bytes instead of ndarray, matching the new provider contract
+        audio_chunk = b"\x00" * 2048
         await provider.send_audio(audio_chunk, 0.0)
 
         assert mock_ws.send.called

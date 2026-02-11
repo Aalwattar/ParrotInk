@@ -1,13 +1,12 @@
 import asyncio
-import base64
 import json
 import time
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
-import numpy as np
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
+from engine.audio.adapter import ProviderAudioSpec
 from engine.config import Config
 from engine.logging import get_logger
 
@@ -33,6 +32,12 @@ class OpenAIProvider(BaseProvider):
         self._receive_task: Optional[asyncio.Task] = None
         self.is_running = False
         self.current_partial = ""
+
+    def get_audio_spec(self) -> ProviderAudioSpec:
+        return ProviderAudioSpec(
+            sample_rate_hz=self.config.providers.openai.core.input_audio_rate,
+            wire_encoding="pcm16_base64",
+        )
 
     def _build_url(self) -> str:
         if self.config.test.enabled:
@@ -75,8 +80,8 @@ class OpenAIProvider(BaseProvider):
             self.ws = None
         logger.info("Disconnected from OpenAI.")
 
-    async def send_audio(self, audio_chunk: np.ndarray, capture_time: float):
-        """Send audio chunk as base64 encoded PCM16, with resampling if needed."""
+    async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
+        """Send audio chunk as base64 encoded PCM16."""
         if not self.ws or not self.is_running:
             return
 
@@ -84,24 +89,8 @@ class OpenAIProvider(BaseProvider):
         lag_ms = (send_start - capture_time) * 1000
         logger.debug(f"Audio chunk age before send: {lag_ms:.1f}ms")
 
-        source_rate = self.config.audio.capture_sample_rate
-        target_rate = self.config.providers.openai.core.input_audio_rate
-
-        # Ensure we have a 1D float array for resampling
-        audio_chunk = audio_chunk.astype(np.float64).flatten()
-
-        # Resample if capture rate differs from OpenAI target rate (usually 16k -> 24k)
-        if source_rate != target_rate:
-            num_samples = int(len(audio_chunk) * target_rate / source_rate)
-            x_new = np.linspace(0, len(audio_chunk) - 1, num_samples)
-            x_old = np.arange(len(audio_chunk))
-            audio_chunk = np.interp(x_new, x_old, audio_chunk)
-
-        # Convert float32 [-1.0, 1.0] or float64 to int16
-        audio_int16 = (audio_chunk * 32767).astype(np.int16)
-        audio_base64 = base64.b64encode(audio_int16.tobytes()).decode("utf-8")
-
-        event = {"type": "input_audio_buffer.append", "audio": audio_base64}
+        # processed_chunk is already base64 string for OpenAI
+        event = {"type": "input_audio_buffer.append", "audio": processed_chunk}
         event_str = json.dumps(event)
         logger.debug(f"Sending event: {event_str}")
         await self.ws.send(event_str)
