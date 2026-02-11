@@ -53,12 +53,19 @@ class OpenAIProvider(BaseProvider):
 
     async def start(self):
         """Connect and configure the session."""
+        # Removed "OpenAI-Beta": "realtime=v1" to support GA transcription features
         headers = {
             "Authorization": f"Bearer {self.api_key}",
-            "OpenAI-Beta": "realtime=v1",
         }
 
-        logger.info(f"Connecting to OpenAI at {self.url}...")
+        # Log host for GA vs Azure verification
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(self.url)
+            logger.info(f"Connecting to OpenAI Realtime Host: {parsed.netloc}")
+        except Exception:
+            logger.info(f"Connecting to OpenAI at {self.url}...")
+
         try:
             self.ws = await websockets.connect(
                 self.url, additional_headers=headers if not self.config.test.enabled else None
@@ -66,7 +73,7 @@ class OpenAIProvider(BaseProvider):
             self.is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
 
-            # Configure session using the new nested schema
+            # Configure session using the nested schema
             await self._update_session()
             logger.info("Connected to OpenAI successfully.")
         except Exception as e:
@@ -81,11 +88,11 @@ class OpenAIProvider(BaseProvider):
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
 
-        # Implement exactly the requested nested shape, removing 'type': 'transcription' 
-        # which caused an 'unknown_parameter' error in the previous run.
+        # Restore 'type': 'transcription' for GA behavior
         session_update = {
             "type": "session.update",
             "session": {
+                "type": "transcription",
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
