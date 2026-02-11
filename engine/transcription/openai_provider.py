@@ -178,9 +178,9 @@ class OpenAIProvider(BaseProvider):
         # Buffer committed (VAD trigger) - Start of a new potential utterance
         elif ev_type == "input_audio_buffer.committed":
             logger.debug("OpenAI: Audio buffer committed by server VAD.")
-            # We don't necessarily clear here because the item might still be generating deltas,
-            # but usually a commit means the previous segment is done and a new one is starting.
-            # To be safe and prevent "deleting", we only clear on 'completed'.
+            # Commit means the server has segmented the audio. 
+            # We clear our local buffer so the next item starts fresh.
+            self.current_transcript = ""
 
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
