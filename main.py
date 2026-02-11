@@ -12,6 +12,7 @@ from engine.audio import AudioStreamer
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.credential_ui import ask_key
+from engine.indicator_ui import FloatingIndicator
 from engine.injector import inject_backspaces, inject_text
 from engine.interaction import InteractionMonitor
 from engine.logging import configure_logging, get_logger
@@ -53,6 +54,18 @@ class AppCoordinator:
         # Mouse monitoring for click-away
         self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
         self.anchor: Optional[Anchor] = None
+
+        # Floating Indicator
+        self.indicator: Optional[FloatingIndicator] = None
+        if self.config.ui.floating_indicator.enabled:
+            ind_cfg = self.config.ui.floating_indicator
+            self.indicator = FloatingIndicator(
+                x=ind_cfg.x,
+                y=ind_cfg.y,
+                opacity_idle=ind_cfg.opacity_idle,
+                opacity_active=ind_cfg.opacity_active
+            )
+            threading.Thread(target=self.indicator.run, daemon=True).start()
 
         self.session_cancelled = False
         self.start_time = 0
@@ -337,6 +350,10 @@ class AppCoordinator:
             self.streamer.start()
             self.interaction_monitor.start()
             self.is_listening = True
+            
+            if self.indicator:
+                self.indicator.set_recording(True)
+
             if self.ui:
                 self.ui.set_state(AppState.LISTENING)
             self._audio_task = asyncio.create_task(self._audio_pipe())
@@ -363,6 +380,9 @@ class AppCoordinator:
         self.interaction_monitor.stop()
         self.mouse_monitor.stop()
         self.anchor = None
+        
+        if self.indicator:
+            self.indicator.set_recording(False)
 
         if self.ui:
             self.ui.set_state(AppState.IDLE)
@@ -506,6 +526,15 @@ async def main_async(cli_args):
     coordinator.loop = asyncio.get_running_loop()
 
     def on_quit():
+        # Log indicator position if enabled for persistence awareness
+        if coordinator.indicator and coordinator.indicator.root:
+            try:
+                x = coordinator.indicator.root.winfo_x()
+                y = coordinator.indicator.root.winfo_y()
+                logger.info(f"Indicator last position: ({x}, {y})")
+                # In a future version, we would save this to config.toml here.
+            except Exception:
+                pass
         handler.should_exit = True
 
     def on_provider_change(provider_name):

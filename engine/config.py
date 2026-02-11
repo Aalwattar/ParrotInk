@@ -48,6 +48,14 @@ class SoundsConfig(BaseModel):
     stop_sound_path: str = "assets/sounds/stop.wav"
 
 
+class FloatingIndicatorConfig(BaseModel):
+    enabled: bool = True
+    opacity_idle: float = 0.3
+    opacity_active: float = 0.8
+    x: int = 500
+    y: int = 50
+
+
 class InteractionConfig(BaseModel):
     # From cancel_click_away_20260210
     cancel_on_click_outside_anchor: bool = True
@@ -135,12 +143,17 @@ class ProvidersConfig(BaseModel):
     assemblyai: AssemblyAIConfig = Field(default_factory=AssemblyAIConfig)
 
 
+class UIConfig(BaseModel):
+    floating_indicator: FloatingIndicatorConfig = Field(default_factory=FloatingIndicatorConfig)
+
+
 class Config(BaseModel):
     default_provider: Literal["openai", "assemblyai"] = Field(
         default="openai", validation_alias=AliasChoices("default_provider", "active_provider")
     )
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     interaction: InteractionConfig = Field(default_factory=InteractionConfig)
+    ui: UIConfig = Field(default_factory=UIConfig)
     audio: AudioConfig = Field(default_factory=AudioConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: AppTestConfig = Field(default_factory=AppTestConfig)
@@ -154,6 +167,22 @@ class Config(BaseModel):
     def get_assemblyai_key(self) -> Optional[str]:
         """Resolves AssemblyAI API key."""
         return SecurityManager.get_key("assemblyai_api_key")
+
+    def save(self, path: Path | str = "config.toml"):
+        """Saves the current configuration to a TOML file."""
+        import tomli_w
+        path = Path(path)
+        # We convert to dict, but Pydantic's model_dump is better
+        data = self.model_dump()
+        
+        # Remove keys that shouldn't be persisted if any (e.g. keys are already handled by SecurityManager)
+        
+        try:
+            content = tomli_w.dumps(data)
+            path.write_text(content, encoding="utf-8")
+            logger.debug(f"Configuration saved to {path}")
+        except Exception as e:
+            print(f"Error saving config: {e}")
 
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":

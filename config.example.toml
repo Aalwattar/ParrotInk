@@ -25,6 +25,17 @@ volume = 0.5
 start_sound_path = "assets/sounds/start.wav"
 stop_sound_path = "assets/sounds/stop.wav"
 
+[ui.floating_indicator]
+# Enable/Disable the small floating circle that pulses while recording
+enabled = true
+# Opacity when not recording (0.0 to 1.0)
+opacity_idle = 0.3
+# Max opacity during pulse while recording
+opacity_active = 0.8
+# Screen coordinates
+x = 500
+y = 50
+
 # Provider-agnostic capture settings
 [audio]
 capture_sample_rate = 16000
