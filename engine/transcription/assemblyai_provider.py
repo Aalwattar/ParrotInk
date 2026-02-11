@@ -50,7 +50,7 @@ class AssemblyAIProvider(BaseProvider):
         core = self.config.providers.assemblyai.core
         adv = self.config.providers.assemblyai.advanced
 
-        # Build V3 query parameters
+        # Build V3 query parameters with corrected keys
         params = {
             "sample_rate": core.sample_rate,
             "word_boost": json.dumps(core.keyterms_prompt) if core.keyterms_prompt else None,
@@ -60,10 +60,10 @@ class AssemblyAIProvider(BaseProvider):
             "inactivity_timeout": core.inactivity_timeout_seconds
             if core.inactivity_timeout_seconds > 0
             else None,
-            "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
-            "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
-            "max_end_of_turn_silence": adv.max_turn_silence_ms,
-            "utterance_silence_threshold": 700,  # Fast responsiveness
+            "end_of_turn_confidence_threshold": 0.4,
+            "min_end_of_turn_silence_when_confident": 350,
+            "max_turn_silence": 1200,
+            "utterance_silence_threshold": 700,  # Legacy field, kept low for safety
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
