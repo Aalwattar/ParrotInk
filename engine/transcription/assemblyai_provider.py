@@ -63,7 +63,7 @@ class AssemblyAIProvider(BaseProvider):
             "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
             "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
             "max_end_of_turn_silence": adv.max_turn_silence_ms,
-            "utterance_silence_threshold": 2000,  # Increased for more context
+            "utterance_silence_threshold": 700,  # Fast responsiveness
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
@@ -158,27 +158,16 @@ class AssemblyAIProvider(BaseProvider):
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
                 clean_text = text.strip()
-                clean_last = self.last_transcript.strip()
-
-                if clean_text == clean_last:
-                    if event.get("end_of_turn"):
-                        if clean_text:
-                            logger.info(f"End of Turn received: {text}")
-                            self.on_final(text)
-                        self.last_transcript = ""
+                if not clean_text:
                     return
 
-                # Level 2 debug: show every raw turn text
-                logger.debug(f"AssemblyAI Turn [End={event.get('end_of_turn')}]: '{text}'")
-
-                if clean_text:
+                if clean_text != self.last_transcript.strip():
                     self.on_partial(text)
                     self.last_transcript = text
 
                 if event.get("end_of_turn"):
-                    if clean_text:
-                        logger.info(f"End of Turn received: {text}")
-                        self.on_final(text)
+                    logger.info(f"End of Turn received: {text}")
+                    self.on_final(text)
                     self.last_transcript = ""
 
             elif msg_type == "FinalTranscript":

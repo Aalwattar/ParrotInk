@@ -4,7 +4,7 @@ from typing import Literal, Union
 
 import numpy as np
 
-from engine.audio.processing import HighPassFilter, Resampler, scale_and_clip_to_int16
+from engine.audio.processing import Resampler, scale_and_clip_to_int16
 
 
 @dataclass
@@ -25,16 +25,12 @@ class AudioAdapter:
         if capture_rate_hz != provider_spec.sample_rate_hz:
             self._resampler = Resampler(capture_rate_hz, provider_spec.sample_rate_hz)
 
-        # High-pass filter at 80Hz to remove DC offset and low-end rumble
-        self._hpf = HighPassFilter(cutoff_hz=80.0, sample_rate=provider_spec.sample_rate_hz)
-
     def process(self, chunk: np.ndarray) -> Union[bytes, str]:
         """
         Transforms raw capture chunk (float32 or int16) into provider-ready format.
         1. Resample if necessary.
-        2. Filter (DC removal + HPF).
-        3. Convert to int16 PCM.
-        4. Encode (bytes or base64).
+        2. Convert to int16 PCM.
+        3. Encode (bytes or base64).
         """
         # Ensure we are in float for processing
         if chunk.dtype != np.float32:
@@ -44,13 +40,7 @@ class AudioAdapter:
         if self._resampler:
             chunk = self._resampler.resample(chunk)
 
-        # 2. Filtering
-        # Remove DC offset (mean)
-        chunk = chunk - np.mean(chunk)
-        # Apply High-Pass Filter
-        chunk = self._hpf.process(chunk)
-
-        # 3. Convert to int16
+        # 2. Convert to int16
         pcm16 = scale_and_clip_to_int16(chunk)
 
         # 4. Encode

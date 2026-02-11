@@ -29,10 +29,7 @@ def test_audio_adapter_pcm16_bytes():
     # Input float32 16k
 
 
-    # Use zero chunk for simple check, as filter will shift non-zero values
-
-
-    chunk = np.zeros(10, dtype=np.float32)
+    chunk = np.array([0.0, 0.5, 1.0], dtype=np.float32)
 
 
     processed = adapter.process(chunk)
@@ -44,16 +41,19 @@ def test_audio_adapter_pcm16_bytes():
     assert isinstance(processed, bytes)
 
 
-    # 10 samples * 2 bytes = 20 bytes
+    # 3 samples * 2 bytes = 6 bytes
 
 
-    assert len(processed) == 20
+    assert len(processed) == 6
 
 
-    # Check values (should be near 0)
+    # Check values (little endian)
 
 
-    assert processed[0:2] == b"\x00\x00"
+    # 0.5 * 32767 = 16383 (0x3FFF) -> \xff\x3f
+
+
+    assert processed[2:4] == b"\xff\x3f"
 
 
 
@@ -77,7 +77,7 @@ def test_audio_adapter_pcm16_base64():
 
 
 
-    chunk = np.zeros(2, dtype=np.float32)
+    chunk = np.array([0.0, 1.0], dtype=np.float32)
 
 
     processed = adapter.process(chunk)
@@ -98,7 +98,10 @@ def test_audio_adapter_pcm16_base64():
     assert len(decoded) == 4
 
 
-    assert decoded[0:2] == b"\x00\x00"
+    assert decoded[2:4] == b"\xff\x7f"  # 32767
+
+
+
 
 
 
