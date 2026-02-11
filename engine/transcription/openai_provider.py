@@ -39,12 +39,15 @@ class OpenAIProvider(BaseProvider):
             wire_encoding="pcm16_base64",
         )
 
+    def get_type(self) -> str:
+        return "openai"
+
     def _build_url(self) -> str:
         if self.config.test.enabled:
             return self.config.test.openai_mock_url
 
         core = self.config.providers.openai.core
-        return f"{core.realtime_ws_url_base}?model={core.realtime_ws_model}"
+        return f"{core.realtime_ws_url_base}?model={core.model}&intent=transcription"
 
     async def start(self):
         """Connect to OpenAI and start receiving events."""
@@ -105,8 +108,8 @@ class OpenAIProvider(BaseProvider):
             "session": {
                 "modalities": ["text"],
                 "instructions": core.prompt if core.prompt else "Transmit transcribed text only.",
-                "input_audio_format": core.input_audio_type.split("/")[-1],
-                "input_audio_transcription": {"model": core.transcription_model},
+                "input_audio_format": core.input_audio_rate_str if hasattr(core, "input_audio_rate_str") else core.input_audio_type.split("/")[-1],
+                "input_audio_transcription": {"model": core.model},
                 "turn_detection": {
                     "type": adv.turn_detection_type,
                     "threshold": adv.vad_threshold,

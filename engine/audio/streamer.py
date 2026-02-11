@@ -12,10 +12,10 @@ logger = get_logger("Audio")
 
 
 def downmix_stereo_to_mono(chunk: np.ndarray) -> np.ndarray:
-    """Downmixes stereo (N, 2) to mono (N,) by averaging channels."""
+    """Downmixes stereo (N, 2) to mono (N,) by averaging channels in float64."""
     if chunk.ndim == 2 and chunk.shape[1] > 1:
-        # Average across channels. Specify dtype to maintain precision.
-        return cast(np.ndarray, np.mean(chunk, axis=1, dtype=chunk.dtype))
+        # Average across channels using float64 to prevent precision loss/quantization noise
+        return cast(np.ndarray, np.mean(chunk, axis=1, dtype=np.float64).astype(chunk.dtype))
     return chunk
 
 
@@ -49,7 +49,7 @@ class AudioStreamer:
     def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
-        self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(maxsize=100)
+        self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(maxsize=500)
         self.is_running = False
         self._stream: sd.InputStream | None = None
         self._loop: asyncio.AbstractEventLoop | None = None

@@ -24,9 +24,8 @@ default_provider = "openai"
 
 [providers.openai.tier1]
 realtime_ws_url_base = "wss://custom.openai.com"
-realtime_ws_model = "gpt-4o-custom"
-transcription_model = "whisper-custom"
-language = "fr"
+model = "gpt-4o-transcribe"
+language = "en"
 prompt = "context"
 input_audio_type = "audio/pcm"
 input_audio_rate = 24000
@@ -42,9 +41,8 @@ include_logprobs = true
     config = load_config(config_file)
     # Check core (Tier 1)
     assert config.providers.openai.core.realtime_ws_url_base == "wss://custom.openai.com"
-    assert config.providers.openai.core.realtime_ws_model == "gpt-4o-custom"
-    assert config.providers.openai.core.transcription_model == "whisper-custom"
-    assert config.providers.openai.core.language == "fr"
+    assert config.providers.openai.core.model == "gpt-4o-transcribe"
+    assert config.providers.openai.core.language == "en"
     assert config.providers.openai.core.prompt == "context"
     assert config.providers.openai.core.input_audio_type == "audio/pcm"
     assert config.providers.openai.core.input_audio_rate == 24000

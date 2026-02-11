@@ -40,6 +40,9 @@ class AssemblyAIProvider(BaseProvider):
             wire_encoding="pcm16_bytes",
         )
 
+    def get_type(self) -> str:
+        return "assemblyai"
+
     def _build_url(self) -> str:
         if self.config.test.enabled:
             return self.config.test.assemblyai_mock_url
@@ -60,7 +63,7 @@ class AssemblyAIProvider(BaseProvider):
             "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
             "end_of_turn_silence_threshold": adv.min_end_of_turn_silence_when_confident_ms,
             "max_end_of_turn_silence": adv.max_turn_silence_ms,
-            "utterance_silence_threshold": 700,
+            "utterance_silence_threshold": 1000,
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
@@ -154,21 +157,18 @@ class AssemblyAIProvider(BaseProvider):
         if text is not None:
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
-                if text == self.last_transcript and not event.get("end_of_turn"):
+                if text == self.last_transcript:
+                    if event.get("end_of_turn"):
+                         if text.strip():
+                             logger.info(f"End of Turn received: {text}")
+                             self.on_final(text)
+                         self.last_transcript = ""
                     return
 
                 # Level 2 debug: show every raw turn text
                 logger.debug(f"AssemblyAI Turn [End={event.get('end_of_turn')}]: '{text}'")
 
                 if text.strip():
-                    # Normalize for correction detection (strip leading/trailing space)
-                    clean_text = text.strip()
-                    clean_last = self.last_transcript.strip()
-
-                    # Log if it's a correction (non-incremental change in the core text)
-                    if clean_last and not clean_text.startswith(clean_last):
-                        logger.info(f"Live Correction: '{clean_last}' -> '{clean_text}'")
-
                     self.on_partial(text)
                     self.last_transcript = text
 

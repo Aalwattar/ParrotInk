@@ -1,6 +1,8 @@
+from typing import cast
+
 import numpy as np
 import soxr  # type: ignore
-from typing import cast
+
 
 def scale_and_clip_to_int16(chunk: np.ndarray) -> np.ndarray:
     """
@@ -28,7 +30,6 @@ class Resampler:
         """Resamples audio chunk. Input must be float32 1D array."""
         if chunk.dtype != np.float32:
             chunk = chunk.astype(np.float32)
-        
+
         # ResampleStream.resample_chunk handles the state
         return cast(np.ndarray, self._stream.resample_chunk(chunk))
-

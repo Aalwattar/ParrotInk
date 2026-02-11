@@ -25,6 +25,11 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
+    def get_type(self) -> str:
+        """Return the type identifier for this provider."""
+        pass
+
+    @abstractmethod
     async def start(self):
         """Start the transcription session."""
         pass

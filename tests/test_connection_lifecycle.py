@@ -14,6 +14,7 @@ async def test_ensure_connected_idempotency():
     coordinator = AppCoordinator(config)
     mock_provider = AsyncMock()
     mock_provider.is_running = True
+    mock_provider.get_type = MagicMock(return_value="openai")
     coordinator.provider = mock_provider
 
     # Second call should return immediately without calling start()
@@ -58,6 +59,7 @@ async def test_openai_rotation_guard():
 
     mock_provider = AsyncMock()
     mock_provider.is_running = True
+    mock_provider.get_type = MagicMock(return_value="openai")
     mock_provider.get_audio_spec = MagicMock(return_value=spec)
     coordinator.provider = mock_provider
     coordinator.is_listening = True
@@ -76,9 +78,41 @@ async def test_openai_rotation_guard():
     # We patch factory create to return a new mock when it tries to reconnect
     new_mock = AsyncMock()
     new_mock.is_running = False  # Initial state
+    new_mock.get_type = MagicMock(return_value="openai")
     new_mock.get_audio_spec = MagicMock(return_value=spec)
     with patch("engine.transcription.factory.TranscriptionFactory.create", return_value=new_mock):
         await coordinator.ensure_connected()
 
     assert mock_provider.stop.called
+    assert coordinator.provider is new_mock
+
+@pytest.mark.asyncio
+async def test_provider_switching():
+    from engine.audio.adapter import ProviderAudioSpec
+    config = Config()
+    config.default_provider = "openai"
+    coordinator = AppCoordinator(config)
+    
+    spec_openai = ProviderAudioSpec(sample_rate_hz=24000)
+    spec_assembly = ProviderAudioSpec(sample_rate_hz=16000)
+    
+    mock_openai = AsyncMock()
+    mock_openai.is_running = True
+    mock_openai.get_type = MagicMock(return_value="openai")
+    mock_openai.get_audio_spec = MagicMock(return_value=spec_openai)
+    coordinator.provider = mock_openai
+    
+    # Switch config to assemblyai
+    config.default_provider = "assemblyai"
+    
+    # ensure_connected should detect mismatch and stop openai
+    new_mock = AsyncMock()
+    new_mock.is_running = False
+    new_mock.get_type = MagicMock(return_value="assemblyai")
+    new_mock.get_audio_spec = MagicMock(return_value=spec_assembly)
+    
+    with patch('engine.transcription.factory.TranscriptionFactory.create', return_value=new_mock):
+        await coordinator.ensure_connected()
+        
+    assert mock_openai.stop.called
     assert coordinator.provider is new_mock

@@ -281,6 +281,21 @@ class AppCoordinator:
                     self._rotation_pending = False
                     # Fall through to reconnect
 
+            # NEW: Check if provider type matches configuration
+            if self.provider and self.provider.get_type() != self.config.default_provider:
+                logger.info(
+                    f"Provider type mismatch ({self.provider.get_type()} != "
+                    f"{self.config.default_provider}). Reconnecting..."
+                )
+                if not self.is_listening:
+                    await self.provider.stop()
+                    self.provider = None
+                    # Fall through to reconnect
+                else:
+                    # If listening, we can't switch safely mid-stream without losing data.
+                    # Usually on_provider_change handles this, but as a safety:
+                    pass
+
         if self.provider and self.provider.is_running:
             return
 
@@ -637,6 +652,11 @@ async def main_async(cli_args):
         if coordinator.is_listening or coordinator.is_connecting:
             logger.info(f"Stopping active session before changing provider to {provider_name}")
             asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
+        elif coordinator.provider:
+            # If we have an idle (WARM) provider, stop it so the next connect uses the new one
+            logger.info(f"Stopping idle provider before changing to {provider_name}")
+            asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
+            coordinator.provider = None
 
         config.default_provider = provider_name
         logger.info(f"Provider changed to: {provider_name}")
