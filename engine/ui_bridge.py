@@ -11,6 +11,7 @@ class UIEvent:
     SET_STATE = "set_state"
     NOTIFY = "notify"
     UPDATE_AVAILABILITY = "update_availability"
+    QUIT = "quit"
 
 
 class UIBridge:
@@ -30,6 +31,10 @@ class UIBridge:
 
     def update_availability(self, availability: Dict[str, bool]):
         self.queue.put((UIEvent.UPDATE_AVAILABILITY, availability))
+
+    def stop(self):
+        """Signal the UI to stop."""
+        self.queue.put((UIEvent.QUIT, None))
 
     def get_event(self, block: bool = False, timeout: Optional[float] = None):
         try:

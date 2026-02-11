@@ -68,6 +68,10 @@ class AppCoordinator:
         self.is_injecting = False  # Restored flag
         self.last_injection_time = 0.0
 
+        # Shutdown orchestration
+        self._shutdown_lock = asyncio.Lock()
+        self._is_shutting_down = False
+
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
 
     def get_provider_availability(self) -> dict[str, bool]:
@@ -352,6 +356,51 @@ class AppCoordinator:
             self.last_injected_text = ""
             self.is_injecting = False
 
+    async def shutdown(self, reason: str):
+        """
+        Centralized, idempotent shutdown orchestration.
+        Ensures all resources are released in the correct order.
+        """
+        async with self._shutdown_lock:
+            if self._is_shutting_down:
+                return
+            self._is_shutting_down = True
+
+        logger.info(f"Initiating shutdown (reason: {reason})...")
+
+        # Set a hard deadline for the entire shutdown sequence
+        try:
+            async with asyncio.timeout(10.0):
+                # 1. Stop listening immediately
+                logger.debug("Shutdown Step 1: Stopping listening flow...")
+                await self.stop_listening()
+
+                # 2. Stop UI components
+                if self.ui_bridge and self.loop:
+                    logger.debug("Shutdown Step 2: Stopping UI...")
+                    try:
+                        async with asyncio.timeout(2.0):
+                            # This will stop the pystray icon and join the thread
+                            await self.loop.run_in_executor(None, self.ui_bridge.stop)
+                    except TimeoutError:
+                        logger.warning("UI stop timed out.")
+
+                # 3. Final cleanup and loop stop
+                logger.debug("Shutdown Step 3: Finalizing...")
+                # Any other components that need stopping go here
+
+        except TimeoutError:
+            logger.error("Shutdown deadline (10s) exceeded! Forcing exit.")
+            # Last-resort escape hatch for hangs
+            import os
+
+            os._exit(1)
+        except Exception as e:
+            logger.exception(f"Unexpected error during shutdown: {e}")
+        finally:
+            logger.info("Shutdown sequence complete.")
+            # Note: The caller or main loop handler is responsible for stopping the event loop
+
     async def _audio_pipe(self):
         # Finally the delay issue resolved by using an async generator
         # to avoid blocking the event loop.
@@ -465,15 +514,32 @@ async def main_async(cli_args):
 
     configure_logging(config, verbose_count=cli_args.verbose, quiet=cli_args.quiet)
 
-    handler = ShutdownHandler()
-    signal.signal(signal.SIGINT, handler.handle)
-
     ui_bridge = UIBridge()
     coordinator = AppCoordinator(config, ui_bridge)
     coordinator.loop = asyncio.get_running_loop()
 
+    # Shared event to signal main loop exit
+    exit_event = asyncio.Event()
+
+    async def trigger_shutdown(reason: str):
+        await coordinator.shutdown(reason)
+        exit_event.set()
+
     def on_quit():
-        handler.should_exit = True
+        logger.info("Tray 'Quit' selected.")
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(
+                lambda: asyncio.create_task(trigger_shutdown("Tray Exit"))
+            )
+
+    def on_sigint(sig, frame):
+        logger.info("SIGINT (Ctrl+C) received.")
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(
+                lambda: asyncio.create_task(trigger_shutdown("SIGINT"))
+            )
+
+    signal.signal(signal.SIGINT, on_sigint)
 
     def on_provider_change(provider_name):
         if coordinator.is_listening or coordinator.is_connecting:
@@ -519,33 +585,15 @@ async def main_async(cli_args):
         f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
     )
 
-    logger.info("Application running. Press Ctrl+C twice within 3s to exit.")
+    logger.info("Application running. Use Ctrl+C or Tray Exit to quit.")
 
     try:
-        while not handler.should_exit:
-            await asyncio.sleep(0.1)
+        await exit_event.wait()
     except asyncio.CancelledError:
         pass
     finally:
-        logger.info("Shutting down...")
-        await coordinator.stop_listening()
-        app.stop()
-        await asyncio.sleep(0.5)
-
-
-class ShutdownHandler:
-    def __init__(self):
-        self.should_exit = False
-        self.last_ctrl_c = 0
-
-    def handle(self, sig, frame):
-        now = time.time()
-        if now - self.last_ctrl_c < 3:
-            print("\nForce Shutting down...")
-            sys.exit(1)
-        self.last_ctrl_c = now
-        print("\nCtrl+C received. Press Ctrl+C again within 3 seconds to force exit.")
-        self.should_exit = True
+        # Ensure shutdown is called if we exited wait() for some other reason
+        await coordinator.shutdown("Finalizing")
 
 
 if __name__ == "__main__":

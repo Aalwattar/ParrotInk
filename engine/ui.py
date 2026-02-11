@@ -7,10 +7,13 @@ import pystray
 from PIL import Image, ImageDraw
 
 from .credential_ui import ask_key
+from .logging import get_logger
 from .types import AppState, ProviderType
 
 if TYPE_CHECKING:
     from .ui_bridge import UIBridge
+
+logger = get_logger("UI")
 
 
 class TrayApp:
@@ -161,6 +164,9 @@ class TrayApp:
                 self.notify(message, title)
             elif msg_type == UIEvent.UPDATE_AVAILABILITY:
                 self.update_availability(data)
+            elif msg_type == UIEvent.QUIT:
+                logger.info("UI received QUIT signal via bridge.")
+                self.stop()
 
     def run(self) -> None:
         if self.bridge:
