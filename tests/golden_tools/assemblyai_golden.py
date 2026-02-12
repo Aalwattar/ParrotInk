@@ -23,13 +23,14 @@ def transcribe_assemblyai(audio_path: str, format: str = "text"):
 
     transcriber = aai.Transcriber()
 
-    print(f"Uploading and transcribing {audio_path} using Universal-3-Pro...")
+    print(f"Uploading and transcribing {audio_path} using Universal-3-Pro...", file=sys.stderr)
     transcript = transcriber.transcribe(audio_path, config=config)
 
     if transcript.status == aai.TranscriptStatus.error:
         raise Exception(f"Transcription failed: {transcript.error}")
 
     final_text = transcript.text
+    print("Transcription complete.", file=sys.stderr)
 
     if format == "json":
         output = {
@@ -59,5 +60,5 @@ if __name__ == "__main__":
         result = transcribe_assemblyai(args.input, args.format)
         print(result)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

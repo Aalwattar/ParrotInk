@@ -11,7 +11,7 @@ def get_openai_key() -> str:
     """Retrieve OpenAI API key from Windows Credential Manager."""
     key = SecurityManager.get_key("openai_api_key")
     if not key:
-        print("Error: OpenAI API key not found in Credential Manager.")
+        print("Error: OpenAI API key not found in Credential Manager.", file=sys.stderr)
         sys.exit(1)
     return key
 
@@ -19,6 +19,6 @@ def get_assemblyai_key() -> str:
     """Retrieve AssemblyAI API key from Windows Credential Manager."""
     key = SecurityManager.get_key("assemblyai_api_key")
     if not key:
-        print("Error: AssemblyAI API key not found in Credential Manager.")
+        print("Error: AssemblyAI API key not found in Credential Manager.", file=sys.stderr)
         sys.exit(1)
     return key

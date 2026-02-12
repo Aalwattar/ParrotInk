@@ -2,9 +2,11 @@ import argparse
 import json
 import os
 import sys
+import traceback
 import wave
 from datetime import datetime
 
+import httpx
 from openai import OpenAI
 
 # Add project root to sys.path
@@ -21,7 +23,7 @@ def split_wav(file_path: str) -> list[str]:
     if file_size <= CHUNK_SIZE_BYTES:
         return [file_path]
 
-    print(f"File size ({file_size / 1024 / 1024:.1f}MB) exceeds limit. Chunking...")
+    print(f"File size ({file_size / 1024 / 1024:.1f}MB) exceeds limit. Chunking...", file=sys.stderr)
     chunks = []
     with wave.open(file_path, "rb") as wav:
         params = wav.getparams()
@@ -46,28 +48,52 @@ def split_wav(file_path: str) -> list[str]:
     return chunks
 
 def transcribe_openai(audio_path: str, format: str = "text"):
-    client = OpenAI(api_key=get_openai_key())
+    # Robust finite timeouts: prevent indefinite hangs on upload/processing.
+    timeout = httpx.Timeout(600.0, connect=10.0, read=600.0, write=600.0)
+    client = OpenAI(api_key=get_openai_key(), timeout=timeout, max_retries=5)
 
+    print(f"Starting OpenAI transcription for {audio_path}...", file=sys.stderr)
     chunks = split_wav(audio_path)
     full_text = []
 
     # We use the new flagship gpt-4o-transcribe model for the Golden Standard
     model = "gpt-4o-transcribe"
 
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks):
+        print(f"Transcribing chunk {i+1}/{len(chunks)}...", file=sys.stderr)
         with open(chunk, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model=model,
-                file=audio_file,
-                # gpt-4o-transcribe currently only supports text or json (not verbose_json)
-                response_format="text" if format == "text" else "json"
-            )
-            # Handle different return types based on response_format
+
+            # API reference notes gpt-4o-transcribe supports response_format="json" only.
+            # Extract plain text from transcript.text for your CLI/text output.
+            def _create(with_chunking: bool):
+                # Ensure we start from the beginning of the file (important for retries)
+                audio_file.seek(0)
+                kwargs = {
+                    "model": model,
+                    "file": audio_file,          # stream upload (more reliable than bytes)
+                    "response_format": "json",
+                }
+                if with_chunking:
+                    kwargs["chunking_strategy"] = "auto"
+                return client.audio.transcriptions.create(**kwargs)
+
+            try:
+                transcript = _create(with_chunking=True)
+            except Exception as e:
+                # If server/SDK rejects chunking_strategy, retry once without it.
+                if "chunking_strategy" in str(e).lower():
+                    print("Retrying without chunking_strategy...", file=sys.stderr)
+                    transcript = _create(with_chunking=False)
+                else:
+                    raise
+
             if isinstance(transcript, str):
                 full_text.append(transcript)
-            else:
-                # In JSON mode, transcript is an object with a .text attribute
+            elif hasattr(transcript, "text"):
                 full_text.append(transcript.text)
+            else:
+                # Handle potential dict-like response from older/different SDK versions
+                full_text.append(getattr(transcript, "text", str(transcript)))
 
     # Cleanup chunks if we created them
     if len(chunks) > 1:
@@ -76,6 +102,7 @@ def transcribe_openai(audio_path: str, format: str = "text"):
                 os.remove(chunk)
 
     final_text = " ".join(full_text).strip()
+    print("Transcription complete.", file=sys.stderr)
 
     if format == "json":
         output = {
@@ -86,9 +113,9 @@ def transcribe_openai(audio_path: str, format: str = "text"):
             "audio_file": audio_path,
             "api_config": {
                 "model": model,
-                "response_format": "json"
+                "response_format": "json",
             },
-            "final_text": final_text
+            "final_text": final_text,
         }
         return json.dumps(output, indent=2)
 
@@ -104,5 +131,6 @@ if __name__ == "__main__":
         result = transcribe_openai(args.input, args.format)
         print(result)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
