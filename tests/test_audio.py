@@ -1,3 +1,4 @@
+from unittest.mock import patch
 import numpy as np
 
 from engine.audio import AudioStreamer
@@ -27,12 +28,13 @@ def test_audio_normalization_mono():
     t.start()
 
     try:
-        streamer = AudioStreamer()
-        streamer.start(loop=loop)
-
-        chunk = np.array([0.1, 0.2, 0.3], dtype=np.float32)
-        # Simulate callback
-        streamer._callback(chunk, 3, None, None)
+        with patch("sounddevice.InputStream"):
+            streamer = AudioStreamer()
+            streamer.start(loop=loop)
+    
+            chunk = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+            # Simulate callback
+            streamer._callback(chunk, 3, None, None)
 
         # Give some time for call_soon_threadsafe to execute
         import time
@@ -66,12 +68,13 @@ def test_audio_normalization_stereo():
     t.start()
 
     try:
-        streamer = AudioStreamer()
-        streamer.start(loop=loop)
-
-        # 2 channels, 3 frames
-        chunk = np.array([[0.1, 0.5], [0.2, 0.6], [0.3, 0.7]], dtype=np.float32)
-        streamer._callback(chunk, 3, None, None)
+        with patch("sounddevice.InputStream"):
+            streamer = AudioStreamer()
+            streamer.start(loop=loop)
+    
+            # 2 channels, 3 frames
+            chunk = np.array([[0.1, 0.5], [0.2, 0.6], [0.3, 0.7]], dtype=np.float32)
+            streamer._callback(chunk, 3, None, None)
 
         import time
 
