@@ -26,13 +26,13 @@ Implement the core logic for reading WAV files, downmixing to mono, and pacing t
 ## Phase 3: Headless Coordinator & JSON Output
 Implement the evaluation runner that connects the `WavReplayer` to the existing transcription providers and captures the metrics for the JSON output.
 
-- [ ] Task: Implement `EvalCoordinator` in `engine/eval_main.py`.
-    - [ ] Support provider selection (OpenAI/AssemblyAI).
-    - [ ] Track "Time to First Partial" and "Time to First Final".
-    - [ ] Implement timeout logic.
-- [ ] Task: Implement the JSON output contract in `EvalCoordinator`.
-- [ ] Task: Write integration tests in `tests/test_eval_flow.py` (using mocks for providers).
-- [ ] Task: Conductor - User Manual Verification 'Headless Coordinator & JSON Output' (Protocol in workflow.md)
+- [x] Task: Implement `EvalCoordinator` in `engine/eval_main.py`.
+    - [x] Support provider selection (OpenAI/AssemblyAI).
+    - [x] Track "Time to First Partial" and "Time to First Final".
+    - [x] Implement timeout logic.
+- [x] Task: Implement the JSON output contract in `EvalCoordinator`.
+- [x] Task: Write integration tests in `tests/test_eval_flow.py` (using mocks for providers).
+- [x] Task: Conductor - User Manual Verification 'Headless Coordinator & JSON Output' (Protocol in workflow.md)
 
 ## Phase 4: Final Integration & CLI Validation
 Wire the `eval` command to the `EvalCoordinator` and perform end-to-end validation.
