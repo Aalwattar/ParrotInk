@@ -14,12 +14,12 @@ async def test_ensure_connected_idempotency():
     config.test.enabled = True
     config.default_provider = "openai"
     coordinator = AppCoordinator(config)
-    
+
     mock_provider = MagicMock()
     mock_provider.is_running = True
     mock_provider.get_type.return_value = "openai"
-    mock_provider.start = AsyncMock() # Must be awaitable if called
-    
+    mock_provider.start = AsyncMock()  # Must be awaitable if called
+
     coordinator.provider = mock_provider
     coordinator._session_start_time = time.time()
 
@@ -96,27 +96,17 @@ async def test_openai_rotation_guard():
 
 
 @pytest.mark.asyncio
-
-
 async def test_provider_switching():
-
 
     from engine.audio.adapter import ProviderAudioSpec
 
-
     config = Config()
-
 
     config.test.enabled = True
 
-
     config.default_provider = "openai"
 
-
     coordinator = AppCoordinator(config)
-
-
-
 
     spec_openai = ProviderAudioSpec(sample_rate_hz=24000)
     spec_assembly = ProviderAudioSpec(sample_rate_hz=16000)

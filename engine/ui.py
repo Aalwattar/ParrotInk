@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Callable, Optional
 import pystray
 from PIL import Image, ImageDraw
 
+from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
+from .indicator_ui import IndicatorWindow
 from .logging import get_logger
-from .types import AppState, ProviderType
 
 if TYPE_CHECKING:
+    from .config import Config
     from .ui_bridge import UIBridge
 
 logger = get_logger("UI")
@@ -19,6 +21,7 @@ logger = get_logger("UI")
 class TrayApp:
     def __init__(
         self,
+        config: "Config",
         bridge: Optional["UIBridge"] = None,
         on_quit_callback: Callable | None = None,
         on_provider_change: Callable[[ProviderType], None] | None = None,
@@ -28,6 +31,7 @@ class TrayApp:
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
     ):
+        self.config = config
         self.bridge = bridge
         self.state = AppState.IDLE
         self.default_provider: ProviderType = initial_provider
@@ -40,6 +44,9 @@ class TrayApp:
 
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
+        self.indicator = IndicatorWindow(
+            partial_words=self.config.ui.floating_indicator.partial_text_words
+        )
 
     def _create_image(self, color: str) -> Image.Image:
         width, height = 64, 64
@@ -136,6 +143,21 @@ class TrayApp:
         self.state = state
         self.icon.icon = self._create_image(self._get_icon_color(state))
 
+        # Sync indicator visibility and status
+        if state == AppState.LISTENING:
+            logger.debug("TrayApp: Showing indicator (LISTENING)")
+            self.indicator.update_status(True)
+            self.indicator.show()
+        elif state == AppState.IDLE:
+            logger.debug("TrayApp: Updating status to idle (IDLE)")
+            self.indicator.update_status(False)
+            # Removed self.indicator.hide() here to allow on_final to handle lingering text
+        elif state == AppState.ERROR:
+            self.indicator.update_status(False)
+            # We might want to keep it visible to show the error,
+            # but for now let's hide it or just update color
+            pass
+
     def update_availability(self, availability: dict[str, bool]):
         """Updates the availability status of providers."""
         self.availability = availability
@@ -164,6 +186,10 @@ class TrayApp:
                 self.notify(message, title)
             elif msg_type == UIEvent.UPDATE_AVAILABILITY:
                 self.update_availability(data)
+            elif msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
+                self.indicator.update_partial_text(data)
+            elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
+                self.indicator.on_final(data)
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()
@@ -171,6 +197,7 @@ class TrayApp:
     def run(self) -> None:
         if self.bridge:
             threading.Thread(target=self._poll_bridge, daemon=True).start()
+        self.indicator.start()
         self.icon.run()
 
     def stop(self) -> None:

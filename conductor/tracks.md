@@ -86,3 +86,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Connection Lifecycle: Warm-connection optional** [checkpoint: adb1c95]
 *Link: [./tracks/connection_lifecycle_20260211/](./tracks/connection_lifecycle_20260211/)*
+
+---
+
+- [x] **Track: Floating Acrylic Recording Indicator**
+*Link: [./tracks/floating_indicator_20260211/](./tracks/floating_indicator_20260211/)*

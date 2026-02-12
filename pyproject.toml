@@ -19,6 +19,7 @@ dependencies = [
     "platformdirs>=4.5.1",
     "olefile>=0.46",
     "soxr>=1.0.0",
+    "skia-python>=138.0",
 ]
 
 [dependency-groups]
@@ -32,6 +33,7 @@ dev = [
     "types-requests>=2.31.0",
     "types-setuptools>=69.1.0",
     "types-pynput>=1.8.1.20250809",
+    "types-pywin32>=311.0.0.20251008",
 ]
 
 [tool.ruff]
@@ -56,9 +58,12 @@ module = [
     "sounddevice",
     "pywin32",
     "win32gui",
+    "win32api",
+    "win32con",
     "win32process",
     "pystray",
     "pynput",
+    "skia",
     "pynput.*",
     "websockets.*",
     "assemblyai.*",

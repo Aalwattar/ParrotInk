@@ -1,6 +1,5 @@
 import asyncio
 import json
-import time
 from typing import Callable, Optional, Union
 
 import websockets.asyncio.client
@@ -62,6 +61,7 @@ class OpenAIProvider(BaseProvider):
         # Log host for GA vs Azure verification
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(self.url)
             logger.info(f"Connecting to OpenAI Realtime Host: {parsed.netloc}")
         except Exception:
@@ -97,7 +97,7 @@ class OpenAIProvider(BaseProvider):
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
-                        "noise_reduction": None,  # Disabled to prevent aggressive clipping/distortion
+                        "noise_reduction": None,  # Disabled to prevent clipping
                         "transcription": {
                             "model": core.model,  # e.g., gpt-4o-transcribe-latest
                             "language": core.language,
@@ -178,7 +178,7 @@ class OpenAIProvider(BaseProvider):
         # Buffer committed (VAD trigger)
         elif ev_type == "input_audio_buffer.committed":
             logger.debug("OpenAI: Audio buffer committed by server VAD.")
-            # Reverted: Do NOT clear buffer here, as deltas for the committed segment 
+            # Reverted: Do NOT clear buffer here, as deltas for the committed segment
             # may still be arriving. We clear only on 'completed'.
 
         elif ev_type == "error":

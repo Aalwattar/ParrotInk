@@ -5,8 +5,8 @@ from typing import AsyncGenerator, Tuple, cast
 import numpy as np
 import sounddevice as sd
 
+from engine.app_types import CaptureFormatError
 from engine.logging import get_logger
-from engine.types import CaptureFormatError
 
 logger = get_logger("Audio")
 

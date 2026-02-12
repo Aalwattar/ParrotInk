@@ -874,6 +874,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pybind11"
+version = "3.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/7b/a6d8dcb83c457e24a9df1e4d8fd5fb8034d4bbc62f3c324681e8a9ba57c2/pybind11-3.0.1.tar.gz", hash = "sha256:9c0f40056a016da59bab516efb523089139fcc6f2ba7e4930854c61efb932051", size = 546914, upload-time = "2025-08-22T20:09:27.265Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/8a/37362fc2b949d5f733a8b0f2ff51ba423914cabefe69f1d1b6aab710f5fe/pybind11-3.0.1-py3-none-any.whl", hash = "sha256:aa8f0aa6e0a94d3b64adfc38f560f33f15e589be2175e103c0a33c6bce55ee89", size = 293611, upload-time = "2025-08-22T20:09:25.235Z" },
+]
+
+[[package]]
 name = "pycparser"
 version = "3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1287,6 +1296,35 @@ wheels = [
 ]
 
 [[package]]
+name = "skia-python"
+version = "138.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pybind11" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ff/e9/ef5017013792bde58385b970e10cad1266643651a8438ad034b630d9fb5d/skia_python-138.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:6e369105b2811b6c32d7f15624202609deeb428164ee395c715df01221c847f5", size = 11733172, upload-time = "2025-06-09T14:00:45.592Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/a5/a97952c796da12bce860d2664f796a60951ee893264723019c5a33ebfe92/skia_python-138.0-cp311-cp311-macosx_11_0_x86_64.whl", hash = "sha256:55a2ae437d1c6dc46d9bbc2e3e0b4b5642022dcebc0634591ae1c8acea52a413", size = 12111725, upload-time = "2025-06-09T14:00:49.457Z" },
+    { url = "https://files.pythonhosted.org/packages/c1/a5/41eb0ca82a100ee96505899d7c85ab19de8a22def6d0e696111d519f103f/skia_python-138.0-cp311-cp311-manylinux_2_28_aarch64.whl", hash = "sha256:e67c9bcac953fbeb31b38474a4e566371e5719d4e27032686359cbe602819af8", size = 13246160, upload-time = "2025-06-09T14:00:52.21Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/d0/2079f4e9774117cdbb67fdbbb31fc29095d69d52d47fd7cf01d51e6429a2/skia_python-138.0-cp311-cp311-manylinux_2_28_x86_64.whl", hash = "sha256:4e9fb097849604e290be28a6b4cc29cb0079b0233e599c2f6b2ec635e47169d2", size = 13733938, upload-time = "2025-06-09T14:00:54.764Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/e7/5588e80336e6999dda9367a1522a71a7163d3e42f143b4aa29ac7beff270/skia_python-138.0-cp311-cp311-win_amd64.whl", hash = "sha256:df5a0dd52e1038423f2e1c03677cba5ea974d215adec10763dd855f4a6ca0cfc", size = 10718923, upload-time = "2025-06-09T14:00:57.429Z" },
+    { url = "https://files.pythonhosted.org/packages/85/60/a74af40c88b72772560be8c8016540ae21e923160e3f1e8f8303aefc42d9/skia_python-138.0-cp311-cp311-win_arm64.whl", hash = "sha256:054ca430003d52468974cf69d98719e61f188630709a3706a868efc16e817970", size = 10236223, upload-time = "2025-06-09T14:00:59.615Z" },
+    { url = "https://files.pythonhosted.org/packages/03/c9/6918a25edd8cf2982a39d70e7fe833d553a8d05dbd27bf6584f035d4eb06/skia_python-138.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:6b83d7b8101038ab0fcb920b1a91c872615e45b0ac19fe0c66b55d3ad0d61970", size = 11810205, upload-time = "2025-06-09T14:01:01.781Z" },
+    { url = "https://files.pythonhosted.org/packages/ed/1c/8eb0b30088cf61c50443a9bbe59bab29696d3a316b7c7571cec4a048fd7b/skia_python-138.0-cp312-cp312-macosx_11_0_x86_64.whl", hash = "sha256:f22060f513b2fc258b4269e631128ca68889107bc4aa65255119f3d9c1c32993", size = 12198501, upload-time = "2025-06-09T14:01:04.036Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/d2/b3741e023011f37d6e337254ba13b120de080561f658d784ca1ca9460db8/skia_python-138.0-cp312-cp312-manylinux_2_28_aarch64.whl", hash = "sha256:02b0c2146d25f45224c2c156dd8b859e89265ee5894c3fa8f456c6c41b27122d", size = 13228949, upload-time = "2025-06-09T14:01:06.431Z" },
+    { url = "https://files.pythonhosted.org/packages/94/f0/ea63dbd27f1d7d3a089e32750b082e6bcb4ca7716670be33207bdc4b5e8a/skia_python-138.0-cp312-cp312-manylinux_2_28_x86_64.whl", hash = "sha256:fb9e980a61defcb6ca19d73c97ea23d1aea633a82e9d1dead6ed259c3856baaf", size = 13716695, upload-time = "2025-06-09T14:01:08.735Z" },
+    { url = "https://files.pythonhosted.org/packages/23/e9/9acf2197c77d2a90c3b070d1b578245a4332f19b708e8099cea74edc4d0b/skia_python-138.0-cp312-cp312-win_amd64.whl", hash = "sha256:625bb95dc225ea2257f1d1f7b0aee203290b91d909c8f5feaa7cd428f13bce22", size = 10730248, upload-time = "2025-06-09T14:01:10.931Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/87/dc95a0086dfb210dad20adf3446b1bd85958e190a7e3409db468fb1e8d7f/skia_python-138.0-cp312-cp312-win_arm64.whl", hash = "sha256:e495143edba2a7cdf59e83723f00c9a247e5baeda4981fc6587803ed46c5ed2a", size = 10240328, upload-time = "2025-06-09T14:01:13.491Z" },
+    { url = "https://files.pythonhosted.org/packages/45/93/d27a1b494ee40ee9a34cb1a497a16e158088e39f0acb76b36018a5974e7c/skia_python-138.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:1433b5a0bd4ca1c1d050541f54c25d27d55a129894dbd827d4e440697090ff83", size = 11810860, upload-time = "2025-06-09T14:01:15.754Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/51/e07fd27e07c206c96b85d5b1bf7f143cc23152578392085e4e7a541e39c6/skia_python-138.0-cp313-cp313-macosx_11_0_x86_64.whl", hash = "sha256:3f053128aa6344fa991c2485f29f40bda77b5f46467a43e778a34ec8f5b3615a", size = 12198469, upload-time = "2025-06-09T14:01:17.891Z" },
+    { url = "https://files.pythonhosted.org/packages/12/26/65f991bf4dee40fecb4027e1ee7cc1dacaff2dfa258d47e86af6ae83d8dd/skia_python-138.0-cp313-cp313-manylinux_2_28_aarch64.whl", hash = "sha256:878212d9576d065a45fd143c57d412bc0496c6594ecfcd9cc2cd93b4fd943cb4", size = 13229490, upload-time = "2025-06-09T14:01:21.869Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/2e/5c593bdadaf4c84580af8a46853079a8f0055506a826b1e45ea84baaa816/skia_python-138.0-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:a6b3e58756a9fa8af3714edc05aeafc7922090f5a276c4be11337f252921dbe8", size = 13717865, upload-time = "2025-06-09T14:01:24.049Z" },
+    { url = "https://files.pythonhosted.org/packages/be/d9/b112d8f20e28dde3bbf47574d330b42d1dc4daf73650676b966f356f2f8c/skia_python-138.0-cp313-cp313-win_amd64.whl", hash = "sha256:f2d596d5807fafef6bc43440f4df28f71db189f9e2cfb8613224713916837e3c", size = 10730715, upload-time = "2025-06-09T14:01:26.222Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/1b/32301010348c72de22f03b4322324937de461f8c906e5c2ec10d0b98ac3b/skia_python-138.0-cp313-cp313-win_arm64.whl", hash = "sha256:20285bf4ee41da754b842c80076fc4a240cb3801f4a1cbbb50b26a5dca1ebc39", size = 10239877, upload-time = "2025-06-09T14:01:28.412Z" },
+]
+
+[[package]]
 name = "sniffio"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1413,6 +1451,15 @@ wheels = [
 ]
 
 [[package]]
+name = "types-pywin32"
+version = "311.0.0.20251008"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/05/cd94300066241a7abb52238f0dd8d7f4fe1877cf2c72bd1860856604d962/types_pywin32-311.0.0.20251008.tar.gz", hash = "sha256:d6d4faf8e0d7fdc0e0a1ff297b80be07d6d18510f102d793bf54e9e3e86f6d06", size = 329561, upload-time = "2025-10-08T02:51:39.436Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/08/00a38e6b71585e6741d5b3b4cc9dd165cf549b6f1ed78815c6585f8b1b58/types_pywin32-311.0.0.20251008-py3-none-any.whl", hash = "sha256:775e1046e0bad6d29ca47501301cce67002f6661b9cebbeca93f9c388c53fab4", size = 392942, upload-time = "2025-10-08T02:51:38.327Z" },
+]
+
+[[package]]
 name = "types-requests"
 version = "2.32.4.20260107"
 source = { registry = "https://pypi.org/simple" }
@@ -1479,6 +1526,7 @@ dependencies = [
     { name = "pynput" },
     { name = "pystray" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
+    { name = "skia-python" },
     { name = "sounddevice" },
     { name = "soxr" },
     { name = "websockets" },
@@ -1493,6 +1541,7 @@ dev = [
     { name = "pytest-mock" },
     { name = "ruff" },
     { name = "types-pynput" },
+    { name = "types-pywin32" },
     { name = "types-requests" },
     { name = "types-setuptools" },
 ]
@@ -1510,6 +1559,7 @@ requires-dist = [
     { name = "pynput", specifier = "==1.8.1" },
     { name = "pystray", specifier = "==0.19.5" },
     { name = "pywin32", marker = "sys_platform == 'win32'", specifier = "==311" },
+    { name = "skia-python", specifier = ">=138.0" },
     { name = "sounddevice", specifier = "==0.5.5" },
     { name = "soxr", specifier = ">=1.0.0" },
     { name = "websockets", specifier = "==16.0" },
@@ -1524,6 +1574,7 @@ dev = [
     { name = "pytest-mock", specifier = ">=3.12.0" },
     { name = "ruff", specifier = ">=0.3.0" },
     { name = "types-pynput", specifier = ">=1.8.1.20250809" },
+    { name = "types-pywin32", specifier = ">=311.0.0.20251008" },
     { name = "types-requests", specifier = ">=2.31.0" },
     { name = "types-setuptools", specifier = ">=69.1.0" },
 ]
