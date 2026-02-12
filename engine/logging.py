@@ -90,7 +90,12 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
     # 2. File Handler
     if config.logging.file_enabled:
         file_path = config.logging.file_path or get_default_log_path()
-        file_level = logging.INFO if config.logging.file_level == 1 else logging.DEBUG
+
+        # Use config level or elevate to DEBUG if -vv is passed
+        if verbose_count >= 2:
+            file_level = logging.DEBUG
+        else:
+            file_level = logging.INFO if config.logging.file_level == 1 else logging.DEBUG
 
         try:
             file_handler = logging.FileHandler(file_path, encoding="utf-8")

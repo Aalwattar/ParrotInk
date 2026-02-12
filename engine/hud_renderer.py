@@ -130,7 +130,17 @@ class HudOverlay:
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
             changed = False
-            while not self.text_queue.empty():
+            # If the queue is backed up, skip to the latest message.
+            # If there's only 1-2 messages, we'll process them in sequence
+            # (one per 50ms tick) to show more "streaming" growth.
+            qsize = self.text_queue.qsize()
+            if qsize > 3:
+                # Burst mode: jump to the end
+                while not self.text_queue.empty():
+                    self.last_text = self.text_queue.get()
+                    changed = True
+            elif qsize > 0:
+                # Fluid mode: take one per tick
                 self.last_text = self.text_queue.get()
                 changed = True
 

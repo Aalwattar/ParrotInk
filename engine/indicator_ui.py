@@ -348,6 +348,7 @@ class IndicatorWindow:
     """Universal Indicator that uses HudOverlay (Skia) if available, otherwise GdiFallbackWindow."""
 
     def __init__(self, design_style="glass", partial_words=5):
+        self._last_final_time = 0.0
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
             self.impl = HudOverlay()
@@ -393,6 +394,9 @@ class IndicatorWindow:
         self.impl.stop()
 
     def update_status(self, is_recording: bool):
+        if is_recording:
+            self._last_final_time = 0.0
+
         if hasattr(self.impl, "update_status"):
             self.impl.update_status(is_recording)
         else:
@@ -413,6 +417,12 @@ class IndicatorWindow:
         threading.Thread(target=_hide_after, daemon=True).start()
 
     def update_partial_text(self, text: str):
+        # PROTECT: If we just showed a final result, don't let a RACING partial
+        # from the SAME sentence (which would be a subset or equal) overwrite it.
+        # But if it's new/different text, let it through.
+        if (time.time() - self._last_final_time < 1.0) and (text in self.partial_text):
+            return
+
         if hasattr(self.impl, "update_partial_text"):
             self.impl.update_partial_text(text)
         else:
@@ -420,6 +430,7 @@ class IndicatorWindow:
 
     def on_final(self, text: str, linger_seconds: float = 2.0):
         """Show final text and ensure it stays visible if we are idle."""
+        self._last_final_time = time.time()
         self.update_partial_text(text)
 
         # If we are already idle, make sure the window is visible

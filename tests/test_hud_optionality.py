@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-
 # We need to ensure we can test the fallback even if Skia is actually installed.
 # We'll mock the import in engine.indicator_ui
 
@@ -57,6 +56,7 @@ def test_on_final_lingers_on_fallback():
         indicator.impl.is_recording = False  # Idle
 
         with patch.object(indicator, "_start_linger_timer") as mock_linger:
+            # Protection should not block the first on_final
             indicator.on_final("final text", linger_seconds=1.0)
 
             assert indicator.impl.partial_text == "final text"
