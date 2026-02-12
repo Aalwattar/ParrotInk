@@ -2,7 +2,6 @@ import ctypes
 import queue
 import threading
 from ctypes import wintypes
-from typing import Optional
 
 from engine.logging import get_logger
 
@@ -13,6 +12,7 @@ try:
     import win32con
     import win32gui
     from win32api import GetModuleHandle
+
     from .hud_styles import GlassStyle
 
     HUD_AVAILABLE = True
@@ -31,6 +31,7 @@ WM_NCHITTEST = 0x0084
 HTCAPTION = 2
 WM_TIMER = 0x0113
 
+
 # --- Win32 Structs ---
 class BLENDFUNCTION(ctypes.Structure):
     _fields_ = [
@@ -40,25 +41,42 @@ class BLENDFUNCTION(ctypes.Structure):
         ("AlphaFormat", ctypes.c_byte),
     ]
 
+
 class BITMAPINFOHEADER(ctypes.Structure):
     _fields_ = [
-        ("biSize", wintypes.DWORD), ("biWidth", wintypes.LONG), ("biHeight", wintypes.LONG),
-        ("biPlanes", wintypes.WORD), ("biBitCount", wintypes.WORD), ("biCompression", wintypes.DWORD),
-        ("biSizeImage", wintypes.DWORD), ("biXPelsPerMeter", wintypes.LONG), ("biYPelsPerMeter", wintypes.LONG),
-        ("biClrUsed", wintypes.DWORD), ("biClrImportant", wintypes.DWORD),
+        ("biSize", wintypes.DWORD),
+        ("biWidth", wintypes.LONG),
+        ("biHeight", wintypes.LONG),
+        ("biPlanes", wintypes.WORD),
+        ("biBitCount", wintypes.WORD),
+        ("biCompression", wintypes.DWORD),
+        ("biSizeImage", wintypes.DWORD),
+        ("biXPelsPerMeter", wintypes.LONG),
+        ("biYPelsPerMeter", wintypes.LONG),
+        ("biClrUsed", wintypes.DWORD),
+        ("biClrImportant", wintypes.DWORD),
     ]
+
 
 class BITMAPINFO(ctypes.Structure):
     _fields_ = [("bmiHeader", BITMAPINFOHEADER), ("bmiColors", wintypes.DWORD * 3)]
+
 
 _user32 = ctypes.windll.user32
 _gdi32 = ctypes.windll.gdi32
 
 _user32.UpdateLayeredWindow.argtypes = [
-    wintypes.HWND, wintypes.HDC, ctypes.POINTER(wintypes.POINT),
-    ctypes.POINTER(wintypes.SIZE), wintypes.HDC, ctypes.POINTER(wintypes.POINT),
-    wintypes.COLORREF, ctypes.POINTER(BLENDFUNCTION), wintypes.DWORD,
+    wintypes.HWND,
+    wintypes.HDC,
+    ctypes.POINTER(wintypes.POINT),
+    ctypes.POINTER(wintypes.SIZE),
+    wintypes.HDC,
+    ctypes.POINTER(wintypes.POINT),
+    wintypes.COLORREF,
+    ctypes.POINTER(BLENDFUNCTION),
+    wintypes.DWORD,
 ]
+
 
 class HudOverlay:
     def __init__(self, style_name: str = "glass"):
@@ -77,7 +95,7 @@ class HudOverlay:
         if style_name == "glass":
             self.style = GlassStyle()
         else:
-            self.style = GlassStyle() # Fallback
+            self.style = GlassStyle()  # Fallback
 
         # UI Specs
         self.win_width = 650
@@ -97,8 +115,15 @@ class HudOverlay:
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
 
         _user32.UpdateLayeredWindow(
-            self._hwnd, hdc_screen, None, ctypes.byref(size), self._hdc_mem,
-            ctypes.byref(zero_pt), 0, ctypes.byref(blend), ULW_ALPHA
+            self._hwnd,
+            hdc_screen,
+            None,
+            ctypes.byref(size),
+            self._hdc_mem,
+            ctypes.byref(zero_pt),
+            0,
+            ctypes.byref(blend),
+            ULW_ALPHA,
         )
         _user32.ReleaseDC(0, hdc_screen)
 
@@ -108,12 +133,14 @@ class HudOverlay:
             while not self.text_queue.empty():
                 self.last_text = self.text_queue.get()
                 changed = True
-            
+
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(
-                    self._canvas, self.win_width, self.win_height, 
-                    self.last_text if self.last_text else "Standby", 
-                    self.is_recording
+                    self._canvas,
+                    self.win_width,
+                    self.win_height,
+                    self.last_text if self.last_text else "Standby",
+                    self.is_recording,
                 )
                 self._update_window()
             return 0
@@ -135,13 +162,24 @@ class HudOverlay:
         wcex.lpszClassName = class_name
         wcex.hInstance = hinst
         wcex.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
-        try: win32gui.RegisterClass(wcex)
-        except: pass
+        try:
+            win32gui.RegisterClass(wcex)
+        except Exception:
+            pass
 
         self._hwnd = win32gui.CreateWindowEx(
-            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW, class_name, 
-            "V2T HUD", WS_POPUP, 100, 100, self.win_width, self.win_height, 
-            0, 0, hinst, None
+            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            class_name,
+            "V2T HUD",
+            WS_POPUP,
+            100,
+            100,
+            self.win_width,
+            self.win_height,
+            0,
+            0,
+            hinst,
+            None,
         )
 
         # Setup GDI DIB Section
@@ -155,20 +193,21 @@ class HudOverlay:
         bmi.bmiHeader.biBitCount = 32
         bmi.bmiHeader.biCompression = 0
         self._pixel_ptr = ctypes.c_void_p()
-        self._hbmp = _gdi32.CreateDIBSection(self._hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(self._pixel_ptr), None, 0)
+        self._hbmp = _gdi32.CreateDIBSection(
+            self._hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(self._pixel_ptr), None, 0
+        )
         _gdi32.SelectObject(self._hdc_mem, self._hbmp)
         _user32.ReleaseDC(0, hdc_screen)
 
         # Skia surface wrapping the DIB section directly
         info = skia.ImageInfo.Make(
-            self.win_width, self.win_height,
-            skia.kBGRA_8888_ColorType, skia.kPremul_AlphaType
+            self.win_width, self.win_height, skia.kBGRA_8888_ColorType, skia.kPremul_AlphaType
         )
-        
+
         # Create a buffer that points to the DIB section memory
         size_in_bytes = self.win_width * self.win_height * 4
         pixel_data = (ctypes.c_byte * size_in_bytes).from_address(self._pixel_ptr.value)
-        
+
         self._surface = skia.Surface.MakeRasterDirect(info, pixel_data, self.win_width * 4)
         self._canvas = self._surface.getCanvas()
 
@@ -177,18 +216,25 @@ class HudOverlay:
         win32gui.PumpMessages()
 
     def show(self):
-        if self._hwnd: win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE); self.visible = True
+        if self._hwnd:
+            win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
+            self.visible = True
 
     def hide(self):
-        if self._hwnd: win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE); self.visible = False
+        if self._hwnd:
+            win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE)
+            self.visible = False
 
     def stop(self):
-        if self._hwnd: win32gui.PostMessage(self._hwnd, win32con.WM_CLOSE, 0, 0)
+        if self._hwnd:
+            win32gui.PostMessage(self._hwnd, win32con.WM_CLOSE, 0, 0)
 
-    def update_status(self, is_recording: bool): self.is_recording = is_recording
+    def update_status(self, is_recording: bool):
+        self.is_recording = is_recording
 
     def update_text(self, text: str):
-        if HUD_AVAILABLE: self.text_queue.put(text)
+        if HUD_AVAILABLE:
+            self.text_queue.put(text)
 
     def update_partial_text(self, text: str):
         words = text.split()

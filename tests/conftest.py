@@ -1,10 +1,14 @@
 from unittest.mock import patch
+
 import pytest
+
 from engine.config import Config
+
 
 @pytest.fixture
 def config():
     return Config()
+
 
 @pytest.fixture(autouse=True)
 def mock_audio_feedback():

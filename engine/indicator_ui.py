@@ -144,7 +144,12 @@ def _setup_api():
         wintypes.DWORD,
     ]
 
-    _user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, ctypes.c_uint64, ctypes.c_uint64]
+    _user32.DefWindowProcW.argtypes = [
+        wintypes.HWND,
+        ctypes.c_uint,
+        ctypes.c_uint64,
+        ctypes.c_uint64,
+    ]
     _user32.DefWindowProcW.restype = ctypes.c_int64
 
 
@@ -159,7 +164,7 @@ class GdiFallbackWindow:
         self.design_style = design_style
         self._hwnd = None
         self._width, self._height = 340, 42
-        self._class_name = u"Voice2TextGdiFallback"
+        self._class_name = "Voice2TextGdiFallback"
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
 
         try:
@@ -234,7 +239,7 @@ class GdiFallbackWindow:
         self._gdiplus.GdipFillEllipse(graphics, led_brush, 18.0, h / 2.0 - 5.0, 10.0, 10.0)
 
         font_family = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFontFamilyFromName(u"Segoe UI", None, ctypes.byref(font_family))
+        self._gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
         font = ctypes.c_void_p()
         self._gdiplus.GdipCreateFont(font_family, 11.0, 1, 3, ctypes.byref(font))
         text_brush = ctypes.c_void_p()
@@ -242,14 +247,24 @@ class GdiFallbackWindow:
 
         lrect = (ctypes.c_float * 4)(42.0, h / 2.0 - 9.0, w - 60.0, 22.0)
         display_text = self.partial_text if self.partial_text else "Standing by..."
-        self._gdiplus.GdipDrawString(graphics, display_text, -1, font, ctypes.byref(lrect), None, text_brush)
+        self._gdiplus.GdipDrawString(
+            graphics, display_text, -1, font, ctypes.byref(lrect), None, text_brush
+        )
 
         self._gdiplus.GdipDeleteGraphics(graphics)
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
         size = wintypes.SIZE(self._width, self._height)
         zero_pt = wintypes.POINT(0, 0)
         _user32.UpdateLayeredWindow(
-            self._hwnd, hdc_screen, None, ctypes.byref(size), hdc_mem, ctypes.byref(zero_pt), 0, ctypes.byref(blend), ULW_ALPHA
+            self._hwnd,
+            hdc_screen,
+            None,
+            ctypes.byref(size),
+            hdc_mem,
+            ctypes.byref(zero_pt),
+            0,
+            ctypes.byref(blend),
+            ULW_ALPHA,
         )
 
         self._gdiplus.GdipDeleteBrush(brush)
@@ -283,7 +298,7 @@ class GdiFallbackWindow:
         self._hwnd = _user32.CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             self._class_name,
-            u"V2T Fallback",
+            "V2T Fallback",
             WS_POPUP,
             500,
             50,
@@ -383,7 +398,7 @@ class IndicatorWindow:
         else:
             if not is_recording:
                 self.impl.update_text("Standby")
-        
+
         if not is_recording:
             # When we stop recording, trigger a linger timer to eventually hide the HUD
             self._start_linger_timer()
@@ -394,6 +409,7 @@ class IndicatorWindow:
             # Only hide if we are still in IDLE state
             if not self.is_recording:
                 self.hide()
+
         threading.Thread(target=_hide_after, daemon=True).start()
 
     def update_partial_text(self, text: str):
@@ -405,8 +421,8 @@ class IndicatorWindow:
     def on_final(self, text: str, linger_seconds: float = 2.0):
         """Show final text and ensure it stays visible if we are idle."""
         self.update_partial_text(text)
-        
-        # If we are already idle, make sure the window is visible 
+
+        # If we are already idle, make sure the window is visible
         # and refresh the linger timer so the user can read it.
         if not self.is_recording:
             self.show()

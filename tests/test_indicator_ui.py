@@ -46,6 +46,8 @@ def test_indicator_partial_text_buffer():
 def test_indicator_visibility_toggle():
     """Test showing and hiding the indicator."""
     indicator = IndicatorWindow()
+    indicator.start()
+    
     indicator.show()
     assert indicator.visible is True
 
