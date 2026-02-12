@@ -5,9 +5,9 @@ Compare transcription accuracy and latency of `master` vs `v0.1` using headless 
 ## Phase 1: Baseline Execution (Master)
 Goal: Capture performance metrics for the current state of the application.
 
-- [ ] Task: Commit any uncommitted changes in the working directory to `master`.
-- [ ] Task: Create output directory `eval_results/sample2_comparison/`.
-- [ ] Task: Run `eval` on `master` for OpenAI and AssemblyAI providers.
+- [x] Task: Commit any uncommitted changes in the working directory to `master`. [d57b35e]
+- [x] Task: Create output directory `eval_results/sample2_comparison/`. [d57b35e]
+- [x] Task: Run `eval` on `master` for OpenAI and AssemblyAI providers. [7207599]
     - [ ] Run: `uv run main.py eval --audio "C:\Users\alwat\OneDrive\Office\ Documents\Sound\ Recordings\voice2text_sample2.wav" --provider openai --timeout-seconds 120 > eval_results/sample2_comparison/master_openai.json`
     - [ ] Run: `uv run main.py eval --audio "C:\Users\alwat\OneDrive\Office\ Documents\Sound\ Recordings\voice2text_sample2.wav" --provider assemblyai --timeout-seconds 120 > eval_results/sample2_comparison/master_assemblyai.json`
 - [ ] Task: Conductor - User Manual Verification 'Master Baselines Captured' (Protocol in workflow.md)
