@@ -3,6 +3,10 @@ import queue
 import threading
 import time
 
+from engine.logging import get_logger
+
+logger = get_logger("HudRenderer")
+
 # --- Robust Import Handling ---
 HUD_AVAILABLE = False
 try:
@@ -84,6 +88,7 @@ class HudOverlay:
         self.is_recording = False
         self.visible = False
         self._hwnd = None
+        self._ready_event = threading.Event()
 
         # UI Specs
         self.HEIGHT = 48
@@ -98,9 +103,6 @@ class HudOverlay:
         self.ACCENT_IDLE = 0xFF00BCD4  # Cyan
         self.ACCENT_REC = 0xFFFF0000  # Red
         self.SHADOW_COLOR = 0x80000000
-
-        self._register_window_class()
-        self._create_window()
 
     def _register_window_class(self):
         self.class_name = "StealthHUD_v1"
@@ -133,6 +135,7 @@ class HudOverlay:
         )
         _user32.SetTimer(self._hwnd, 1, 50, None)
         self._update_content("Standby")
+        self._ready_event.set()
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
@@ -164,7 +167,8 @@ class HudOverlay:
 
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
-        self._update_content(self.last_text or ("Listening..." if is_recording else "Standby"))
+        if self._hwnd:
+            self._update_content(self.last_text or ("Listening..." if is_recording else "Standby"))
 
     def update_partial_text(self, text: str):
         words = text.split()
@@ -174,6 +178,8 @@ class HudOverlay:
     def show(self):
         self.visible = True
         if self._hwnd:
+            # Must be called from the same thread if we want immediate result,
+            # but win32gui.ShowWindow is generally thread-safe for simple show/hide.
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
 
     def hide(self):
@@ -186,7 +192,7 @@ class HudOverlay:
             win32gui.PostMessage(self._hwnd, win32con.WM_CLOSE, 0, 0)
 
     def _update_content(self, text: str):
-        if not HUD_AVAILABLE:
+        if not HUD_AVAILABLE or not self._hwnd:
             return
         font = skia.Font(skia.Typeface("Segoe UI"), 16)
         text_width = font.measureText(text)
@@ -252,6 +258,8 @@ class HudOverlay:
         self._blit(surface, win_width, win_height)
 
     def _blit(self, surface, w, h):
+        if not self._hwnd:
+            return
         pixels = surface.makeImageSnapshot().tobytes()
         hdc_screen = _user32.GetDC(0)
         hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
@@ -290,6 +298,9 @@ class HudOverlay:
         _user32.ReleaseDC(0, hdc_screen)
 
     def run(self):
+        """Starts the Win32 message pump and ensures window creation in this thread."""
+        self._register_window_class()
+        self._create_window()
         win32gui.PumpMessages()
 
 
@@ -302,8 +313,17 @@ def _delayed_stop(hud):
 if __name__ == "__main__":
     if HUD_AVAILABLE:
         overlay = HudOverlay()
-        overlay.show()
-        overlay.update_status(True)
-        overlay.update_partial_text("This is a live test of the Stealth HUD renderer.")
         threading.Thread(target=_delayed_stop, args=(overlay,), daemon=True).start()
+        # Initial state simulation
+        overlay.is_recording = True
+        overlay.last_text = "This is a live test of the Stealth HUD renderer."
+        overlay.visible = True
+        
+        # Start pump (will create window and show it if visible=True)
+        # Note: In production we use show() later, but for test:
+        def _force_show(hud):
+            hud._ready_event.wait()
+            hud.show()
+        threading.Thread(target=_force_show, args=(overlay,), daemon=True).start()
+        
         overlay.run()

@@ -140,9 +140,11 @@ class TrayApp:
 
         # Sync indicator visibility and status
         if state == AppState.LISTENING:
+            logger.debug("TrayApp: Showing indicator (LISTENING)")
             self.indicator.update_status(True)
             self.indicator.show()
         elif state == AppState.IDLE:
+            logger.debug("TrayApp: Updating status to idle (IDLE)")
             self.indicator.update_status(False)
             # Removed self.indicator.hide() here to allow on_final to handle lingering text
         elif state == AppState.ERROR:

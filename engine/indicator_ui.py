@@ -374,6 +374,9 @@ class IndicatorWindow:
         # has a blocking run(). Let's make it start in a thread for parity.
         if isinstance(self.impl, HudOverlay):
             threading.Thread(target=self.impl.run, daemon=True).start()
+            # Ensure window is created before we continue
+            if hasattr(self.impl, "_ready_event"):
+                self.impl._ready_event.wait(timeout=2.0)
         else:
             self.impl.start()
 
