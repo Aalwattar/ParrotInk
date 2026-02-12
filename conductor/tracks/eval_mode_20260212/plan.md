@@ -14,14 +14,14 @@ Refactor the application entry point to separate the CLI dispatcher from the UI/
 ## Phase 2: Audio Replay Engine
 Implement the core logic for reading WAV files, downmixing to mono, and pacing the output to simulate real-time microphone input.
 
-- [ ] Task: Create `engine/audio/replay.py` with `WavReplayer` class.
-    - [ ] Implement 16-bit PCM WAV reading.
-    - [ ] Implement mono downmixing for multi-channel files.
-    - [ ] Implement real-time pacing (sleep between chunks).
-- [ ] Task: Write unit tests in `tests/test_audio_replay.py` for `WavReplayer`.
-    - [ ] Verify mono downmix logic.
-    - [ ] Verify chunking and timing.
-- [ ] Task: Conductor - User Manual Verification 'Audio Replay Engine' (Protocol in workflow.md)
+- [x] Task: Create `engine/audio/replay.py` with `WavReplayer` class.
+    - [x] Implement 16-bit PCM WAV reading.
+    - [x] Implement mono downmixing for multi-channel files.
+    - [x] Implement real-time pacing (sleep between chunks).
+- [x] Task: Write unit tests in `tests/test_audio_replay.py` for `WavReplayer`.
+    - [x] Verify mono downmix logic.
+    - [x] Verify chunking and timing.
+- [x] Task: Conductor - User Manual Verification 'Audio Replay Engine' (Protocol in workflow.md)
 
 ## Phase 3: Headless Coordinator & JSON Output
 Implement the evaluation runner that connects the `WavReplayer` to the existing transcription providers and captures the metrics for the JSON output.
