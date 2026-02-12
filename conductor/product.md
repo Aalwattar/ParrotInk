@@ -46,6 +46,11 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
 
+### 2.8. Headless Evaluation Mode
+- A dedicated CLI mode (`eval`) for deterministic accuracy testing and regression monitoring.
+- Replays WAV files through the existing transcription pipeline without triggering UI, text injection, or audio feedback.
+- Produces structured JSON output containing transcription results and performance metrics (latency, final text).
+
 ### 2.7. Tray Interaction
 - **Provider Selection:** Users can switch between providers directly from the tray menu.
 - **Visual Feedback:** The app indicates its state (Idle, Listening, Error) through the tray icon color.
