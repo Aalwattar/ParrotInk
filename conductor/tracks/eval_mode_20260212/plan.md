@@ -37,7 +37,7 @@ Implement the evaluation runner that connects the `WavReplayer` to the existing 
 ## Phase 4: Final Integration & CLI Validation
 Wire the `eval` command to the `EvalCoordinator` and perform end-to-end validation.
 
-- [ ] Task: Wire `main.py eval` to call `engine.eval_main`.
-- [ ] Task: Perform manual end-to-end verification with a sample WAV file.
-- [ ] Task: Verify no UI elements or sounds are triggered in `eval` mode.
-- [ ] Task: Conductor - User Manual Verification 'Final Integration & CLI Validation' (Protocol in workflow.md)
+- [x] Task: Wire `main.py eval` to call `engine.eval_main`.
+- [x] Task: Perform manual end-to-end verification with a sample WAV file.
+- [x] Task: Verify no UI elements or sounds are triggered in `eval` mode.
+- [x] Task: Conductor - User Manual Verification 'Final Integration & CLI Validation' (Protocol in workflow.md)

@@ -107,10 +107,31 @@ class EvalCoordinator:
                         self._fail("replayer_error", str(e))
 
                 audio_task = asyncio.create_task(stream_audio())
+                finish_task = asyncio.create_task(self.finished_event.wait())
 
-                # Task 2: Wait for finalization
-                await self.finished_event.wait()
-                audio_task.cancel()
+                # Wait for replayer to finish OR a non-empty final result
+                # We use a wait with a small grace period after the replayer finishes
+                # to allow the provider to send the final transcript.
+                done, pending = await asyncio.wait(
+                    [audio_task, finish_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+
+                if audio_task in done:
+                    # Replayer finished. Wait up to 5s for a final transcript.
+                    try:
+                        async with asyncio.timeout(5.0):
+                            await self.finished_event.wait()
+                    except asyncio.TimeoutError:
+                        logger.warning("No final transcript received after replayer finished.")
+                        self.finished_event.set()
+                else:
+                    # Got a final transcript before the replayer finished (unlikely but possible)
+                    audio_task.cancel()
+
+                # Cleanup finish_task
+                if not finish_task.done():
+                    finish_task.cancel()
         except asyncio.TimeoutError:
             self._fail("timeout", f"Evaluation timed out after {self.cli_args.timeout_seconds}s")
             return
