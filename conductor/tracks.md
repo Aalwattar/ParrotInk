@@ -91,8 +91,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Floating Acrylic Recording Indicator** [checkpoint: 8884bdc]
 *Link: [./archive/floating_indicator_20260211/](./archive/floating_indicator_20260211/)*
-
----
-
-- [x] **Track: Add \`eval\` mode with WAV replay (headless)**
-*Link: [./tracks/eval_mode_20260212/](./tracks/eval_mode_20260212/)*
