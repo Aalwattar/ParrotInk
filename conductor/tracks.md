@@ -94,5 +94,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Verify HUD isolation and optionality**
+- [x] **Track: Verify HUD isolation and optionality**
 *Link: [./tracks/verify_hud_isolation_20260212/](./tracks/verify_hud_isolation_20260212/)*
