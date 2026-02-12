@@ -101,3 +101,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Accuracy Comparison (Current vs v0.1)**
 *Link: [./archive/accuracy_eval_20260212/](./archive/accuracy_eval_20260212/)*
+
+---
+
+- [x] **Track: Golden Standard Evaluation Tools**
+*Link: [./tracks/golden_tools_20260212/](./golden_tools_20260212/)*
