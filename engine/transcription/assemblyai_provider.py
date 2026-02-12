@@ -153,6 +153,9 @@ class AssemblyAIProvider(BaseProvider):
         """Process incoming events."""
         msg_type = event.get("type") or event.get("message_type")
         text = event.get("transcript") or event.get("text")
+        
+        if msg_type:
+            logger.debug(f"Received AssemblyAI event: {msg_type}")
 
         if text is not None:
             if msg_type == "Turn":
@@ -162,18 +165,20 @@ class AssemblyAIProvider(BaseProvider):
                     return
 
                 if clean_text != self.last_transcript.strip():
+                    logger.debug(f"AssemblyAI Partial (Turn): {text}")
                     self.on_partial(text)
                     self.last_transcript = text
 
                 if event.get("end_of_turn"):
-                    logger.info(f"End of Turn received: {text}")
+                    logger.info(f"AssemblyAI Final (Turn): {text}")
                     self.on_final(text)
                     self.last_transcript = ""
 
             elif msg_type == "FinalTranscript":
-                logger.info(f"Final transcript received: {text}")
+                logger.info(f"AssemblyAI Final: {text}")
                 self.on_final(text)
             elif msg_type == "PartialTranscript":
+                logger.debug(f"AssemblyAI Partial: {text}")
                 self.on_partial(text)
 
         elif "error" in event:

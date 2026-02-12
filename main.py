@@ -178,6 +178,8 @@ class AppCoordinator:
         text = text.strip()
         if not text:
             return
+        
+        logger.debug(f"Handling partial transcription: '{text[:20]}...'")
 
         if self.loop:
             asyncio.run_coroutine_threadsafe(self._smart_inject(text), self.loop)
@@ -521,6 +523,8 @@ class AppCoordinator:
     async def _audio_pipe(self):
         # Finally the delay issue resolved by using an async generator
         # to avoid blocking the event loop.
+        logger.debug("Audio pipe task started.")
+        chunks_sent = 0
         try:
             async for chunk, capture_time in self.streamer.async_generator():
                 # STRICT INVARIANT: Never send audio unless in LISTENING state
@@ -528,12 +532,19 @@ class AppCoordinator:
                     continue
 
                 if not self.provider or not self.audio_adapter:
+                    logger.warning("Audio pipe: Provider or Adapter is missing.")
                     break
 
                 processed = self.audio_adapter.process(chunk)
                 await self.provider.send_audio(processed, capture_time)
+                
+                chunks_sent += 1
+                if chunks_sent % 50 == 0:
+                    logger.debug(f"Audio pipe: Sent {chunks_sent} chunks to provider.")
         except Exception as e:
             logger.exception(f"Error in audio pipe: {e}")
+        finally:
+            logger.debug(f"Audio pipe task stopped. Total chunks sent: {chunks_sent}")
 
     def on_press(self, key):
         name = self._get_canonical_name(key)

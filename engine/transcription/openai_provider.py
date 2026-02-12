@@ -97,16 +97,16 @@ class OpenAIProvider(BaseProvider):
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
-                        "noise_reduction": {"type": "near_field"},
+                        "noise_reduction": None,  # Disabled to prevent aggressive clipping/distortion
                         "transcription": {
                             "model": core.model,  # e.g., gpt-4o-transcribe-latest
                             "language": core.language,
                         },
                         "turn_detection": {
                             "type": "server_vad",
-                            "threshold": adv.vad_threshold,
-                            "prefix_padding_ms": adv.prefix_padding_ms,
-                            "silence_duration_ms": 350,  # Optimized for speed
+                            "threshold": 0.6,  # Slightly more robust
+                            "prefix_padding_ms": 300,
+                            "silence_duration_ms": 500,  # Increased for cohesive sentences
                         }
                         if adv.turn_detection_type == "server_vad"
                         else None,
@@ -159,31 +159,33 @@ class OpenAIProvider(BaseProvider):
     async def _handle_event(self, event: dict):
         """Route transcription events."""
         ev_type = event.get("type")
+        if ev_type:
+            logger.debug(f"Received OpenAI event: {ev_type}")
 
         # Live typing updates
         if ev_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta")
             if delta:
                 self.current_transcript += delta
+                logger.debug(f"OpenAI Partial (Accumulated): {self.current_transcript}")
                 self.on_partial(self.current_transcript)
 
         # Final segment completed
         elif ev_type == "conversation.item.input_audio_transcription.completed":
             transcript = event.get("transcript")
             if transcript:
-                logger.info(f"OpenAI Final: {transcript.strip()}")
+                logger.info(f"OpenAI Final Segment: {transcript.strip()}")
                 self.on_final(transcript.strip())
             self.current_transcript = ""
 
-        # Buffer committed (VAD trigger) - Start of a new potential utterance
+        # Buffer committed (VAD trigger)
         elif ev_type == "input_audio_buffer.committed":
             logger.debug("OpenAI: Audio buffer committed by server VAD.")
-            # Commit means the server has segmented the audio. 
-            # We clear our local buffer so the next item starts fresh.
-            self.current_transcript = ""
+            # Reverted: Do NOT clear buffer here, as deltas for the committed segment 
+            # may still be arriving. We clear only on 'completed'.
 
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
 
         elif ev_type == "session.updated":
-            logger.debug("OpenAI: Session configuration updated successfully.")
+            logger.info("OpenAI: Session configuration updated successfully.")
