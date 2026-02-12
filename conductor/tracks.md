@@ -39,8 +39,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Real-Time AssemblyAI & Smart Interaction Fix** [checkpoint: bc5a1c4]
-*Link: [./tracks/smart_interaction_20260210/](./tracks/smart_interaction_20260210/)*
+- [x] **Track: Real-Time AssemblyAI & Smart Interaction Fix** [checkpoint: 8884bdc]
+*Link: [./archive/smart_interaction_20260210/](./archive/smart_interaction_20260210/)*
 
 ---
 
@@ -89,5 +89,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Floating Acrylic Recording Indicator**
-*Link: [./tracks/floating_indicator_20260211/](./tracks/floating_indicator_20260211/)*
+- [x] **Track: Floating Acrylic Recording Indicator** [checkpoint: 8884bdc]
+*Link: [./archive/floating_indicator_20260211/](./archive/floating_indicator_20260211/)*
+
+---
+
+- [ ] **Track: Add \`eval\` mode with WAV replay (headless)**
+*Link: [./tracks/eval_mode_20260212/](./tracks/eval_mode_20260212/)*
