@@ -3,10 +3,10 @@
 ## Phase 1: Foundation and Win32 Acrylic Window
 Goal: Establish the base Win32 window in an isolated module with Acrylic transparency and draggability.
 
-- [x] Task: Create `tests/test_indicator_ui.py` with failing tests for window lifecycle and basic state.
-- [x] Task: Implement isolated Win32 window class in `engine/indicator_ui.py` using `ctypes`.
-- [x] Task: Implement "Acrylic" (Blur-behind) effect using `SetWindowCompositionAttribute` in `engine/indicator_ui.py`.
-- [x] Task: Implement draggability logic (handling `WM_NCHITTEST`) within the new module.
+- [x] Task: Create `tests/test_indicator_ui.py` with failing tests for window lifecycle and basic state. [d6343d3]
+- [x] Task: Implement isolated Win32 window class in `engine/indicator_ui.py` using `ctypes`. [d6343d3]
+- [x] Task: Implement "Acrylic" (Blur-behind) effect using `SetWindowCompositionAttribute` in `engine/indicator_ui.py`. [d6343d3]
+- [x] Task: Implement draggability logic (handling `WM_NCHITTEST`) within the new module. [d6343d3]
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation' (Protocol in workflow.md)
 
 ## Phase 2: State Visualization and Engine Integration
