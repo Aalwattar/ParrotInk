@@ -106,10 +106,6 @@ class AudioStreamer:
                 pass
 
         self.async_q.put_nowait((chunk, capture_time))
-        
-        # Periodic heartbeat for capture
-        if self.async_q.qsize() % 50 == 0 and self.async_q.qsize() > 0:
-            logger.debug(f"Audio capture heartbeat: Queue size {self.async_q.qsize()}")
 
     def start(self, loop: asyncio.AbstractEventLoop | None = None):
         """Starts the audio capture stream."""

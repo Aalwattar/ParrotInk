@@ -159,15 +159,12 @@ class OpenAIProvider(BaseProvider):
     async def _handle_event(self, event: dict):
         """Route transcription events."""
         ev_type = event.get("type")
-        if ev_type:
-            logger.debug(f"Received OpenAI event: {ev_type}")
 
         # Live typing updates
         if ev_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta")
             if delta:
                 self.current_transcript += delta
-                logger.debug(f"OpenAI Partial (Accumulated): {self.current_transcript}")
                 self.on_partial(self.current_transcript)
 
         # Final segment completed
