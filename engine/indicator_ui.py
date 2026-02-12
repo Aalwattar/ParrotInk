@@ -1,5 +1,6 @@
 import ctypes
 import threading
+import time
 from ctypes import wintypes
 
 from typing import Any
@@ -400,3 +401,16 @@ class IndicatorWindow:
             self.impl.update_partial_text(text)
         else:
             self.impl.update_text(text)
+
+    def on_final(self, text: str, linger_seconds: float = 2.0):
+        """Show final text and stay visible for linger_seconds."""
+        self.update_partial_text(text)
+        self.update_status(False)
+
+        def _hide_after():
+            time.sleep(linger_seconds)
+            # Only hide if we haven't started recording again
+            if not getattr(self.impl, "is_recording", False):
+                self.hide()
+
+        threading.Thread(target=_hide_after, daemon=True).start()

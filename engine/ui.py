@@ -144,7 +144,7 @@ class TrayApp:
             self.indicator.show()
         elif state == AppState.IDLE:
             self.indicator.update_status(False)
-            self.indicator.hide()
+            # Removed self.indicator.hide() here to allow on_final to handle lingering text
         elif state == AppState.ERROR:
             self.indicator.update_status(False)
             # We might want to keep it visible to show the error,
@@ -181,6 +181,8 @@ class TrayApp:
                 self.update_availability(data)
             elif msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
                 self.indicator.update_partial_text(data)
+            elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
+                self.indicator.on_final(data)
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()

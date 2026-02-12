@@ -194,6 +194,9 @@ class AppCoordinator:
         if not text:
             return
 
+        # Forward to floating indicator
+        self.ui_bridge.update_final_text(text)
+
         # Ensure final text is fully synchronized and add a trailing space
         if self.loop:
             asyncio.run_coroutine_threadsafe(
