@@ -94,5 +94,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Add \`eval\` mode with WAV replay (headless)**
+- [x] **Track: Add \`eval\` mode with WAV replay (headless)**
 *Link: [./tracks/eval_mode_20260212/](./tracks/eval_mode_20260212/)*
