@@ -105,4 +105,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Golden Standard Evaluation Tools**
-*Link: [./tracks/golden_tools_20260212/](./golden_tools_20260212/)*
+*Link: [./archive/golden_tools_20260212/](./archive/golden_tools_20260212/)*
