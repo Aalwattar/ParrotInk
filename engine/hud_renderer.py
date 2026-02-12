@@ -83,7 +83,7 @@ class HudOverlay:
         if not HUD_AVAILABLE:
             return
 
-        self.text_queue = queue.Queue()
+        self.text_queue: queue.Queue[str] = queue.Queue()
         self.last_text = ""
         self.is_recording = False
         self.visible = False
