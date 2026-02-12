@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+import wave
 from pathlib import Path
 from typing import Optional
 
@@ -50,11 +51,10 @@ class EvalCoordinator:
             self.time_to_first_final = time.time() - self.start_time
             logger.info(f"First final received at {self.time_to_first_final:.2f}s")
 
-        self.final_text = text.strip()
-        # For evaluation, we assume one WAV = one final result.
-        # We signal finish when we get a non-empty final result.
         if self.final_text:
-            self.finished_event.set()
+            self.final_text += " " + text.strip()
+        else:
+            self.final_text = text.strip()
 
     async def run(self):
         configure_logging(
@@ -65,7 +65,17 @@ class EvalCoordinator:
             self._fail("invalid_wav", f"File not found: {self.audio_path}")
             return
 
-        # Initialize provider
+        replayer = WavReplayer(self.audio_path, chunk_ms=self.config.audio.chunk_ms)
+        
+        # Get sample rate from replayer to ensure correct resampling
+        try:
+            with wave.open(str(self.audio_path), "rb") as wr:
+                wav_sample_rate = wr.getframerate()
+        except Exception as e:
+            self._fail("invalid_wav", f"Could not read WAV header: {e}")
+            return
+
+        logger.info(f"Connecting to {self.provider_name}...")
         try:
             # Force the selected provider in config for the factory
             self.config.default_provider = self.provider_name
@@ -73,16 +83,13 @@ class EvalCoordinator:
                 self.config, on_partial=self.on_partial, on_final=self.on_final
             )
             adapter = AudioAdapter(
-                capture_rate_hz=self.config.audio.capture_sample_rate,
+                capture_rate_hz=wav_sample_rate,
                 provider_spec=provider.get_audio_spec(),
             )
         except Exception as e:
             self._fail("config_error", str(e))
             return
 
-        replayer = WavReplayer(self.audio_path, chunk_ms=self.config.audio.chunk_ms)
-
-        logger.info(f"Connecting to {self.provider_name}...")
         try:
             await provider.start()
         except Exception as e:
