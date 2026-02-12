@@ -97,8 +97,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [ ] **Track: Architecture & Design Cleanup (ROI-Focused)**
 *Link: [./tracks/arch_cleanup_20260212/](./arch_cleanup_20260212/)*
 
-
 ---
 
 - [x] **Track: Accuracy Comparison (Current vs v0.1)**
-*Link: [./tracks/accuracy_eval_20260212/](./accuracy_eval_20260212/)*
+*Link: [./archive/accuracy_eval_20260212/](./archive/accuracy_eval_20260212/)*

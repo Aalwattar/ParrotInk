@@ -1,0 +1,8 @@
+{
+  "track_id": "accuracy_eval_20260212",
+  "type": "chore",
+  "status": "new",
+  "created_at": "2026-02-12T15:46:00Z",
+  "updated_at": "2026-02-12T15:46:00Z",
+  "description": "Accuracy Comparison (Current vs v0.1)"
+}
