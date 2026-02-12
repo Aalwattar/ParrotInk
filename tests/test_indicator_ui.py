@@ -23,13 +23,18 @@ def test_indicator_status_update():
 def test_indicator_partial_text_buffer():
     """Test that the partial text display maintains a short buffer of 3-5 words."""
     indicator = IndicatorWindow()
+    indicator.start()
 
     # Send 1 word
     indicator.update_partial_text("Hello")
+    import time
+
+    time.sleep(0.2)  # Wait for HUD thread to process queue
     assert indicator.partial_text == "Hello"
 
     # Send more than 5 words
     indicator.update_partial_text("one two three four five six seven")
+    time.sleep(0.2)
     # Should keep only the last few words.
     # Exact behavior depends on implementation, but let's say last 5 words.
     words = indicator.partial_text.split()

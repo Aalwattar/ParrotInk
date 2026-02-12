@@ -89,6 +89,7 @@ class HudOverlay:
         self.visible = False
         self._hwnd = None
         self._ready_event = threading.Event()
+        self._partial_words = 5
 
         # UI Specs
         self.HEIGHT = 48
@@ -162,7 +163,6 @@ class HudOverlay:
 
     def update_text(self, text: str):
         if HUD_AVAILABLE:
-            self.last_text = text  # For sync visibility in tests
             self.text_queue.put(text)
 
     def update_status(self, is_recording: bool):
@@ -172,7 +172,8 @@ class HudOverlay:
 
     def update_partial_text(self, text: str):
         words = text.split()
-        buffer = " ".join(words[-5:]) if len(words) > 5 else text
+        limit = self._partial_words
+        buffer = " ".join(words[-limit:]) if len(words) > limit else text
         self.update_text(buffer)
 
     def show(self):

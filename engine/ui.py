@@ -12,6 +12,7 @@ from .indicator_ui import IndicatorWindow
 from .logging import get_logger
 
 if TYPE_CHECKING:
+    from .config import Config
     from .ui_bridge import UIBridge
 
 logger = get_logger("UI")
@@ -20,6 +21,7 @@ logger = get_logger("UI")
 class TrayApp:
     def __init__(
         self,
+        config: "Config",
         bridge: Optional["UIBridge"] = None,
         on_quit_callback: Callable | None = None,
         on_provider_change: Callable[[ProviderType], None] | None = None,
@@ -29,6 +31,7 @@ class TrayApp:
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
     ):
+        self.config = config
         self.bridge = bridge
         self.state = AppState.IDLE
         self.default_provider: ProviderType = initial_provider
@@ -41,7 +44,9 @@ class TrayApp:
 
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
-        self.indicator = IndicatorWindow()
+        self.indicator = IndicatorWindow(
+            partial_words=self.config.ui.floating_indicator.partial_text_words
+        )
 
     def _create_image(self, color: str) -> Image.Image:
         width, height = 64, 64

@@ -698,6 +698,7 @@ async def main_async(cli_args):
     from engine.ui import TrayApp
 
     app = TrayApp(
+        config=config,
         bridge=ui_bridge,
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,

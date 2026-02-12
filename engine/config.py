@@ -60,6 +60,7 @@ class FloatingIndicatorConfig(BaseModel):
     opacity_active: float = 0.8
     x: int = 500
     y: int = 50
+    partial_text_words: int = 5
 
 
 class InteractionConfig(BaseModel):

@@ -29,8 +29,11 @@ async def simulate_coordinator(bridge):
 
 
 if __name__ == "__main__":
+    from engine.config import Config
+
+    config = Config()
     bridge = UIBridge()
-    app = TrayApp(bridge=bridge)
+    app = TrayApp(config=config, bridge=bridge)
 
     # Run UI in thread
     ui_thread = threading.Thread(target=app.run, daemon=True)
