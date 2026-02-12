@@ -89,5 +89,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 \
 ---
 
-- [ ] **Track: Floating Acrylic Recording Indicator**
+- [~] **Track: Floating Acrylic Recording Indicator**
 *Link: [./tracks/floating_indicator_20260211/](./tracks/floating_indicator_20260211/)*\
