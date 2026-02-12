@@ -1,8 +1,0 @@
-{
-  "track_id": "smart_interaction_20260210",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-02-10T16:13:00Z",
-  "updated_at": "2026-02-10T16:13:00Z",
-  "description": "Enable immediate partial injections for AssemblyAI with Smart Overwrite and fix Toggle mode stop reliability."
-}

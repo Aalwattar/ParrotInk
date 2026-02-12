@@ -592,9 +592,7 @@ def handle_cli():
     subparsers.add_parser("run", help="Start the application tray icon (default)")
 
     # Command: eval (Headless)
-    eval_parser = subparsers.add_parser(
-        "eval", help="Run headless evaluation mode with a WAV file"
-    )
+    eval_parser = subparsers.add_parser("eval", help="Run headless evaluation mode with a WAV file")
     eval_parser.add_argument("--audio", required=True, help="Path to the input WAV file")
     eval_parser.add_argument(
         "--provider", required=True, choices=["openai", "assemblyai"], help="Transcription provider"
@@ -650,10 +648,12 @@ if __name__ == "__main__":
 
     elif cli_args.command == "eval":
         from engine.eval_main import main_eval
+
         asyncio.run(main_eval(cli_args))
 
     else:  # run
         from engine.gui_main import main_gui
+
         try:
             asyncio.run(main_gui(cli_args))
         except KeyboardInterrupt:

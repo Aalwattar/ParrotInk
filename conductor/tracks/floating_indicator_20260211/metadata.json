@@ -1,8 +1,0 @@
-{
-  "track_id": "floating_indicator_20260211",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-11T19:21:00Z",
-  "updated_at": "2026-02-11T19:21:00Z",
-  "description": "I want to create a floating, thread-safe recording icon using the Win32 library or something similar. Requirements: - Thread-safe implementation (Win32 or equivalent). - Modern look. - Displays recording status (recording / not recording). - Movable anywhere on the screen (draggable). - Option to display the text from the dual writing — the non-final text. - Short buffer only; display a few words of the non-final text. I need to create a branch for this so we can test it before merging."
-}

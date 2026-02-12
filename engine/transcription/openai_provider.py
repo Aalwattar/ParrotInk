@@ -150,6 +150,7 @@ class OpenAIProvider(BaseProvider):
         """Handle incoming server events."""
         try:
             async for message in self.ws:
+                logger.debug(f"Received OpenAI message: {message}")
                 event = json.loads(message)
                 await self._handle_event(event)
         except Exception as e:

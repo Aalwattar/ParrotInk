@@ -139,7 +139,7 @@ class AssemblyAIProvider(BaseProvider):
         """Listen for transcription events."""
         try:
             async for message in self.ws:
-                # logger.debug(f"Received message: {message}")
+                logger.debug(f"Received message: {message}")
                 event = json.loads(message)
                 await self._handle_event(event)
         except websockets.exceptions.ConnectionClosed:
@@ -158,10 +158,7 @@ class AssemblyAIProvider(BaseProvider):
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative.
                 clean_text = text.strip()
-                if not clean_text:
-                    return
-
-                if clean_text != self.last_transcript.strip():
+                if clean_text:
                     self.on_partial(text)
                     self.last_transcript = text
 

@@ -1,3 +1,5 @@
+import time
+
 from engine.indicator_ui import IndicatorWindow
 
 
@@ -27,7 +29,6 @@ def test_indicator_partial_text_buffer():
 
     # Send 1 word
     indicator.update_partial_text("Hello")
-    import time
 
     time.sleep(0.2)  # Wait for HUD thread to process queue
     assert indicator.partial_text == "Hello"
@@ -47,7 +48,7 @@ def test_indicator_visibility_toggle():
     """Test showing and hiding the indicator."""
     indicator = IndicatorWindow()
     indicator.start()
-    
+
     indicator.show()
     assert indicator.visible is True
 

@@ -17,6 +17,7 @@ from main import AppCoordinator
 
 logger = get_logger("GUI")
 
+
 async def main_gui(cli_args):
     try:
         config = load_config()

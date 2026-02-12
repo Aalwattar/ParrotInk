@@ -19,6 +19,7 @@ def test_eval_mode_imports():
     assert "tkinter" not in sys.modules, "eval_main triggered tkinter import!"
     assert "engine.ui" not in sys.modules, "eval_main triggered engine.ui import!"
 
+
 def test_gui_mode_imports():
     """
     Ensure engine.gui_main DOES allow these imports (sanity check).

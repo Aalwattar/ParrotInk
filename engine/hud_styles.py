@@ -79,6 +79,5 @@ class GlassStyle(HudStyle):
             )
 
         # 7. Text (Pure White)
-        canvas.drawTextBlob(
-            blob, rect.fLeft + 40.0, rect.centerY() + 6.0, skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
-        )
+        text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
+        canvas.drawTextBlob(blob, rect.fLeft + 40.0, rect.centerY() + 6.0, text_paint)

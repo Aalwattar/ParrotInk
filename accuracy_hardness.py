@@ -100,7 +100,9 @@ def _merge_run_config(base: RunConfig, toml_data: Dict[str, Any]) -> RunConfig:
     oa = toml_data.get("openai") or {}
     if isinstance(oa, dict):
         cfg["openai_ws_url"] = str(oa.get("ws_url", cfg["openai_ws_url"]))
-        cfg["openai_transcribe_model"] = str(oa.get("transcribe_model", cfg["openai_transcribe_model"]))
+        cfg["openai_transcribe_model"] = str(
+            oa.get("transcribe_model", cfg["openai_transcribe_model"])
+        )
         cfg["openai_language"] = oa.get("language", cfg["openai_language"])
         cfg["openai_prompt"] = oa.get("prompt", cfg["openai_prompt"])
         cfg["openai_turn_detection"] = str(oa.get("turn_detection", cfg["openai_turn_detection"]))
@@ -109,8 +111,12 @@ def _merge_run_config(base: RunConfig, toml_data: Dict[str, Any]) -> RunConfig:
     aa = toml_data.get("assemblyai") or {}
     if isinstance(aa, dict):
         cfg["assemblyai_ws_url"] = str(aa.get("ws_url", cfg["assemblyai_ws_url"]))
-        cfg["assemblyai_sample_rate_hz"] = int(aa.get("sample_rate_hz", cfg["assemblyai_sample_rate_hz"]))
-        cfg["assemblyai_format_turns"] = bool(aa.get("format_turns", cfg["assemblyai_format_turns"]))
+        cfg["assemblyai_sample_rate_hz"] = int(
+            aa.get("sample_rate_hz", cfg["assemblyai_sample_rate_hz"])
+        )
+        cfg["assemblyai_format_turns"] = bool(
+            aa.get("format_turns", cfg["assemblyai_format_turns"])
+        )
 
     return RunConfig(**cfg)  # type: ignore[arg-type]
 
@@ -217,7 +223,12 @@ async def _openai_transcribe(
         await ws.send(json.dumps({"type": "session.update", "session": session}))
 
         async def receiver() -> None:
-            nonlocal time_to_first_partial, time_to_first_final, current_partial, partial_count, last_partial
+            nonlocal \
+                time_to_first_partial, \
+                time_to_first_final, \
+                current_partial, \
+                partial_count, \
+                last_partial
             async for raw in ws:
                 data = json.loads(_normalize_ws_msg(raw))
                 ev_type = data.get("type", "")
@@ -376,9 +387,9 @@ def _wer(ref: str, hyp: str) -> float:
         for j in range(1, m + 1):
             cost = 0 if ref_words[i - 1] == hyp_words[j - 1] else 1
             dp[i][j] = min(
-                dp[i - 1][j] + 1,       # deletion
-                dp[i][j - 1] + 1,       # insertion
-                dp[i - 1][j - 1] + cost # substitution
+                dp[i - 1][j] + 1,  # deletion
+                dp[i][j - 1] + 1,  # insertion
+                dp[i - 1][j - 1] + cost,  # substitution
             )
     return dp[n][m] / n
 
@@ -506,12 +517,27 @@ def _expand_paths(patterns: List[str]) -> List[Path]:
 
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Replay WAVs through streaming STT providers and write JSONL results.")
-    ap.add_argument("--audio", nargs="+", required=True, help="WAV file(s) or glob(s). Must be 16-bit PCM WAV.")
-    ap.add_argument("--config", nargs="*", default=[], help="Config TOML file(s) or glob(s). If omitted, defaults are used.")
+    ap = argparse.ArgumentParser(
+        description="Replay WAVs through streaming STT providers and write JSONL results."
+    )
+    ap.add_argument(
+        "--audio", nargs="+", required=True, help="WAV file(s) or glob(s). Must be 16-bit PCM WAV."
+    )
+    ap.add_argument(
+        "--config",
+        nargs="*",
+        default=[],
+        help="Config TOML file(s) or glob(s). If omitted, defaults are used.",
+    )
     ap.add_argument("--out", default="accuracy_results.jsonl", help="Output JSONL path (appends).")
-    ap.add_argument("--providers", nargs="*", default=["openai", "assemblyai"], help="Subset: openai assemblyai")
-    ap.add_argument("--golden-dir", default=None, help="Directory containing <audio_stem>.txt golden transcripts.")
+    ap.add_argument(
+        "--providers", nargs="*", default=["openai", "assemblyai"], help="Subset: openai assemblyai"
+    )
+    ap.add_argument(
+        "--golden-dir",
+        default=None,
+        help="Directory containing <audio_stem>.txt golden transcripts.",
+    )
     return ap.parse_args(argv)
 
 
@@ -554,4 +580,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
