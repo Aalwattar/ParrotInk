@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import signal
 import sys
-import threading
 import time
 from typing import Literal, Optional, Set
 
@@ -14,11 +12,11 @@ from engine.app_types import AppState
 from engine.audio import AudioStreamer
 from engine.audio.adapter import AudioAdapter
 from engine.audio_feedback import play_sound
-from engine.config import Config, ConfigError, load_config
+from engine.config import Config
 from engine.credential_ui import ask_key
 from engine.injector import SmartInjector, inject_text
 from engine.interaction import InteractionMonitor
-from engine.logging import configure_logging, get_logger
+from engine.logging import get_logger
 from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
 from engine.transcription.base import BaseProvider
@@ -577,16 +575,35 @@ def handle_cli():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Voice2Text: A real-time voice-to-text system tray application.",
+        description="Voice2Text: A real-time voice-to-text application.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python main.py              # Start the application tray icon
-  python main.py set-key openai    # Set the OpenAI API key securely
-  python main.py set-key assemblyai # Set the AssemblyAI API key securely
-""",
     )
+
+    # Global options for logging (shared by all subcommands)
+    parser.add_argument(
+        "-v", "--verbose", action="count", default=0, help="Increase verbosity (Level 1 or 2)"
+    )
+    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
+    parser.add_argument("--log-file", type=str, help="Override default log file path")
+
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Command: run (Default / GUI)
+    subparsers.add_parser("run", help="Start the application tray icon (default)")
+
+    # Command: eval (Headless)
+    eval_parser = subparsers.add_parser(
+        "eval", help="Run headless evaluation mode with a WAV file"
+    )
+    eval_parser.add_argument("--audio", required=True, help="Path to the input WAV file")
+    eval_parser.add_argument(
+        "--provider", required=True, choices=["openai", "assemblyai"], help="Transcription provider"
+    )
+    eval_parser.add_argument("--config", help="Path to a custom config.toml")
+    eval_parser.add_argument("--chunk-ms", type=int, help="Chunk duration in ms")
+    eval_parser.add_argument(
+        "--timeout-seconds", type=int, default=120, help="Timeout for finalization"
+    )
 
     # Command: set-key
     set_key_parser = subparsers.add_parser(
@@ -598,21 +615,28 @@ Examples:
         help="The transcription provider (openai or assemblyai)",
     )
 
-    # Global options for logging
-    parser.add_argument(
-        "-v", "--verbose", action="count", default=0, help="Increase verbosity (Level 1 or 2)"
-    )
-    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
-    parser.add_argument("--log-file", type=str, help="Override default log file path")
-
     args = parser.parse_args()
 
-    if args.command == "set-key":
+    # Default command is 'run'
+    if not args.command:
+        args.command = "run"
+
+    return args
+
+
+if __name__ == "__main__":
+    from engine.config import migrate_config_file
+
+    migrate_config_file("config.toml")
+
+    cli_args = handle_cli()
+
+    if cli_args.command == "set-key":
         account_map = {
             "openai": ("openai_api_key", "OpenAI"),
             "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
         }
-        account_id, provider_name = account_map[args.provider]
+        account_id, provider_name = account_map[cli_args.provider]
 
         print(f"Setting credential for {provider_name}...")
         key = ask_key(provider_name)
@@ -624,118 +648,13 @@ Examples:
             print("Operation cancelled.")
         sys.exit(0)
 
-    return args
+    elif cli_args.command == "eval":
+        from engine.eval_main import main_eval
+        asyncio.run(main_eval(cli_args))
 
-
-async def main_async(cli_args):
-    try:
-        config = load_config()
-    except ConfigError as e:
-        print(f"\n[CONFIGURATION ERROR] {e}", file=sys.stderr)
-        return
-
-    # CLI overrides config for file path if provided
-    if cli_args.log_file:
-        config.logging.file_path = cli_args.log_file
-        config.logging.file_enabled = True
-
-    configure_logging(config, verbose_count=cli_args.verbose, quiet=cli_args.quiet)
-
-    ui_bridge = UIBridge()
-    coordinator = AppCoordinator(config, ui_bridge)
-    coordinator.loop = asyncio.get_running_loop()
-
-    # Shared event to signal main loop exit
-    exit_event = asyncio.Event()
-
-    async def trigger_shutdown(reason: str):
-        await coordinator.shutdown(reason)
-        exit_event.set()
-
-    def on_quit():
-        logger.info("Tray 'Quit' selected.")
-        if coordinator.loop:
-            coordinator.loop.call_soon_threadsafe(
-                lambda: asyncio.create_task(trigger_shutdown("Tray Exit"))
-            )
-
-    def on_sigint(sig, frame):
-        logger.info("SIGINT (Ctrl+C) received.")
-        if coordinator.loop:
-            coordinator.loop.call_soon_threadsafe(
-                lambda: asyncio.create_task(trigger_shutdown("SIGINT"))
-            )
-
-    signal.signal(signal.SIGINT, on_sigint)
-
-    def on_provider_change(provider_name):
-        if coordinator.is_listening or coordinator.is_connecting:
-            logger.info(f"Stopping active session before changing provider to {provider_name}")
-            asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
-        elif coordinator.provider:
-            # If we have an idle (WARM) provider, stop it so the next connect uses the new one
-            logger.info(f"Stopping idle provider before changing to {provider_name}")
-            asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
-            coordinator.provider = None
-
-        config.default_provider = provider_name
-        logger.info(f"Provider changed to: {provider_name}")
-
-    def on_set_key(account_id, key):
-        SecurityManager.set_key(account_id, key)
-        logger.info(f"API Key updated for: {account_id}")
-        ui_bridge.update_availability(coordinator.get_provider_availability())
-        ui_bridge.notify(
-            f"API Key for {account_id.replace('_api_key', '').title()} has been saved securely.",
-            "Key Saved",
-        )
-
-    def on_toggle_sounds(enabled):
-        config.interaction.sounds.enabled = enabled
-        logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
-
-    # Import TrayApp here to keep AppCoordinator decoupled from UI module
-    from engine.ui import TrayApp
-
-    app = TrayApp(
-        config=config,
-        bridge=ui_bridge,
-        on_quit_callback=on_quit,
-        on_provider_change=on_provider_change,
-        on_set_key=on_set_key,
-        on_toggle_sounds=on_toggle_sounds,
-        initial_provider=config.default_provider,
-        initial_sounds_enabled=config.interaction.sounds.enabled,
-        availability=coordinator.get_provider_availability(),
-    )
-
-    ui_thread = threading.Thread(target=app.run, daemon=True)
-    ui_thread.start()
-
-    listener = keyboard.Listener(on_press=coordinator.on_press, on_release=coordinator.on_release)
-    listener.start()
-    logger.info(
-        f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
-    )
-
-    logger.info("Application running. Use Ctrl+C or Tray Exit to quit.")
-
-    try:
-        await exit_event.wait()
-    except asyncio.CancelledError:
-        pass
-    finally:
-        # Ensure shutdown is called if we exited wait() for some other reason
-        await coordinator.shutdown("Finalizing")
-
-
-if __name__ == "__main__":
-    from engine.config import migrate_config_file
-
-    migrate_config_file("config.toml")
-
-    cli_args = handle_cli()
-    try:
-        asyncio.run(main_async(cli_args))
-    except KeyboardInterrupt:
-        pass
+    else:  # run
+        from engine.gui_main import main_gui
+        try:
+            asyncio.run(main_gui(cli_args))
+        except KeyboardInterrupt:
+            pass
