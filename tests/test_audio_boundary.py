@@ -1,13 +1,13 @@
 import numpy as np
 import pytest
 
+from engine.app_types import CaptureFormatError
 from engine.audio import (
     check_audio_invariants,
     downmix_stereo_to_mono,
     reshape_to_1d,
     sanitize_nan_inf,
 )
-from engine.types import CaptureFormatError
 
 
 def test_downmix_stereo_to_mono():

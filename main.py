@@ -10,6 +10,7 @@ from typing import Literal, Optional, Set
 from pynput import keyboard
 
 from engine.anchor import Anchor
+from engine.app_types import AppState
 from engine.audio import AudioStreamer
 from engine.audio.adapter import AudioAdapter
 from engine.audio_feedback import play_sound
@@ -22,7 +23,6 @@ from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
-from engine.types import AppState
 from engine.ui_bridge import UIBridge
 
 logger = get_logger("Main")
@@ -178,6 +178,9 @@ class AppCoordinator:
         text = text.strip()
         if not text:
             return
+
+        # Forward to floating indicator
+        self.ui_bridge.update_partial_text(text)
 
         if self.loop:
             asyncio.run_coroutine_threadsafe(self._smart_inject(text), self.loop)

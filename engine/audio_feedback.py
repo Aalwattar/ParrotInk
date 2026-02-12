@@ -1,5 +1,4 @@
 import os
-import threading
 import winsound
 
 from engine.logging import get_logger
@@ -19,6 +18,8 @@ def play_sound(path: str, volume: float = 0.5):
         # SND_FILENAME: path is a filename
         # SND_NODEFAULT: don't play default sound if file missing
         # SND_ASYNC: return immediately without needing a separate thread
-        winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_NODEFAULT | winsound.SND_ASYNC)
+        winsound.PlaySound(
+            path, winsound.SND_FILENAME | winsound.SND_NODEFAULT | winsound.SND_ASYNC
+        )
     except Exception as e:
         logger.error(f"Error playing sound {path}: {e}")
