@@ -451,6 +451,7 @@ class IndicatorWindow:
     def update_status(self, is_recording: bool):
         if is_recording:
             self._last_final_time = 0.0
+            self._current_partial_text = ""
 
         if hasattr(self.impl, "update_status"):
             self.impl.update_status(is_recording)
