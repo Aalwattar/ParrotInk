@@ -22,7 +22,7 @@ class GlassStyle(HudStyle):
         self.radius = 10.0
         self.capsule_height = 34.0  # Compact height
         self.max_capsule_width = 800.0
-        self.padding = 30.0
+        self.padding = 10.0
 
     def draw(
         self,

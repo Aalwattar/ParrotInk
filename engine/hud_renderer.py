@@ -99,7 +99,7 @@ class HudOverlay:
 
         # UI Specs
         self.win_width = 1000
-        self.win_height = 100
+        self.win_height = 60
 
         # GDI Resources
         self._hdc_mem = None

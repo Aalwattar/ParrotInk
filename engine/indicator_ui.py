@@ -163,7 +163,7 @@ class GdiFallbackWindow:
         self.visible = False
         self.design_style = design_style
         self._hwnd = None
-        self._width, self._height = 340, 42
+        self._width, self._height = 340, 60
         self._class_name = "Voice2TextGdiFallback"
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
 
