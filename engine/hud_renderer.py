@@ -132,24 +132,34 @@ class HudOverlay:
             changed = False
             status_override = None
 
-            # Process Queue
+            # Process Queue - Drain COMPLETELY to ensure we show the latest state
+            # If we limit count < 5, we might lag behind if the provider sends burst updates.
             qsize = self.text_queue.qsize()
             if qsize > 0:
-                # We process up to 5 events per tick to drain burst
-                count = 0
-                while not self.text_queue.empty() and count < 5:
-                    item = self.text_queue.get()
-                    if isinstance(item, tuple):
-                        kind, payload = item
-                        if kind == "TEXT":
-                            self.last_text = payload
-                        elif kind == "STATUS":
-                            status_override = payload
-                    else:
-                        # Legacy string support
-                        self.last_text = item
-                    changed = True
-                    count += 1
+                latest_text = None
+                latest_status = None
+                
+                while True:
+                    try:
+                        item = self.text_queue.get_nowait()
+                        changed = True
+                        if isinstance(item, tuple):
+                            kind, payload = item
+                            if kind == "TEXT":
+                                latest_text = payload
+                            elif kind == "STATUS":
+                                latest_status = payload
+                        else:
+                            # Legacy string support
+                            latest_text = item
+                    except queue.Empty:
+                        break
+                
+                # Apply only the latest state from the batch
+                if latest_text is not None:
+                    self.last_text = latest_text
+                if latest_status is not None:
+                    status_override = latest_status
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(

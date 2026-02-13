@@ -400,6 +400,7 @@ class IndicatorWindow:
         self._shown_at = 0.0
         self._final_flash_until = 0.0
         self._last_redraw_at = 0.0
+        self._current_partial_text = ""
 
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
@@ -478,22 +479,22 @@ class IndicatorWindow:
         threading.Thread(target=_hide_after, daemon=True).start()
 
     def update_partial_text(self, text: str):
+        # ALWAYS update the internal state so we don't miss the latest text
+        self._current_partial_text = text
+
         # Throttling: Cap at ~20fps (50ms)
         now = time.time()
         if now - self._last_redraw_at < 0.05:
             return
         self._last_redraw_at = now
 
-        # PROTECT: If we just showed a final result, don't let a RACING partial
-        # from the SAME sentence (which would be a subset or equal) overwrite it.
-        # But if it's new/different text, let it through.
-        if (time.time() - self._last_final_time < 1.0) and (text in self.partial_text):
-            return
+        # Use the latest stored text
+        text_to_show = self._current_partial_text
 
         if hasattr(self.impl, "update_partial_text"):
-            self.impl.update_partial_text(text)
+            self.impl.update_partial_text(text_to_show)
         else:
-            self.impl.update_text(text)
+            self.impl.update_text(text_to_show)
 
     def on_final(self, text: str, linger_seconds: float = 2.0):
         """Show 'Finalized' flash signal instead of text echo."""
