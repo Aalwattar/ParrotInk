@@ -135,7 +135,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Verify Config Fidelity** [checkpoint: fa6b5d6]
-*Link: [./tracks/verify_config_fidelity_20260213/](./tracks/verify_config_fidelity_20260213/)*
+*Link: [./archive/verify_config_fidelity_20260213/](./archive/verify_config_fidelity_20260213/)*
 
 ---
 
