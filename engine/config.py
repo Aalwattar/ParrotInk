@@ -6,6 +6,7 @@ from typing import List, Literal, Optional
 from pydantic import AliasChoices, BaseModel, Field, ValidationError
 
 from .logging import get_logger
+from .platform_win.paths import get_config_path
 from .security import SecurityManager
 
 logger = get_logger("Config")
@@ -190,16 +191,19 @@ class Config(BaseModel):
         """Resolves AssemblyAI API key."""
         return SecurityManager.get_key("assemblyai_api_key")
 
-    def save(self, path: Path | str = "config.toml"):
+    def save(self, path: Optional[Path | str] = None):
         """Saves the current configuration to a TOML file."""
         import tomli_w
 
+        if path is None:
+            path = get_config_path()
         path = Path(path)
-        # We convert to dict, but Pydantic's model_dump is better
-        data = self.model_dump()
+        # Ensure directory exists
+        path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Remove keys that shouldn't be persisted if any
-        # (e.g. keys are already handled by SecurityManager)
+        # We convert to dict, but Pydantic's model_dump is better
+        # Use exclude_none=True to avoid issues with tomli_w and NoneType
+        data = self.model_dump(exclude_none=True)
 
         try:
             content = tomli_w.dumps(data)
@@ -232,8 +236,10 @@ class Config(BaseModel):
             raise ConfigError(f"An unexpected error occurred while loading config: {e}") from e
 
 
-def load_config(path: str | Path = "config.toml") -> Config:
+def load_config(path: Optional[str | Path] = None) -> Config:
     """Helper function to load the configuration from a file."""
+    if path is None:
+        path = get_config_path()
     migrate_config_file(path)
     return Config.from_file(path)
 

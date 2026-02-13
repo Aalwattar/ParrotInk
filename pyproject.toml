@@ -20,6 +20,7 @@ dependencies = [
     "olefile>=0.46",
     "soxr>=1.0.0",
     "skia-python>=138.0",
+    "tomli-w>=1.2.0",
 ]
 
 [dependency-groups]
