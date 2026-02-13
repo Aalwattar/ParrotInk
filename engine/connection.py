@@ -49,6 +49,12 @@ class ConnectionManager:
         Idempotent connection management.
         Ensures the provider is connected based on connection_mode.
         """
+        
+        # Always cancel any pending idle timer if we are ensuring connection
+        if self._idle_timer_task:
+            self._idle_timer_task.cancel()
+            self._idle_timer_task = None
+
         if self.provider and self.provider.is_running:
             # Check for rotation
             if self.config.default_provider == "openai":

@@ -63,11 +63,10 @@ class AudioPipeline:
                 processed = adapter.process(chunk)
                 await provider.send_audio(processed, capture_time)
 
-                chunks_sent += 1
-                if chunks_sent % 100 == 0:
-                    logger.debug(f"Pipeline heartbeat: sent {chunks_sent} chunks")
         except Exception as e:
             # We don't want to crash the whole app if the pipe fails,
+
+                
             # but we should log it prominently.
             if self._is_running:
                 logger.error(f"Critical error in audio pipeline: {e}")

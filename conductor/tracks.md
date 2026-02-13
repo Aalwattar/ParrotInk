@@ -126,3 +126,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Stability & Optimization**
 *Link: [./tracks/stability_optimization_20260213/](./tracks/stability_optimization_20260213/)*
+
+---
+
+- [x] **Track: Debug Silent Failure**
+*Link: [./tracks/debug_silent_failure_20260213/](./tracks/debug_silent_failure_20260213/)*
