@@ -1,9 +1,9 @@
 # Implementation Plan: Standalone EXE Build (DevOps)
 
 ## Phase 1: Foundation & Path Resolution
-- [ ] Task: Implement Windows path helpers in `engine/platform_win/paths.py`
-    - [ ] Create `get_app_dir()`, `get_config_path()`, and `get_log_path()` helpers.
-    - [ ] Ensure they resolve to `%APPDATA%\Voice2Text`.
+- [x] Task: Implement Windows path helpers in `engine/platform_win/paths.py` (c4843e4)
+    - [x] Create `get_app_dir()`, `get_config_path()`, and `get_log_path()` helpers.
+    - [x] Ensure they resolve to `%APPDATA%\Voice2Text`.
 - [ ] Task: Update `engine/config.py` to use path helpers for default config location.
 - [ ] Task: Update logging initialization in `engine/logging.py` to use path helpers for default log file location.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Path Resolution' (Protocol in workflow.md)
