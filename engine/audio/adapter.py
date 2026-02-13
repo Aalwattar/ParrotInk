@@ -20,6 +20,8 @@ class AudioAdapter:
     def __init__(self, capture_rate_hz: int, provider_spec: ProviderAudioSpec):
         self.capture_rate_hz = capture_rate_hz
         self.spec = provider_spec
+        self.voice_active = False
+        self._energy_threshold = 0.005  # Configurable threshold
 
         self._resampler = None
         if capture_rate_hz != provider_spec.sample_rate_hz:
@@ -35,6 +37,11 @@ class AudioAdapter:
         # Ensure we are in float for processing
         if chunk.dtype != np.float32:
             chunk = chunk.astype(np.float32)
+
+        # Calculate Energy for Voice Activity Detection (Subtle HUD feedback)
+        # RMS = root mean square of the signal
+        energy = np.sqrt(np.mean(chunk**2))
+        self.voice_active = energy > self._energy_threshold
 
         # 1. Resample
         if self._resampler:

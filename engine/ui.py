@@ -205,6 +205,9 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
                 if self.indicator:
                     self.indicator.update_partial_text(data)
+            elif msg_type == UIEvent.UPDATE_VOICE_ACTIVITY:
+                if self.indicator:
+                    self.indicator.update_voice_active(data)
             elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
                 if self.indicator:
                     self.indicator.on_final(data)

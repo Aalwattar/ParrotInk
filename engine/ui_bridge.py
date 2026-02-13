@@ -14,6 +14,7 @@ class UIEvent:
     UPDATE_AVAILABILITY = "update_availability"
     UPDATE_PARTIAL_TEXT = "update_partial_text"
     UPDATE_FINAL_TEXT = "update_final_text"
+    UPDATE_VOICE_ACTIVITY = "update_voice_activity"
     QUIT = "quit"
 
 
@@ -32,6 +33,9 @@ class UIBridge:
 
     def update_partial_text(self, text: str):
         self.queue.put((UIEvent.UPDATE_PARTIAL_TEXT, text))
+
+    def update_voice_activity(self, active: bool):
+        self.queue.put((UIEvent.UPDATE_VOICE_ACTIVITY, active))
 
     def update_final_text(self, text: str):
         self._last_final_time = time.time()

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional
+from typing import Callable, Optional
 
 from engine.audio.adapter import AudioAdapter
 from engine.audio.streamer import AudioStreamer
@@ -19,6 +19,7 @@ class AudioPipeline:
         self.streamer = streamer
         self._audio_task: Optional[asyncio.Task] = None
         self._is_running = False
+        self.on_voice_activity: Optional[Callable[[bool], None]] = None
 
     @property
     def is_active(self) -> bool:
@@ -53,6 +54,7 @@ class AudioPipeline:
 
     async def _run_pipe(self, adapter: AudioAdapter, provider: BaseProvider):
         """Internal loop that pulls from streamer and sends to provider."""
+        last_voice_active = False
         try:
             async for chunk, capture_time in self.streamer.async_generator():
                 # Strict gating: only process if we are still marked as running
@@ -60,6 +62,12 @@ class AudioPipeline:
                     continue
 
                 processed = adapter.process(chunk)
+
+                # Update Voice Activity Signal (Debounced for the HUD)
+                if self.on_voice_activity and adapter.voice_active != last_voice_active:
+                    self.on_voice_activity(adapter.voice_active)
+                    last_voice_active = adapter.voice_active
+
                 await provider.send_audio(processed, capture_time)
 
         except Exception as e:

@@ -2,6 +2,7 @@ import ctypes
 import queue
 import threading
 from ctypes import wintypes
+from typing import Any
 
 from engine.logging import get_logger
 
@@ -83,8 +84,10 @@ class HudOverlay:
         if not HUD_AVAILABLE:
             return
 
-        self.text_queue: queue.Queue[str | tuple[str, str]] = queue.Queue()
+        self.text_queue: queue.Queue[str | tuple[str, Any]] = queue.Queue()
         self.last_text = ""
+        self.last_status = None
+        self.voice_active = False
         self.is_recording = False
         self.visible = False
         self._hwnd = None
@@ -99,7 +102,7 @@ class HudOverlay:
 
         # UI Specs
         self.win_width = 1000
-        self.win_height = 80
+        self.win_height = 52
 
         # GDI Resources
         self._hdc_mem = None
@@ -130,14 +133,13 @@ class HudOverlay:
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
             changed = False
-            status_override = None
 
-            # Process Queue - Drain COMPLETELY to ensure we show the latest state
-            # If we limit count < 5, we might lag behind if the provider sends burst updates.
+            # Process Queue - Drain COMPLETELY
             qsize = self.text_queue.qsize()
             if qsize > 0:
                 latest_text = None
                 latest_status = None
+                latest_voice = None
 
                 while True:
                     try:
@@ -149,26 +151,29 @@ class HudOverlay:
                                 latest_text = payload
                             elif kind == "STATUS":
                                 latest_status = payload
+                            elif kind == "VOICE":
+                                latest_voice = payload
                         else:
-                            # Legacy string support
                             latest_text = item
                     except queue.Empty:
                         break
 
-                # Apply only the latest state from the batch
                 if latest_text is not None:
                     self.last_text = latest_text
                 if latest_status is not None:
-                    status_override = latest_status
+                    self.last_status = latest_status  # Store it
+                if latest_voice is not None:
+                    self.voice_active = latest_voice  # Store it
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(
                     self._canvas,
                     self.win_width,
                     self.win_height,
-                    self.last_text if self.last_text else "Listening...",
+                    self.last_text if self.last_text else "...",
                     self.is_recording,
-                    status_override,
+                    getattr(self, "last_status", None),
+                    getattr(self, "voice_active", False),
                 )
                 self._update_window()
             return 0
@@ -284,6 +289,10 @@ class HudOverlay:
     def update_text(self, text: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("TEXT", text))
+
+    def update_voice_active(self, active: bool):
+        if HUD_AVAILABLE:
+            self.text_queue.put(("VOICE", active))
 
     def update_partial_text(self, text: str):
         self.update_text(text)

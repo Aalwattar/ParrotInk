@@ -313,6 +313,9 @@ class AppCoordinator:
             await self.connection_manager.ensure_connected(is_listening=True)
             logger.debug("Connection ensured.")
 
+            # Connect voice activity signal to UI
+            self.pipeline.on_voice_activity = self.ui_bridge.update_voice_activity
+
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
 

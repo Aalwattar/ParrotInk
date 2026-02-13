@@ -13,16 +13,17 @@ class HudStyle(ABC):
         text: str,
         is_recording: bool,
         status_override: str | None = None,
+        voice_active: bool = False,
     ):
         pass
 
 
 class GlassStyle(HudStyle):
     def __init__(self):
-        self.radius = 10.0
-        self.capsule_height = 50.0  # Taller for 2 lines
+        self.radius = 18.0
+        self.capsule_height = 36.0  # Slightly taller for larger font
         self.max_capsule_width = 800.0
-        self.padding = 15.0
+        self.padding = 8.0
 
     def draw(
         self,
@@ -32,97 +33,102 @@ class GlassStyle(HudStyle):
         text: str,
         is_recording: bool,
         status_override: str | None = None,
+        voice_active: bool = False,
     ):
         canvas.clear(skia.ColorTRANSPARENT)
 
-        # 1. Determine Status Label
-        status_label = (status_override or "LISTENING").upper() if is_recording else "STANDBY"
-
-        # 2. Setup Fonts
+        # 1. Setup Fonts - Increased to 14pt for readability
         try:
-            tf_bold = skia.Typeface.MakeFromName("Segoe UI", skia.FontStyle.Bold())
             tf_reg = skia.Typeface.MakeFromName("Segoe UI", skia.FontStyle.Normal())
         except Exception:
-            tf_bold = skia.Typeface.MakeDefault()
             tf_reg = skia.Typeface.MakeDefault()
 
-        font_status = skia.Font(tf_bold, 9)
-        font_text = skia.Font(tf_reg, 12)
+        font_text = skia.Font(tf_reg, 14)
 
-        # 3. Content Preparation
-        display_text = text if text else "..."
-        # Limit text length visually for the HUD's line width
-        if len(display_text) > 120:
-            display_text = "…" + display_text[-117:]
+        # 2. Content Preparation
+        is_listening_placeholder = False
+        if not text and is_recording:
+            display_text = "Listening..."
+            is_listening_placeholder = True
+        else:
+            display_text = text if text else "..."
 
-        status_blob = skia.TextBlob.MakeFromString(status_label, font_status)
+        if len(display_text) > 100:
+            display_text = "…" + display_text[-97:]
+
+        # Use slightly more transparent paint for placeholder
+        if is_listening_placeholder:
+            text_paint = skia.Paint(Color=skia.ColorSetARGB(180, 255, 255, 255), AntiAlias=True)
+        else:
+            text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
+
         content_blob = skia.TextBlob.MakeFromString(display_text, font_text)
-
         text_width = font_text.measureText(display_text)
-        status_width = font_status.measureText(status_label)
 
-        # 4. Refined Layout Math
-        h_padding = 20.0
-        # Calculate width to exactly fit the wider of the two lines + padding
-        content_width = max(text_width, status_width + 12.0)  # 12.0 is dot + gap
-        capsule_w = max(140.0, min(content_width + (h_padding * 2), self.max_capsule_width))
+        # 3. Minimalist Layout Math (Dot Only + Text)
+        h_padding = 18.0
+        dot_section_w = 8.0 + 10.0  # Dot Space + Gap
+
+        total_content_w = dot_section_w + text_width
+        capsule_w = max(100.0, min(total_content_w + (h_padding * 2), self.max_capsule_width))
 
         x_pos = (width - capsule_w) / 2.0
-
-        # Draw the capsule centered vertically in the window
         rect = skia.Rect.MakeXYWH(x_pos, self.padding, capsule_w, self.capsule_height)
         rrect = skia.RRect.MakeEmpty()
         rrect.setRectXY(rect, self.radius, self.radius)
 
-        # 5. Paint Background & Shadow
+        # 4. Paint Background & Shadow
         shadow_paint = skia.Paint(
-            Color=skia.ColorSetARGB(120, 0, 0, 0),
+            Color=skia.ColorSetARGB(150, 0, 0, 0),
             AntiAlias=True,
             ImageFilter=skia.ImageFilters.Blur(8, 8),
         )
         canvas.drawRRect(rrect, shadow_paint)
 
-        # Darker glass for better contrast
-        colors = [skia.ColorSetARGB(200, 25, 25, 25), skia.ColorSetARGB(180, 15, 15, 15)]
+        colors = [skia.ColorSetARGB(220, 25, 25, 25), skia.ColorSetARGB(200, 15, 15, 15)]
         pts = [skia.Point(rect.fLeft, rect.fTop), skia.Point(rect.fLeft, rect.fBottom)]
         glass_paint = skia.Paint(AntiAlias=True, Shader=skia.GradientShader.MakeLinear(pts, colors))
         canvas.drawRRect(rrect, glass_paint)
 
-        rim_paint = skia.Paint(
-            Style=skia.Paint.kStroke_Style,
-            StrokeWidth=1.0,
-            Color=skia.ColorSetARGB(80, 255, 255, 255),
-            AntiAlias=True,
-        )
-        canvas.drawRRect(rrect, rim_paint)
+        # 5. Drawing content
+        baseline_y = rect.fTop + (self.capsule_height / 2.0) + 6.0
 
-        # 6. Line 1: Status Dot + Label
-        dot_x, dot_y = rect.fLeft + h_padding, rect.fTop + 16.0
-        dot_radius = 3.0
+        # Dot Position
+        dot_x = rect.fLeft + h_padding + 4.0
+        dot_y = rect.fTop + (self.capsule_height / 2.0)
 
+        # Dot Visuals (Dynamic based on voice_active)
+        base_radius = 3.0
+        if voice_active:
+            dot_radius = base_radius + 1.0  # Subtle grow
+            glow_alpha = 180
+            blur_sigma = 3.0
+        else:
+            dot_radius = base_radius
+            glow_alpha = 100
+            blur_sigma = 1.5
+
+        # Determine Color
+        status_label = (status_override or "LISTENING").upper() if is_recording else "STANDBY"
         dot_color = skia.ColorCYAN
         if status_label == "FINALIZED":
-            dot_color = skia.ColorSetARGB(255, 40, 200, 80)  # Green
+            dot_color = skia.ColorSetARGB(255, 40, 200, 80)
         elif status_label == "ERROR":
             dot_color = skia.ColorRED
         elif not is_recording:
             dot_color = skia.ColorGRAY
 
-        # Subtle static glow
+        # Glow
         if is_recording or status_label == "FINALIZED":
             glow_paint = skia.Paint(
-                AntiAlias=True, Color=dot_color, Alpha=120, ImageFilter=skia.ImageFilters.Blur(2, 2)
+                AntiAlias=True,
+                Color=dot_color,
+                Alpha=glow_alpha,
+                ImageFilter=skia.ImageFilters.Blur(blur_sigma, blur_sigma),
             )
-            canvas.drawCircle(dot_x, dot_y, dot_radius + 1.0, glow_paint)
+            canvas.drawCircle(dot_x, dot_y, dot_radius + 1.5, glow_paint)
 
         canvas.drawCircle(dot_x, dot_y, dot_radius, skia.Paint(Color=dot_color, AntiAlias=True))
 
-        status_paint = skia.Paint(Color=skia.ColorSetARGB(200, 220, 220, 220), AntiAlias=True)
-        canvas.drawTextBlob(status_blob, dot_x + 12.0, dot_y + 3.5, status_paint)
-
-        # 7. Line 2: Rolling Preview Text
-        text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
-        # Perfectly aligned with the dot's horizontal start
-        text_x = rect.fLeft + h_padding
-        text_y = rect.fTop + 38.0
-        canvas.drawTextBlob(content_blob, text_x, text_y, text_paint)
+        # Transcription Text
+        canvas.drawTextBlob(content_blob, dot_x + 14.0, baseline_y - 1.0, text_paint)

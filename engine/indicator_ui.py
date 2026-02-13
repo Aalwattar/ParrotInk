@@ -191,8 +191,8 @@ class GdiFallbackWindow:
         hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
 
         # New Geometry
-        capsule_h = 34.0
-        r = 10.0  # radius
+        capsule_h = 28.0
+        r = 14.0  # radius
 
         bmi = bytearray(40)
         bmi[0:4] = (40).to_bytes(4, "little")
@@ -224,17 +224,15 @@ class GdiFallbackWindow:
         )
         display_text = self.partial_text if self.partial_text else "..."
 
-        # Refined Layout Math
-        h_padding = 20.0
-        # Simple char-based estimation for GDI fallback width
-        content_width = max(len(display_text) * 8.0, len(status_label) * 7.0 + 12.0)
-        capsule_w = min(max(140.0, content_width + (h_padding * 2)), self._width - 20)
+        # Single-Line Layout Math
+        h_padding = 15.0
+        content_width = (len(status_label) * 7.0) + (len(display_text) * 8.0) + 30.0
+        capsule_w = min(max(120.0, content_width + (h_padding * 2)), self._width - 20)
 
         x_start = (w - capsule_w) / 2.0
         y_start = (h - capsule_h) / 2.0
 
-        bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC222222
-        border_color = 0x44FFFFFF
+        bg_color = 0xD01A1A1A if not self.is_recording else 0xD0222222
 
         path = ctypes.c_void_p()
         self._gdiplus.GdipCreatePath(0, ctypes.byref(path))
@@ -254,46 +252,47 @@ class GdiFallbackWindow:
         self._gdiplus.GdipCreateSolidFill(bg_color, ctypes.byref(brush))
         self._gdiplus.GdipFillPath(graphics, brush, path)
 
-        pen = ctypes.c_void_p()
-        self._gdiplus.GdipCreatePen1(border_color, 1.0, 2, ctypes.byref(pen))
-        self._gdiplus.GdipDrawPath(graphics, pen, path)
-
         # Status Dot
-        dot_color = 0xFF00FFFF if self.is_recording else 0x88AAAAAA
+        # Dynamic color/brightness for GDI feedback
+        if self.is_recording:
+            dot_color = 0xFF00FFFF if not getattr(self, "_voice_active", False) else 0xFF88FFFF
+        else:
+            dot_color = 0x88AAAAAA
+
         if status_label == "FINALIZED":
             dot_color = 0xFF28C850
 
         led_brush = ctypes.c_void_p()
         self._gdiplus.GdipCreateSolidFill(dot_color, ctypes.byref(led_brush))
         self._gdiplus.GdipFillEllipse(
-            graphics, led_brush, x_start + h_padding, y_start + 10.0, 6.0, 6.0
+            graphics, led_brush, x_start + h_padding, y_start + (capsule_h / 2.0) - 3.0, 6.0, 6.0
         )
 
         # Fonts
         font_family = ctypes.c_void_p()
         self._gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
 
-        # Line 1: Status
+        # Single Line Baseline
         font_status = ctypes.c_void_p()
         self._gdiplus.GdipCreateFont(font_family, 8.0, 1, 3, ctypes.byref(font_status))
         status_brush = ctypes.c_void_p()
         self._gdiplus.GdipCreateSolidFill(0xBBFFFFFF, ctypes.byref(status_brush))
-        # Symmetric offset
-        srect = (ctypes.c_float * 4)(
-            x_start + h_padding + 12.0, y_start + 6.0, capsule_w - (h_padding + 15.0), 15.0
-        )
+
+        s_x = x_start + h_padding + 10.0
+        srect = (ctypes.c_float * 4)(s_x, y_start + 7.0, len(status_label) * 8.0, 15.0)
         self._gdiplus.GdipDrawString(
             graphics, status_label, -1, font_status, ctypes.byref(srect), None, status_brush
         )
 
-        # Line 2: Text
+        # Text
         font_text = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFont(font_family, 11.0, 0, 3, ctypes.byref(font_text))
+        self._gdiplus.GdipCreateFont(font_family, 10.0, 0, 3, ctypes.byref(font_text))
         text_brush = ctypes.c_void_p()
         self._gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
-        # Perfectly aligned with h_padding
+
+        t_x = s_x + (len(status_label) * 7.5) + 8.0
         trect = (ctypes.c_float * 4)(
-            x_start + h_padding, y_start + 22.0, capsule_w - (h_padding * 2), 22.0
+            t_x, y_start + 6.0, capsule_w - (t_x - x_start) - h_padding, 20.0
         )
         self._gdiplus.GdipDrawString(
             graphics, display_text, -1, font_text, ctypes.byref(trect), None, text_brush
@@ -318,7 +317,6 @@ class GdiFallbackWindow:
         self._gdiplus.GdipDeleteBrush(brush)
         self._gdiplus.GdipDeleteBrush(led_brush)
         self._gdiplus.GdipDeleteBrush(text_brush)
-        self._gdiplus.GdipDeletePen(pen)
         self._gdiplus.GdipDeleteFont(font_status)
         self._gdiplus.GdipDeleteFont(font_text)
         self._gdiplus.GdipDeleteFontFamily(font_family)
@@ -408,6 +406,12 @@ class GdiFallbackWindow:
         self.partial_text = text
         self._draw_ui()
 
+    def update_voice_active(self, active: bool):
+        # Fallback doesn't necessarily need visual for voice,
+        # but we add it for API compatibility.
+        self._voice_active = active
+        self._draw_ui()
+
 
 class IndicatorWindow:
     """Universal Indicator that uses HudOverlay (Skia) if available, otherwise GdiFallbackWindow."""
@@ -493,11 +497,17 @@ class IndicatorWindow:
 
     def update_partial_text(self, text: str):
         self._current_partial_text = text
+        # If text is coming in, we can infer voice activity if not already set,
+        # but better to have explicit signal.
         now = time.time()
         if now - self._last_redraw_at < 0.05:
             return
         self._last_redraw_at = now
         self._render_preview()
+
+    def update_voice_active(self, active: bool):
+        if hasattr(self.impl, "update_voice_active"):
+            self.impl.update_voice_active(active)
 
     def _render_preview(self):
         full_text = self._committed_text
