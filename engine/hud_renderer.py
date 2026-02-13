@@ -189,7 +189,7 @@ class HudOverlay:
         screen_h = _user32.GetSystemMetrics(1)
 
         x_pos = (screen_w - self.win_width) // 2
-        y_pos = screen_h - 100 - self.win_height
+        y_pos = screen_h - 60 - self.win_height
 
         self._hwnd = win32gui.CreateWindowEx(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,

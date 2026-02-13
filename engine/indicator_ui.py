@@ -224,7 +224,7 @@ class GdiFallbackWindow:
 
         # Center horizontally
         x_start = (w - capsule_w) / 2.0
-        y_start = (h - capsule_h) / 2.0
+        y_start = h - capsule_h - 60.0 # Bottom-Center with 60px margin
 
         bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC330000
         border_color = 0x44FFFFFF
