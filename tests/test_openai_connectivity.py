@@ -1,13 +1,15 @@
 import os
 import sys
-import httpx
 import traceback
+
+import httpx
 from openai import OpenAI
 
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from tests.golden_tools.auth_utils import get_openai_key
+
 
 def test_connectivity():
     try:
@@ -17,12 +19,14 @@ def test_connectivity():
         return
 
     print("Testing connectivity to OpenAI...")
-    
+
     # 1. Test basic DNS/HTTPS with httpx
     print("\n--- Step 1: Basic HTTPS check with httpx ---")
     try:
         with httpx.Client() as client:
-            response = client.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {api_key}"})
+            response = client.get(
+                "https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {api_key}"}
+            )
             print(f"Status Code: {response.status_code}")
             if response.status_code == 200:
                 print("Successfully fetched models list via httpx.")
@@ -39,7 +43,7 @@ def test_connectivity():
         # Just list models to test connection
         models = client.models.list()
         print("Successfully listed models via OpenAI library.")
-        
+
         # Check if gpt-4o-transcribe is in the list
         model_ids = [m.id for m in models.data]
         if "gpt-4o-transcribe" in model_ids:
@@ -48,10 +52,11 @@ def test_connectivity():
             print("Found 'whisper-1', but 'gpt-4o-transcribe' is missing.")
         else:
             print(f"Available models (first 5): {model_ids[:5]}")
-            
+
     except Exception as e:
         print(f"OpenAI library connection failed: {e}")
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     test_connectivity()

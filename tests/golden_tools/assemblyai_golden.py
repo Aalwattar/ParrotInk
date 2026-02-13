@@ -16,9 +16,7 @@ def transcribe_assemblyai(audio_path: str, format: str = "text"):
     aai.settings.api_key = get_assemblyai_key()
 
     config = aai.TranscriptionConfig(
-        speech_models=["universal-3-pro"],
-        punctuate=True,
-        format_text=True
+        speech_models=["universal-3-pro"], punctuate=True, format_text=True
     )
 
     transcriber = aai.Transcriber()
@@ -42,13 +40,14 @@ def transcribe_assemblyai(audio_path: str, format: str = "text"):
             "api_config": {
                 "speech_model": "universal-3-pro",
                 "punctuate": True,
-                "format_text": True
+                "format_text": True,
             },
-            "final_text": final_text
+            "final_text": final_text,
         }
         return json.dumps(output, indent=2)
 
     return final_text
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AssemblyAI Golden Standard Transcription Tool")

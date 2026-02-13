@@ -1,0 +1,14 @@
+Uploading and transcribing voice2text_sample2.wav using Universal-3-Pro...
+{
+  "status": "ok",
+  "provider": "assemblyai",
+  "model": "Universal-3-Pro",
+  "timestamp": "2026-02-12T17:46:52.510887",
+  "audio_file": "voice2text_sample2.wav",
+  "api_config": {
+    "speech_model": "universal-3-pro",
+    "punctuate": true,
+    "format_text": true
+  },
+  "final_text": "Okay, after doing this, now it's significantly better. Now it works actually. Good. Two things to lock down, to lock down, is that this doesn't regress, and so you don't fool yourself that it feels better without measuring. I treat noise reduction as an environmental toggle, not a default. What you just learned near-field capslessly wreck non-headset audio. Instruction to agent default, noise reduction is null, and user device toggle headset close mic near field, laptop far mic far field. If you want to try it, we can try it. Verify it correctly, minimal verification checklist. Okay, message you can paste. Agent, uh, vibrate verbatim. Not vibration. Long and confirm the server settings. Okay, now we have some quite noise, uh, extended thinking of an AI. Okay, I don't know what I need to do in this case. Is that good or bad? Okay, if you paste a 10-20 line snippet of your current organization update reload I'll propose the exact present structure clearly. In real-time mode, it's not real-time. If it's real-time, then that's not real-time mode."
+}

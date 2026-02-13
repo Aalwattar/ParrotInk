@@ -31,9 +31,9 @@ except ModuleNotFoundError:  # pragma: no cover
 import numpy as np
 
 try:
-    import soxr  # type: ignore
+    import soxr  # type: ignore[import-untyped]
 except ModuleNotFoundError:  # pragma: no cover
-    soxr = None  # type: ignore
+    soxr = None
 
 import websockets
 
@@ -118,7 +118,7 @@ def _merge_run_config(base: RunConfig, toml_data: Dict[str, Any]) -> RunConfig:
             aa.get("format_turns", cfg["assemblyai_format_turns"])
         )
 
-    return RunConfig(**cfg)  # type: ignore[arg-type]
+    return RunConfig(**cfg)
 
 
 def _read_wav_pcm16(path: Path) -> Tuple[np.ndarray, int]:
@@ -150,13 +150,14 @@ def _resample_pcm16(mono_i16: np.ndarray, src_hz: int, dst_hz: int) -> np.ndarra
         return mono_i16
     if soxr is None:
         raise RuntimeError(
-            "soxr is required for resampling. Install it (uv add soxr) to avoid inconsistent accuracy results."
+            "soxr is required for resampling. Install it (uv add soxr) "
+            "to avoid inconsistent accuracy results."
         )
     # soxr expects float32
     x = mono_i16.astype(np.float32) / 32768.0
     y = soxr.resample(x, src_hz, dst_hz).astype(np.float32)
     y = np.clip(y, -1.0, 1.0)
-    return (y * 32767.0).astype(np.int16)
+    return (y * 32767.0).astype(np.int16)  # type: ignore[no-any-return]
 
 
 def _chunk_bytes(pcm_i16: np.ndarray, sample_rate_hz: int, chunk_ms: int) -> Iterable[bytes]:
@@ -300,7 +301,8 @@ async def _assemblyai_transcribe(
     # Build URL with query params (safe if base URL has none)
     url = ws_url
     join_char = "&" if "?" in url else "?"
-    url = f"{url}{join_char}sample_rate={sample_rate_hz}&format_turns={'true' if format_turns else 'false'}"
+    format_turns_str = "true" if format_turns else "false"
+    url = f"{url}{join_char}sample_rate={sample_rate_hz}&format_turns={format_turns_str}"
 
     headers = {"Authorization": api_key}
 
@@ -508,11 +510,11 @@ def _expand_paths(patterns: List[str]) -> List[Path]:
 
     seen = set()
     uniq: List[Path] = []
-    for p in out:
-        rp = str(p.resolve())
+    for path in out:
+        rp = str(path.resolve())
         if rp not in seen:
             seen.add(rp)
-            uniq.append(p)
+            uniq.append(path)
     return uniq
 
 

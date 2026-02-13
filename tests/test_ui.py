@@ -1,32 +1,36 @@
-import pytest
-from unittest.mock import MagicMock, patch
-import os
-import pathlib
+from unittest.mock import patch
+
 
 def test_app_state_enum():
     """Verify that the AppState enum has the required states."""
     from engine.ui import AppState
+
     assert AppState.IDLE.value == "idle"
     assert AppState.LISTENING.value == "listening"
     assert AppState.ERROR.value == "error"
+
 
 def test_tray_app_initialization(mocker, config):
     """Test that TrayApp initializes with the IDLE state."""
     mocker.patch("engine.ui.pystray.Icon")
     mocker.patch("engine.ui.IndicatorWindow")
-    from engine.ui import TrayApp, AppState
+    from engine.ui import AppState, TrayApp
+
     app = TrayApp(config=config, initial_sounds_enabled=True)
     assert app.state == AppState.IDLE
     assert app.sounds_enabled is True
+
 
 def test_tray_app_state_change(mocker, config):
     """Test that changing the app state works correctly."""
     mocker.patch("engine.ui.pystray.Icon")
     mocker.patch("engine.ui.IndicatorWindow")
-    from engine.ui import TrayApp, AppState
+    from engine.ui import AppState, TrayApp
+
     app = TrayApp(config=config, initial_sounds_enabled=True)
     app.set_state(AppState.LISTENING)
     assert app.state == AppState.LISTENING
+
 
 def test_on_provider_change(mocker, config):
     """Test the callback for provider change."""
@@ -34,9 +38,11 @@ def test_on_provider_change(mocker, config):
     mocker.patch("engine.ui.pystray.Icon")
     mocker.patch("engine.ui.IndicatorWindow")
     from engine.ui import TrayApp
+
     app = TrayApp(config=config, on_provider_change=mock_cb, initial_sounds_enabled=True)
     app._on_provider_selection(None, "openai")
     mock_cb.assert_called_once_with("openai")
+
 
 def test_open_config(mocker, config, tmp_path):
     """Test the open config functionality."""
@@ -46,9 +52,11 @@ def test_open_config(mocker, config, tmp_path):
     mocker.patch("os.getcwd", return_value=str(tmp_path))
     mocker.patch("pathlib.Path.exists", return_value=True)
     from engine.ui import TrayApp
+
     app = TrayApp(config=config, initial_sounds_enabled=True)
     app._open_config(None, None)
     mock_startfile.assert_called_once()
+
 
 def test_tray_app_availability(mocker, config):
     """Test that TrayApp stores availability status."""
@@ -56,17 +64,19 @@ def test_tray_app_availability(mocker, config):
     mocker.patch("engine.ui.IndicatorWindow")
     availability = {"openai": True, "assemblyai": False}
     from engine.ui import TrayApp
+
     app = TrayApp(config=config, availability=availability, initial_sounds_enabled=True)
     assert app.availability == availability
     new_availability = {"openai": False, "assemblyai": True}
     app.update_availability(new_availability)
     assert app.availability == new_availability
 
+
 def test_tray_menu_structure(mocker, config):
     """Verify that the tray menu does NOT contain the redundant Status: Ready item."""
-    with patch("engine.ui.pystray.Icon") as mock_icon, \
-         patch("engine.ui.IndicatorWindow"):
+    with patch("engine.ui.pystray.Icon") as mock_icon, patch("engine.ui.IndicatorWindow"):
         from engine.ui import TrayApp
+
         TrayApp(config=config, initial_sounds_enabled=True)
         args, kwargs = mock_icon.call_args
         menu = args[3]
@@ -74,11 +84,12 @@ def test_tray_menu_structure(mocker, config):
         assert items[0].text == "OpenAI"
         assert items[0].text != "Status: Ready"
 
+
 def test_tray_settings_menu(mocker, config):
     """Verify that the Settings menu contains the sound toggle."""
-    with patch("engine.ui.pystray.Icon") as mock_icon, \
-         patch("engine.ui.IndicatorWindow"):
+    with patch("engine.ui.pystray.Icon") as mock_icon, patch("engine.ui.IndicatorWindow"):
         from engine.ui import TrayApp
+
         mock_toggle = mocker.Mock()
         app = TrayApp(config=config, on_toggle_sounds=mock_toggle, initial_sounds_enabled=True)
         args, kwargs = mock_icon.call_args

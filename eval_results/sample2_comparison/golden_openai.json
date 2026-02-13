@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "provider": "openai",
+  "model": "gpt-4o-transcribe",
+  "timestamp": "2026-02-12T18:35:06.735651",
+  "audio_file": "voice2text_sample2.wav",
+  "api_config": {
+    "model": "gpt-4o-transcribe",
+    "response_format": "json"
+  },
+  "final_text": "Okay after doing this, now it's significantly better. Now it works actually.\nGood two things to lock down is that this doesn't regress.\nYou don't feel for yourself if it feels better without measuring.\nThey treat noise reduction as an environmental task or not a default.\nWhat you just learned near-field completely wreck a non-headset audio.\nInstruction to agent default, noise reduction is null.\nAnd use of the voice throttle meant it.\nClose mic, near field, laptop far mic, far field\nWe can try to verify it correctly minimum verification checklist.\nOK, massege you can paste\nThe operation cannot control the server settings.\n\u0627\u0648\u06a9\u06d2\nWe have some quite noisy extended thinking of Mary.\nI don't know what to do in this case.\nIf you paste that in 20 lines snippet of your current organization update payload\nI'll propose the exact present structure clearly.\nIn real-time mode, it's not real-time."
+}

@@ -17,13 +17,16 @@ from tests.golden_tools.auth_utils import get_openai_key
 # OpenAI limit is 25MB. We use 20MB for safety.
 CHUNK_SIZE_BYTES = 20 * 1024 * 1024
 
+
 def split_wav(file_path: str) -> list[str]:
     """Splits a WAV file into chunks under the size limit if necessary."""
     file_size = os.path.getsize(file_path)
     if file_size <= CHUNK_SIZE_BYTES:
         return [file_path]
 
-    print(f"File size ({file_size / 1024 / 1024:.1f}MB) exceeds limit. Chunking...", file=sys.stderr)
+    print(
+        f"File size ({file_size / 1024 / 1024:.1f}MB) exceeds limit. Chunking...", file=sys.stderr
+    )
     chunks = []
     with wave.open(file_path, "rb") as wav:
         params = wav.getparams()
@@ -37,7 +40,7 @@ def split_wav(file_path: str) -> list[str]:
             chunk_filename = f"{file_path}.chunk{chunk_idx}.wav"
             frames_to_read = min(frames_per_chunk, total_frames - current_frame)
 
-            with wave.open(chunk_filename, 'wb') as chunk_wav:
+            with wave.open(chunk_filename, "wb") as chunk_wav:
                 chunk_wav.setparams(params)
                 chunk_wav.writeframes(wav.readframes(frames_to_read))
 
@@ -46,6 +49,7 @@ def split_wav(file_path: str) -> list[str]:
             chunk_idx += 1
 
     return chunks
+
 
 def transcribe_openai(audio_path: str, format: str = "text"):
     # Robust finite timeouts: prevent indefinite hangs on upload/processing.
@@ -60,9 +64,8 @@ def transcribe_openai(audio_path: str, format: str = "text"):
     model = "gpt-4o-transcribe"
 
     for i, chunk in enumerate(chunks):
-        print(f"Transcribing chunk {i+1}/{len(chunks)}...", file=sys.stderr)
+        print(f"Transcribing chunk {i + 1}/{len(chunks)}...", file=sys.stderr)
         with open(chunk, "rb") as audio_file:
-
             # API reference notes gpt-4o-transcribe supports response_format="json" only.
             # Extract plain text from transcript.text for your CLI/text output.
             def _create(with_chunking: bool):
@@ -70,12 +73,12 @@ def transcribe_openai(audio_path: str, format: str = "text"):
                 audio_file.seek(0)
                 kwargs = {
                     "model": model,
-                    "file": audio_file,          # stream upload (more reliable than bytes)
+                    "file": audio_file,  # stream upload (more reliable than bytes)
                     "response_format": "json",
                 }
                 if with_chunking:
                     kwargs["chunking_strategy"] = "auto"
-                return client.audio.transcriptions.create(**kwargs)
+                return client.audio.transcriptions.create(**kwargs)  # type: ignore[call-overload]
 
             try:
                 transcript = _create(with_chunking=True)
@@ -120,6 +123,7 @@ def transcribe_openai(audio_path: str, format: str = "text"):
         return json.dumps(output, indent=2)
 
     return final_text
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="OpenAI Golden Standard Transcription Tool")

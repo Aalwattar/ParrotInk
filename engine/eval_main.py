@@ -41,22 +41,26 @@ class EvalCoordinator:
         self.finished_event = asyncio.Event()
         self.error: Optional[dict] = None
 
-    def on_partial(self, text: str):
+    def on_partial(self, text: str) -> None:
         if self.time_to_first_partial is None and text.strip():
             self.time_to_first_partial = time.time() - self.start_time
             logger.info(f"First partial received at {self.time_to_first_partial:.2f}s")
 
-    def on_final(self, text: str):
+    def on_final(self, text: str) -> None:
         if self.time_to_first_final is None and text.strip():
             self.time_to_first_final = time.time() - self.start_time
             logger.info(f"First final received at {self.time_to_first_final:.2f}s")
 
-        if self.final_text:
-            self.final_text += " " + text.strip()
-        else:
-            self.final_text = text.strip()
+        if text.strip():
+            if self.final_text:
+                self.final_text += " " + text.strip()
+            else:
+                self.final_text = text.strip()
 
-    async def run(self):
+            # Signal that we have a result
+            self.finished_event.set()
+
+    async def run(self) -> None:
         configure_logging(
             self.config, verbose_count=self.cli_args.verbose, quiet=self.cli_args.quiet
         )
@@ -66,7 +70,7 @@ class EvalCoordinator:
             return
 
         replayer = WavReplayer(self.audio_path, chunk_ms=self.config.audio.chunk_ms)
-        
+
         # Get sample rate from replayer to ensure correct resampling
         try:
             with wave.open(str(self.audio_path), "rb") as wr:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from engine.config import Config, HotkeysConfig, TranscriptionConfig
-from engine.interaction import InteractionMonitor
+from engine.interaction import InputMonitor
 from main import AppCoordinator
 
 
@@ -20,12 +20,12 @@ def setup_coordinator():
 
 
 @pytest.mark.asyncio
-async def test_coordinator_uses_interaction_monitor():
+async def test_coordinator_uses_input_monitor():
     coordinator = setup_coordinator()
 
-    # We expect an InteractionMonitor to be created
-    assert hasattr(coordinator, "interaction_monitor")
-    assert isinstance(coordinator.interaction_monitor, InteractionMonitor)
+    # We expect an InputMonitor to be created
+    assert hasattr(coordinator, "input_monitor")
+    assert isinstance(coordinator.input_monitor, InputMonitor)
 
 
 @pytest.mark.asyncio
@@ -33,11 +33,12 @@ async def test_manual_key_press_stops_listening_and_cancels_injection():
     coordinator = setup_coordinator()
     coordinator.provider = MagicMock()
     coordinator.is_listening = True
+    coordinator.input_monitor.enable_any_key_monitoring(True)
 
     # Simulate a manual key press via the monitor's callback
     # This should be hooked up in the coordinator
     with patch.object(coordinator, "stop_listening", wraps=coordinator.stop_listening) as mock_stop:
-        coordinator.interaction_monitor._on_press(None)
+        coordinator.input_monitor._on_press(None)
 
         # Wait a bit for the async task if any
         await asyncio.sleep(0.1)

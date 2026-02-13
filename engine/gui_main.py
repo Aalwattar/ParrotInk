@@ -5,8 +5,6 @@ import signal
 import sys
 import threading
 
-from pynput import keyboard
-
 from engine.config import ConfigError, load_config
 from engine.logging import configure_logging, get_logger
 from engine.security import SecurityManager
@@ -103,8 +101,7 @@ async def main_gui(cli_args):
     ui_thread = threading.Thread(target=app.run, daemon=True)
     ui_thread.start()
 
-    listener = keyboard.Listener(on_press=coordinator.on_press, on_release=coordinator.on_release)
-    listener.start()
+    coordinator.input_monitor.start()
     logger.info(
         f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
     )

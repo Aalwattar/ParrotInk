@@ -47,13 +47,13 @@ def _ask_key_gui(provider_name: str) -> Optional[str]:
 
 def _ask_key_console(provider_name: str) -> Optional[str]:
     """Prompts for the key via standard input."""
+    import getpass
+
     print("\n[!] GUI Tinker is not available -- enter it here.")
-    print(f"Please enter your {provider_name} API Key:")
+    print(f"Please enter your {provider_name} API Key (input will be hidden):")
     try:
-        # Use input() instead of getpass() to ensure it works in more environments
-        # inside an IDE or captured stdout context, though getpass is more secure.
-        # Given the instruction "enter or paste", input() is safer for compatibility.
-        key = input("> ").strip()
+        # Use getpass() to ensure the key is not echoed in the terminal
+        key = getpass.getpass("> ").strip()
         return key if key else None
     except (KeyboardInterrupt, EOFError):
         print("\nInput cancelled.")

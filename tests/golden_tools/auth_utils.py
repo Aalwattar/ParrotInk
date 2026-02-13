@@ -15,6 +15,7 @@ def get_openai_key() -> str:
         sys.exit(1)
     return key
 
+
 def get_assemblyai_key() -> str:
     """Retrieve AssemblyAI API key from Windows Credential Manager."""
     key = SecurityManager.get_key("assemblyai_api_key")

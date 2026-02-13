@@ -15,8 +15,8 @@ from engine.audio_feedback import play_sound
 from engine.config import Config
 from engine.credential_ui import ask_key
 from engine.injector import SmartInjector, inject_text
-from engine.interaction import InteractionMonitor
-from engine.logging import get_logger
+from engine.interaction import InputMonitor
+from engine.logging import get_logger, shutdown_logging
 from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
 from engine.transcription.base import BaseProvider
@@ -50,8 +50,8 @@ class AppCoordinator:
         self.current_keys: Set[str] = set()
 
         # Interaction monitoring
-        self.interaction_monitor = InteractionMonitor()
-        self.interaction_monitor.set_any_key_callback(self._on_manual_stop)
+        self.input_monitor = InputMonitor(on_press=self.on_press, on_release=self.on_release)
+        self.input_monitor.set_any_key_callback(self._on_manual_stop)
 
         # Mouse monitoring for click-away
         self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
@@ -380,7 +380,7 @@ class AppCoordinator:
             self._play_feedback_sound("start")
 
             self.streamer.start(loop=self.loop)
-            self.interaction_monitor.start()
+            self.input_monitor.enable_any_key_monitoring(True)
             self.is_listening = True
 
             self.ui_bridge.set_state(AppState.LISTENING)
@@ -403,7 +403,7 @@ class AppCoordinator:
         logger.info("Stopping listening...")
         self.is_listening = False
         self.is_connecting = False
-        self.interaction_monitor.stop()
+        self.input_monitor.enable_any_key_monitoring(False)
         self.mouse_monitor.stop()
         self.anchor = None
 
@@ -470,6 +470,7 @@ class AppCoordinator:
                 # 1. Stop listening immediately
                 logger.debug("Shutdown Step 1: Stopping listening flow...")
                 await self.stop_listening()
+                self.input_monitor.stop()
 
                 if self.provider:
                     await self.provider.stop()
@@ -503,6 +504,8 @@ class AppCoordinator:
             logger.exception(f"Unexpected error during shutdown: {e}")
         finally:
             logger.info("Shutdown sequence complete.")
+            # Final resource cleanup
+            shutdown_logging()
             # Note: The caller or main loop handler is responsible for stopping the event loop
 
     async def _idle_timer_check(self):

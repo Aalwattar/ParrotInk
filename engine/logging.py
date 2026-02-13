@@ -114,3 +114,20 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
 def get_logger(name: str):
     """Returns a logger with the given name."""
     return logging.getLogger(name)
+
+
+def shutdown_logging():
+    """Safely stops the logging listener."""
+    global _listener
+    if _listener:
+        try:
+            _listener.stop()
+        except Exception:
+            pass
+        _listener = None
+
+    # Clear handlers from root logger
+    logger = logging.getLogger()
+    for handler in logger.handlers[:]:
+        if isinstance(handler, logging.handlers.QueueHandler):
+            logger.removeHandler(handler)

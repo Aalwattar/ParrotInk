@@ -106,3 +106,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Golden Standard Evaluation Tools**
 *Link: [./archive/golden_tools_20260212/](./archive/golden_tools_20260212/)*
+
+---
+
+- [ ] **Track: Consultant Security & Stability Improvements**
+*Link: [./tracks/consultant_improvements_20260212/](./tracks/consultant_improvements_20260212/)*
