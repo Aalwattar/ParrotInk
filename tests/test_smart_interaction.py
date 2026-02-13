@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from engine.app_types import AppState
 from engine.config import Config, HotkeysConfig, TranscriptionConfig
 from engine.interaction import InputMonitor
 from main import AppCoordinator
@@ -32,7 +33,7 @@ async def test_coordinator_uses_input_monitor():
 async def test_manual_key_press_stops_listening_and_cancels_injection():
     coordinator = setup_coordinator()
     coordinator.provider = MagicMock()
-    coordinator.is_listening = True
+    coordinator.state = AppState.LISTENING
     coordinator.input_monitor.enable_any_key_monitoring(True)
 
     # Simulate a manual key press via the monitor's callback
@@ -52,7 +53,7 @@ async def test_on_final_ignored_if_session_cancelled():
     coordinator = setup_coordinator()
     coordinator.session_cancelled = True
 
-    with patch.object(coordinator, "_delayed_inject") as mock_inject:
+    with patch.object(coordinator.injection_controller, "smart_inject") as mock_inject:
         coordinator.on_final("Hello")
         await asyncio.sleep(0.1)
         mock_inject.assert_not_called()

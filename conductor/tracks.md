@@ -111,3 +111,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Consultant Security & Stability Improvements**
 *Link: [./tracks/consultant_improvements_20260212/](./tracks/consultant_improvements_20260212/)*
+
+---
+
+- [x] **Track: Architecture & State Overhaul**
+*Link: [./tracks/arch_state_overhaul_20260212/](./tracks/arch_state_overhaul_20260212/)*

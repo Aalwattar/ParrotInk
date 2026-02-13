@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from engine.app_types import AppState
 from engine.config import Config
 from main import AppCoordinator
 
@@ -21,7 +22,7 @@ async def test_ensure_connected_idempotency():
     mock_provider.start = AsyncMock()  # Must be awaitable if called
 
     coordinator.provider = mock_provider
-    coordinator._session_start_time = time.time()
+    coordinator.connection_manager._session_start_time = time.time()
 
     # Second call should return immediately without calling start()
     await coordinator.ensure_connected()
@@ -40,7 +41,7 @@ async def test_warm_idle_timeout():
     mock_provider.is_running = True
     coordinator.provider = mock_provider
     coordinator.audio_adapter = MagicMock()
-    coordinator.is_listening = True
+    coordinator.state = AppState.LISTENING
 
     # Stop listening should trigger idle timer
     await coordinator.stop_listening()
@@ -70,18 +71,18 @@ async def test_openai_rotation_guard():
     mock_provider.get_type = MagicMock(return_value="openai")
     mock_provider.get_audio_spec = MagicMock(return_value=spec)
     coordinator.provider = mock_provider
-    coordinator.is_listening = True
+    coordinator.state = AppState.LISTENING
 
     # Set session start to 1 hour ago
-    coordinator._session_start_time = time.time() - 3601
+    coordinator.connection_manager._session_start_time = time.time() - 3601
 
     # 1. ensure_connected should NOT rotate if is_listening is True
     await coordinator.ensure_connected()
-    assert coordinator._rotation_pending
+    assert coordinator.connection_manager._rotation_pending
     assert coordinator.provider is mock_provider
 
     # 2. Stop listening should allow rotation on next ensure_connected
-    coordinator.is_listening = False
+    coordinator.state = AppState.IDLE
 
     # We patch factory create to return a new mock when it tries to reconnect
     new_mock = AsyncMock()

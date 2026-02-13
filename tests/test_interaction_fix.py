@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from engine.app_types import AppState
 from engine.config import Config
 from main import AppCoordinator
 
@@ -34,8 +35,7 @@ def test_hold_mode_interruption_bug(mock_config):
 
         # Setup active listening state
         coordinator.stop_listening = AsyncMock()
-        coordinator.is_listening = True
-        coordinator.is_connecting = False
+        coordinator.state = AppState.LISTENING
         coordinator.start_time = time.time() - 10  # Started 10s ago (past cooldown)
         coordinator.last_injection_time = 0
         coordinator.is_injecting = False

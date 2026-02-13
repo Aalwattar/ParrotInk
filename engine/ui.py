@@ -58,8 +58,12 @@ class TrayApp:
     def _get_icon_color(self, state: AppState) -> str:
         if state == AppState.LISTENING:
             return "red"
+        if state == AppState.CONNECTING:
+            return "yellow"
         if state == AppState.ERROR:
             return "orange"
+        if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
+            return "gray"
         return "black"
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:

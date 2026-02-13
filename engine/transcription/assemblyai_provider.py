@@ -31,8 +31,12 @@ class AssemblyAIProvider(BaseProvider):
         self.url = self._build_url()
         self.ws: Optional[ClientConnection] = None
         self._receive_task: Optional[asyncio.Task] = None
-        self.is_running = False
+        self._is_running = False
         self.last_transcript = ""
+
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
 
     def get_audio_spec(self) -> ProviderAudioSpec:
         return ProviderAudioSpec(
@@ -82,7 +86,7 @@ class AssemblyAIProvider(BaseProvider):
             self.ws = await websockets.connect(
                 self.url, additional_headers=headers if not self.config.test.enabled else None
             )
-            self.is_running = True
+            self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("Connected to AssemblyAI successfully.")
         except Exception as e:
@@ -91,7 +95,7 @@ class AssemblyAIProvider(BaseProvider):
 
     async def stop(self):
         """Close connection and stop tasks."""
-        if self.ws and self.is_running:
+        if self.ws and self._is_running:
             try:
                 # Send end of stream message
                 terminate_msg = json.dumps({"terminate_session": True})
@@ -102,7 +106,7 @@ class AssemblyAIProvider(BaseProvider):
             except Exception as e:
                 logger.debug(f"Error during graceful shutdown: {e}")
 
-        self.is_running = False
+        self._is_running = False
         if self._receive_task:
             self._receive_task.cancel()
             try:
@@ -117,7 +121,7 @@ class AssemblyAIProvider(BaseProvider):
 
     async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
         """Send audio chunk as raw binary PCM16."""
-        if not self.ws or not self.is_running:
+        if not self.ws or not self._is_running:
             return
 
         send_start = time.perf_counter()
@@ -131,7 +135,7 @@ class AssemblyAIProvider(BaseProvider):
             await self.ws.send(processed_chunk)
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")
-            self.is_running = False
+            self._is_running = False
         except Exception as e:
             logger.error(f"Error sending audio: {e}")
 

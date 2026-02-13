@@ -10,17 +10,16 @@ from pynput import keyboard
 from engine.anchor import Anchor
 from engine.app_types import AppState
 from engine.audio import AudioStreamer
-from engine.audio.adapter import AudioAdapter
+from engine.audio.pipeline import AudioPipeline
 from engine.audio_feedback import play_sound
 from engine.config import Config
+from engine.connection import ConnectionManager
 from engine.credential_ui import ask_key
-from engine.injector import SmartInjector, inject_text
+from engine.injection import InjectionController
 from engine.interaction import InputMonitor
 from engine.logging import get_logger, shutdown_logging
 from engine.mouse import MouseMonitor
 from engine.security import SecurityManager
-from engine.transcription.base import BaseProvider
-from engine.transcription.factory import TranscriptionFactory
 from engine.ui_bridge import UIBridge
 
 logger = get_logger("Main")
@@ -37,12 +36,12 @@ class AppCoordinator:
         chunk_size = (sample_rate * chunk_ms) // 1000
 
         self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
-        self.provider: Optional[BaseProvider] = None
-        self.audio_adapter: Optional[AudioAdapter] = None
-        self.is_listening = False
-        self.is_connecting = False
-        self.loop: Optional[asyncio.AbstractEventLoop] = None
-        self._audio_task: Optional[asyncio.Task] = None
+        self.connection_manager = ConnectionManager(
+            config, self.on_partial, self.on_final, self.set_state
+        )
+        self.pipeline = AudioPipeline(self.streamer)
+        self.state = AppState.IDLE
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         # Hotkey state
         self.hotkey_pressed = False
@@ -61,24 +60,58 @@ class AppCoordinator:
         self.start_time = 0
 
         # Injection safety
-        self.injection_lock = asyncio.Lock()
-        self.injector = SmartInjector()
-        self.is_injecting = False  # Restored flag
-        self.last_injection_time = 0.0
+        self.injection_controller = InjectionController()
 
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
-        self._is_shutting_down = False
-
-        # Connection lifecycle
-        self._last_activity_time = 0.0
-        self._idle_timer_task: Optional[asyncio.Task] = None
-        self._session_start_time = 0.0
-        self._rotation_pending = False
-        self._backoff_delay = 1.0
-        self._last_fail_time = 0.0
 
         logger.debug(f"Target hotkey set to: {self.target_hotkey}")
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @loop.setter
+    def loop(self, value):
+        self._loop = value
+        if value:
+            self.injection_controller.set_loop(value)
+
+    @property
+    def provider(self):
+        return self.connection_manager.provider
+
+    @provider.setter
+    def provider(self, value):
+        self.connection_manager.provider = value
+
+    @property
+    def audio_adapter(self):
+        return self.connection_manager.audio_adapter
+
+    @audio_adapter.setter
+    def audio_adapter(self, value):
+        self.connection_manager.audio_adapter = value
+
+    @property
+    def is_listening(self) -> bool:
+        return self.state == AppState.LISTENING
+
+    @property
+    def is_connecting(self) -> bool:
+        return self.state == AppState.CONNECTING
+
+    @property
+    def is_shutting_down(self) -> bool:
+        return self.state == AppState.SHUTTING_DOWN
+
+    def set_state(self, state: AppState):
+        """Updates the internal state and notifies the UI."""
+        if self.state == state:
+            return
+        logger.debug(f"State transition: {self.state.name} -> {state.name}")
+        self.state = state
+        self.ui_bridge.set_state(state)
 
     def get_provider_availability(self) -> dict[str, bool]:
         """Returns a mapping of provider names to their availability status."""
@@ -90,6 +123,10 @@ class AppCoordinator:
             "assemblyai": bool(self.config.get_assemblyai_key()),
         }
 
+    async def ensure_connected(self):
+        """Proxy to connection manager."""
+        await self.connection_manager.ensure_connected(self.is_listening)
+
     def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
         # Cooldown to avoid catching the release/repeat of the hotkey itself
@@ -99,7 +136,9 @@ class AppCoordinator:
 
         # Ignore keyboard events if they are coming from our own injection
         # Increase safety window to 0.5s to account for system lag in event delivery
-        if self.is_injecting or (now - self.last_injection_time < 0.5):
+        if self.injection_controller.is_injecting or (
+            now - self.injection_controller.last_injection_time < 0.5
+        ):
             return
 
         # If we are in Toggle mode, ANY key press should stop the session.
@@ -181,7 +220,9 @@ class AppCoordinator:
         self.ui_bridge.update_partial_text(text)
 
         if self.loop:
-            asyncio.run_coroutine_threadsafe(self._smart_inject(text), self.loop)
+            asyncio.run_coroutine_threadsafe(
+                self.injection_controller.smart_inject(text), self.loop
+            )
 
     def on_final(self, text: str):
         if self.session_cancelled:
@@ -198,37 +239,8 @@ class AppCoordinator:
         # Ensure final text is fully synchronized and add a trailing space
         if self.loop:
             asyncio.run_coroutine_threadsafe(
-                self._smart_inject(text + " ", is_final=True), self.loop
+                self.injection_controller.smart_inject(text + " ", is_final=True), self.loop
             )
-
-    async def _smart_inject(self, text: str, is_final: bool = False):
-        """Inject text using the stateful injector."""
-        if self.session_cancelled:
-            return
-
-        async with self.injection_lock:
-            if not self.loop:
-                return
-
-            self.is_injecting = True
-            try:
-                # Note: SmartInjector handles its own delta calculation
-                await self.loop.run_in_executor(None, self.injector.inject, text, is_final)
-            finally:
-                self.is_injecting = False
-                self.last_injection_time = time.time()
-
-    async def _delayed_inject(self, text: str):
-        if self.session_cancelled:
-            return
-
-        async with self.injection_lock:
-            if self.loop:
-                logger.debug(f"Injecting text: {text}")
-                t0 = time.perf_counter()
-                await self.loop.run_in_executor(None, inject_text, text)
-                t1 = time.perf_counter()
-                logger.debug(f"Injection call completed in {(t1 - t0) * 1000:.2f}ms")
 
     def _play_feedback_sound(self, sound_type: Literal["start", "stop"]):
         """Plays the configured sound feedback if enabled."""
@@ -259,89 +271,6 @@ class AppCoordinator:
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
-    async def ensure_connected(self):
-        """
-        Idempotent connection management.
-        Ensures the provider is connected based on connection_mode.
-        """
-        if self.provider and self.provider.is_running:
-            # Check for rotation
-            if self.config.default_provider == "openai":
-                age = time.time() - self._session_start_time
-                if age > 3300:  # 55 minutes
-                    if self.is_listening:
-                        if not self._rotation_pending:
-                            logger.info("Session age > 55m, marking rotation pending.")
-                            self._rotation_pending = True
-                    else:
-                        logger.info("Rotating OpenAI session due to age.")
-                        await self.provider.stop()
-                        self.provider = None
-                        # Fall through to reconnect
-                elif self._rotation_pending and not self.is_listening:
-                    logger.info("Performing pending OpenAI session rotation.")
-                    await self.provider.stop()
-                    self.provider = None
-                    self._rotation_pending = False
-                    # Fall through to reconnect
-
-            # NEW: Check if provider type matches configuration
-            if self.provider and self.provider.get_type() != self.config.default_provider:
-                logger.info(
-                    f"Provider type mismatch ({self.provider.get_type()} != "
-                    f"{self.config.default_provider}). Reconnecting..."
-                )
-                if not self.is_listening:
-                    await self.provider.stop()
-                    self.provider = None
-                    # Fall through to reconnect
-                else:
-                    # If listening, we can't switch safely mid-stream without losing data.
-                    # Usually on_provider_change handles this, but as a safety:
-                    pass
-
-        if self.provider and self.provider.is_running:
-            return
-
-        # Initialize provider if not exists
-        if not self.provider:
-            self.provider = TranscriptionFactory.create(
-                self.config, on_partial=self.on_partial, on_final=self.on_final
-            )
-            self.audio_adapter = AudioAdapter(
-                capture_rate_hz=self.config.audio.capture_sample_rate,
-                provider_spec=self.provider.get_audio_spec(),
-            )
-
-        # Connect
-        # Exponential backoff check
-        now = time.time()
-        time_since_fail = now - self._last_fail_time
-        if time_since_fail < self._backoff_delay:
-            wait_time = self._backoff_delay - time_since_fail
-            logger.warning(f"Connection backoff active. Waiting {wait_time:.1f}s...")
-            await asyncio.sleep(wait_time)
-
-        logger.info(f"Connecting to {self.config.default_provider}...")
-        self.is_connecting = True
-        try:
-            async with asyncio.timeout(10.0):
-                await self.provider.start()
-            self._session_start_time = time.time()
-            self._rotation_pending = False
-            self._backoff_delay = 1.0  # Reset on success
-            logger.info("Connected successfully.")
-        except Exception as e:
-            self._last_fail_time = time.time()
-            # Max 60s backoff
-            self._backoff_delay = min(self._backoff_delay * 2, 60.0)
-            logger.error(f"Failed to connect (backoff updated to {self._backoff_delay}s): {e}")
-            self.provider = None
-            self.audio_adapter = None
-            raise
-        finally:
-            self.is_connecting = False
-
     async def start_listening(self):
         if self.is_listening or self.is_connecting:
             return
@@ -357,7 +286,6 @@ class AppCoordinator:
             return
 
         logger.info(f"Starting listening with {self.config.default_provider}...")
-        self.is_connecting = True
         self.session_cancelled = False
         self.start_time = time.time()
         self.last_injected_text = ""
@@ -374,83 +302,52 @@ class AppCoordinator:
 
         try:
             # Ensure connection
-            await self.ensure_connected()
+            await self.connection_manager.ensure_connected(is_listening=True)
 
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
 
-            self.streamer.start(loop=self.loop)
-            self.input_monitor.enable_any_key_monitoring(True)
-            self.is_listening = True
+            if self.audio_adapter and self.provider and self.loop:
+                await self.pipeline.start(self.audio_adapter, self.provider, self.loop)
 
-            self.ui_bridge.set_state(AppState.LISTENING)
-            self._audio_task = asyncio.create_task(self._audio_pipe())
+            self.input_monitor.enable_any_key_monitoring(True)
+            self.set_state(AppState.LISTENING)
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
-            self.is_listening = False
-            self.ui_bridge.set_state(AppState.ERROR)
+            self.set_state(AppState.ERROR)
             if "401" in str(e) or "unauthorized" in str(e).lower():
                 provider_title = self.config.default_provider.title()
                 msg = f"Invalid API Key for {provider_title}. Please check your credentials."
                 self.ui_bridge.notify(msg, "Authentication Failed")
-        finally:
-            self.is_connecting = False
 
     async def stop_listening(self):
-        if not self.is_listening and not self.is_connecting:
+        if self.state not in (AppState.LISTENING, AppState.CONNECTING):
             return
 
         logger.info("Stopping listening...")
-        self.is_listening = False
-        self.is_connecting = False
+        self.set_state(AppState.STOPPING)
         self.input_monitor.enable_any_key_monitoring(False)
         self.mouse_monitor.stop()
         self.anchor = None
 
-        self.ui_bridge.set_state(AppState.IDLE)
+        # 1. Stop the pipeline
+        await self.pipeline.stop()
 
-        # 1. Stop the streamer first
-        try:
-            self.streamer.stop()
-        except Exception as e:
-            logger.error(f"Error stopping streamer: {e}")
-
-        # 2. Cancel the pipe task
-        if self._audio_task:
-            self._audio_task.cancel()
-            try:
-                await self._audio_task
-            except asyncio.CancelledError:
-                pass
-            self._audio_task = None
-
-        # 3. Stop provider if on_demand
-        if self.provider:
+        # 2. Stop provider if on_demand
+        if self.connection_manager.is_running:
             if self.config.audio.connection_mode == "on_demand":
-                try:
-                    async with asyncio.timeout(5.0):
-                        await self.provider.stop()
-                except Exception as e:
-                    logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
-
-                if self.audio_adapter:
-                    self.audio_adapter.close()
-
-                self.provider = None
-                self.audio_adapter = None
+                await self.connection_manager.stop_provider()
             else:
                 # WARM or ALWAYS_ON: start idle timer if needed
-                self._last_activity_time = time.time()
-                if self.config.audio.connection_mode == "warm":
-                    self._idle_timer_task = asyncio.create_task(self._idle_timer_check())
+                self.connection_manager.start_idle_timer()
 
         # Play stop sound after everything is closed
         self._play_feedback_sound("stop")
 
         # 4. Clean up injection state
-        async with self.injection_lock:
-            self.last_injected_text = ""
-            self.is_injecting = False
+        self.injection_controller.injector.reset()
+
+        self.set_state(AppState.IDLE)
 
     async def shutdown(self, reason: str):
         """
@@ -458,9 +355,9 @@ class AppCoordinator:
         Ensures all resources are released in the correct order.
         """
         async with self._shutdown_lock:
-            if self._is_shutting_down:
+            if self.state == AppState.SHUTTING_DOWN:
                 return
-            self._is_shutting_down = True
+            self.set_state(AppState.SHUTTING_DOWN)
 
         logger.info(f"Initiating shutdown (reason: {reason})...")
 
@@ -472,13 +369,7 @@ class AppCoordinator:
                 await self.stop_listening()
                 self.input_monitor.stop()
 
-                if self.provider:
-                    await self.provider.stop()
-                    self.provider = None
-
-                if self.audio_adapter:
-                    self.audio_adapter.close()
-                    self.audio_adapter = None
+                await self.connection_manager.shutdown()
 
                 # 2. Stop UI components
                 if self.ui_bridge and self.loop:
@@ -507,40 +398,6 @@ class AppCoordinator:
             # Final resource cleanup
             shutdown_logging()
             # Note: The caller or main loop handler is responsible for stopping the event loop
-
-    async def _idle_timer_check(self):
-        """Task that waits for idle timeout and closes connection."""
-        timeout = self.config.audio.warm_idle_timeout_seconds
-        try:
-            await asyncio.sleep(timeout)
-            # Check if there was activity while we were sleeping
-            if time.time() - self._last_activity_time >= timeout:
-                if self.provider and self.provider.is_running and not self.is_listening:
-                    logger.info(f"Closing warm connection after {timeout}s idle.")
-                    await self.provider.stop()
-                    if self.audio_adapter:
-                        self.audio_adapter.close()
-                    self.provider = None
-                    self.audio_adapter = None
-        except asyncio.CancelledError:
-            pass
-
-    async def _audio_pipe(self):
-        # Finally the delay issue resolved by using an async generator
-        # to avoid blocking the event loop.
-        try:
-            async for chunk, capture_time in self.streamer.async_generator():
-                # STRICT INVARIANT: Never send audio unless in LISTENING state
-                if not self.is_listening:
-                    continue
-
-                if not self.provider or not self.audio_adapter:
-                    break
-
-                processed = self.audio_adapter.process(chunk)
-                await self.provider.send_audio(processed, capture_time)
-        except Exception as e:
-            logger.exception(f"Error in audio pipe: {e}")
 
     def on_press(self, key):
         name = self._get_canonical_name(key)

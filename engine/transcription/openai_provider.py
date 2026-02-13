@@ -32,8 +32,12 @@ class OpenAIProvider(BaseProvider):
         self.url = self._build_url()
         self.ws: Optional[ClientConnection] = None
         self._receive_task: Optional[asyncio.Task] = None
-        self.is_running = False
+        self._is_running = False
         self.current_transcript = ""
+
+    @property
+    def is_running(self) -> bool:
+        return self._is_running
 
     def get_audio_spec(self) -> ProviderAudioSpec:
         # OpenAI Realtime requires 24kHz Mono PCM16 for audio/pcm
@@ -71,7 +75,7 @@ class OpenAIProvider(BaseProvider):
             self.ws = await websockets.connect(
                 self.url, additional_headers=headers if not self.config.test.enabled else None
             )
-            self.is_running = True
+            self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
 
             # Configure session using the nested schema
@@ -121,7 +125,7 @@ class OpenAIProvider(BaseProvider):
 
     async def stop(self):
         """Graceful shutdown."""
-        self.is_running = False
+        self._is_running = False
         if self._receive_task:
             self._receive_task.cancel()
             try:
@@ -136,7 +140,7 @@ class OpenAIProvider(BaseProvider):
 
     async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
         """Send audio via input_audio_buffer.append."""
-        if not self.ws or not self.is_running:
+        if not self.ws or not self._is_running:
             return
 
         # processed_chunk is base64 string from AudioAdapter
@@ -154,7 +158,7 @@ class OpenAIProvider(BaseProvider):
                 event = json.loads(message)
                 await self._handle_event(event)
         except Exception as e:
-            if self.is_running:
+            if self._is_running:
                 logger.error(f"Error in OpenAI receive loop: {e}")
 
     async def _handle_event(self, event: dict):

@@ -1,6 +1,7 @@
 import asyncio
 import time
 
+from engine.app_types import AppState
 from engine.config import load_config
 from engine.ui_bridge import UIBridge
 from main import AppCoordinator
@@ -14,7 +15,7 @@ async def run_test():
     coordinator.loop = asyncio.get_running_loop()
 
     # Simulate a running state
-    coordinator.is_listening = True
+    coordinator.state = AppState.LISTENING
 
     print("Triggering shutdown...")
     # This should call stop_listening and finish

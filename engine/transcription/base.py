@@ -19,6 +19,12 @@ class BaseProvider(ABC):
         self.on_final = on_final
         self.base_url = base_url
 
+    @property
+    @abstractmethod
+    def is_running(self) -> bool:
+        """Return whether the provider session is currently active."""
+        pass
+
     @abstractmethod
     def get_audio_spec(self) -> ProviderAudioSpec:
         """Return the audio specification required by this provider."""

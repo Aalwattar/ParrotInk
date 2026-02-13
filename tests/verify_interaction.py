@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from engine.app_types import AppState
 from engine.config import Config
 from main import AppCoordinator
 
@@ -19,7 +20,7 @@ def coordinator():
 
 @pytest.mark.asyncio
 async def test_manual_stop_toggle_mode(coordinator):
-    coordinator.is_listening = True
+    coordinator.state = AppState.LISTENING
     coordinator.start_time = time.time() - 1.0  # Past cooldown
 
     with patch.object(coordinator, "stop_listening", new_callable=AsyncMock) as mock_stop:

@@ -4,8 +4,11 @@ from typing import Literal
 
 class AppState(Enum):
     IDLE = "idle"
+    CONNECTING = "connecting"
     LISTENING = "listening"
+    STOPPING = "stopping"
     ERROR = "error"
+    SHUTTING_DOWN = "shutting_down"
 
 
 class CaptureFormatError(Exception):
