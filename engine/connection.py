@@ -49,7 +49,7 @@ class ConnectionManager:
         Idempotent connection management.
         Ensures the provider is connected based on connection_mode.
         """
-        
+
         # Always cancel any pending idle timer if we are ensuring connection
         if self._idle_timer_task:
             self._idle_timer_task.cancel()

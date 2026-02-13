@@ -163,11 +163,11 @@ class AudioStreamer:
             self._stream = None
 
         self.is_running = False
-        
+
         # Unblock any waiting consumers
         if self._loop:
             self._loop.call_soon_threadsafe(self.async_q.put_nowait, (None, 0.0))
-            
+
         self._loop = None
         logger.info("Audio capture stopped.")
 
@@ -181,11 +181,11 @@ class AudioStreamer:
             try:
                 # Use await to avoid busy-waiting
                 item = await self.async_q.get()
-                
+
                 # Check for sentinel
                 if item[0] is None:
                     break
-                    
+
                 yield item
             except asyncio.CancelledError:
                 break

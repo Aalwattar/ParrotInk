@@ -299,7 +299,7 @@ class AppCoordinator:
                 logger.debug(f"Anchor captured: {self.anchor}")
             except Exception as e:
                 logger.error(f"Failed to capture anchor: {e}")
-            
+
             logger.debug("Starting mouse monitor...")
             try:
                 self.mouse_monitor.start()
@@ -336,6 +336,7 @@ class AppCoordinator:
                 provider_title = self.config.default_provider.title()
                 msg = f"Invalid API Key for {provider_title}. Please check your credentials."
                 self.ui_bridge.notify(msg, "Authentication Failed")
+
     async def stop_listening(self):
         if self.state not in (AppState.LISTENING, AppState.CONNECTING):
             return
