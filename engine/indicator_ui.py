@@ -166,6 +166,7 @@ class GdiFallbackWindow:
         self._width, self._height = 340, 60
         self._class_name = "Voice2TextGdiFallback"
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
+        self._status_override = None
 
         try:
             self._gdiplus = ctypes.windll.gdiplus
@@ -193,7 +194,6 @@ class GdiFallbackWindow:
         capsule_h = 34.0
         r = 10.0  # radius
 
-        # ... (keep bitmap setup) ...
         bmi = bytearray(40)
         bmi[0:4] = (40).to_bytes(4, "little")
         bmi[4:8] = (self._width).to_bytes(4, "little")
@@ -218,39 +218,33 @@ class GdiFallbackWindow:
 
         w, h = float(self._width), float(self._height)
 
-        # Calculate width based on text length (simplified dynamic width for GDI fallback)
-        display_text = self.partial_text if self.partial_text else "Listening..."
-        capsule_w = min(max(200.0, len(display_text) * 8.0 + 60.0), self._width - 20)
+        # Calculate width based on text length
+        status_label = (
+            (self._status_override or "LISTENING").upper() if self.is_recording else "STANDBY"
+        )
+        display_text = self.partial_text if self.partial_text else "..."
 
-        # Get Work Area to place at bottom
-        rect = wintypes.RECT()
-        _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
-        # Note: GDI Window is currently created at 500,50 then sized.
-        # But we are drawing INSIDE the window. The window itself is self._width x self._height.
-        # So we just center the capsule inside the window surface.
-        # WAIT: The window position is set in _run_loop.
+        # Refined Layout Math
+        h_padding = 20.0
+        # Simple char-based estimation for GDI fallback width
+        content_width = max(len(display_text) * 8.0, len(status_label) * 7.0 + 12.0)
+        capsule_w = min(max(140.0, content_width + (h_padding * 2)), self._width - 20)
 
-        # Center horizontally in the bitmap surface
         x_start = (w - capsule_w) / 2.0
         y_start = (h - capsule_h) / 2.0
 
-        bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC330000
+        bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC222222
         border_color = 0x44FFFFFF
-        text_color = 0xCCFFFFFF
 
         path = ctypes.c_void_p()
         self._gdiplus.GdipCreatePath(0, ctypes.byref(path))
-        # Top-Left
         self._gdiplus.GdipAddPathArc(path, x_start, y_start, r * 2, r * 2, 180.0, 90.0)
-        # Top-Right
         self._gdiplus.GdipAddPathArc(
             path, x_start + capsule_w - r * 2, y_start, r * 2, r * 2, 270.0, 90.0
         )
-        # Bottom-Right
         self._gdiplus.GdipAddPathArc(
             path, x_start + capsule_w - r * 2, y_start + capsule_h - r * 2, r * 2, r * 2, 0.0, 90.0
         )
-        # Bottom-Left
         self._gdiplus.GdipAddPathArc(
             path, x_start, y_start + capsule_h - r * 2, r * 2, r * 2, 90.0, 90.0
         )
@@ -265,23 +259,44 @@ class GdiFallbackWindow:
         self._gdiplus.GdipDrawPath(graphics, pen, path)
 
         # Status Dot
-        led_argb = 0xFFFF0000 if self.is_recording else 0x88AAAAAA
+        dot_color = 0xFF00FFFF if self.is_recording else 0x88AAAAAA
+        if status_label == "FINALIZED":
+            dot_color = 0xFF28C850
+
         led_brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(led_argb, ctypes.byref(led_brush))
+        self._gdiplus.GdipCreateSolidFill(dot_color, ctypes.byref(led_brush))
         self._gdiplus.GdipFillEllipse(
-            graphics, led_brush, x_start + 15.0, h / 2.0 - 5.0, 10.0, 10.0
+            graphics, led_brush, x_start + h_padding, y_start + 10.0, 6.0, 6.0
         )
 
+        # Fonts
         font_family = ctypes.c_void_p()
         self._gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
-        font = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFont(font_family, 11.0, 1, 3, ctypes.byref(font))
-        text_brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(text_color, ctypes.byref(text_brush))
 
-        lrect = (ctypes.c_float * 4)(x_start + 35.0, h / 2.0 - 9.0, capsule_w - 40.0, 22.0)
+        # Line 1: Status
+        font_status = ctypes.c_void_p()
+        self._gdiplus.GdipCreateFont(font_family, 8.0, 1, 3, ctypes.byref(font_status))
+        status_brush = ctypes.c_void_p()
+        self._gdiplus.GdipCreateSolidFill(0xBBFFFFFF, ctypes.byref(status_brush))
+        # Symmetric offset
+        srect = (ctypes.c_float * 4)(
+            x_start + h_padding + 12.0, y_start + 6.0, capsule_w - (h_padding + 15.0), 15.0
+        )
         self._gdiplus.GdipDrawString(
-            graphics, display_text, -1, font, ctypes.byref(lrect), None, text_brush
+            graphics, status_label, -1, font_status, ctypes.byref(srect), None, status_brush
+        )
+
+        # Line 2: Text
+        font_text = ctypes.c_void_p()
+        self._gdiplus.GdipCreateFont(font_family, 11.0, 0, 3, ctypes.byref(font_text))
+        text_brush = ctypes.c_void_p()
+        self._gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
+        # Perfectly aligned with h_padding
+        trect = (ctypes.c_float * 4)(
+            x_start + h_padding, y_start + 22.0, capsule_w - (h_padding * 2), 22.0
+        )
+        self._gdiplus.GdipDrawString(
+            graphics, display_text, -1, font_text, ctypes.byref(trect), None, text_brush
         )
 
         self._gdiplus.GdipDeleteGraphics(graphics)
@@ -304,7 +319,8 @@ class GdiFallbackWindow:
         self._gdiplus.GdipDeleteBrush(led_brush)
         self._gdiplus.GdipDeleteBrush(text_brush)
         self._gdiplus.GdipDeletePen(pen)
-        self._gdiplus.GdipDeleteFont(font)
+        self._gdiplus.GdipDeleteFont(font_status)
+        self._gdiplus.GdipDeleteFont(font_text)
         self._gdiplus.GdipDeleteFontFamily(font_family)
         self._gdiplus.GdipDeletePath(path)
         _gdi32.DeleteObject(hbmp)
@@ -379,16 +395,17 @@ class GdiFallbackWindow:
 
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
+        if is_recording:
+            self.partial_text = ""
+            self._status_override = None
         self._draw_ui()
 
     def update_status_icon(self, status: str):
-        # Fallback: Just clear text or show status text if needed
-        # For now, we can just redraw to ensure checks are handled
-        pass
+        self._status_override = status
+        self._draw_ui()
 
     def update_partial_text(self, text: str):
-        words = text.split()
-        self.partial_text = " ".join(words[-5:]) if len(words) > 5 else text
+        self.partial_text = text
         self._draw_ui()
 
 
@@ -403,7 +420,7 @@ class IndicatorWindow:
         self._current_partial_text = ""
         self._committed_text = ""
         self._last_final_segment = ""
-        self._max_preview_chars = 160
+        self._max_preview_chars = 180
 
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
@@ -429,12 +446,8 @@ class IndicatorWindow:
         return self.impl.visible
 
     def start(self):
-        # HudOverlay manages its own message pump if run() is called,
-        # but the current HudOverlay implementation in hud_renderer.py
-        # has a blocking run(). Let's make it start in a thread for parity.
         if isinstance(self.impl, HudOverlay):
             threading.Thread(target=self.impl.run, daemon=True).start()
-            # Ensure window is created before we continue
             if hasattr(self.impl, "_ready_event"):
                 self.impl._ready_event.wait(timeout=2.0)
         else:
@@ -460,45 +473,33 @@ class IndicatorWindow:
 
         if hasattr(self.impl, "update_status"):
             self.impl.update_status(is_recording)
-        else:
-            if not is_recording:
-                self.impl.update_text("Standby")
+
+        # Trigger immediate render to show initial status
+        self._render_preview()
 
         if not is_recording:
-            # When we stop recording, trigger a linger timer to eventually hide the HUD
             self._start_linger_timer()
 
     def _start_linger_timer(self, duration: float = 2.5):
         def _hide_after():
-            # Enforce Minimum Visible Time (300ms)
             elapsed = time.time() - self._shown_at
             if elapsed < 0.3:
                 time.sleep(0.3 - elapsed)
-
-            # Wait for the requested linger duration (usually short now)
             time.sleep(duration)
-
-            # Only hide if we are still in IDLE state
             if not self.is_recording:
                 self.hide()
 
         threading.Thread(target=_hide_after, daemon=True).start()
 
     def update_partial_text(self, text: str):
-        # ALWAYS update the internal state so we don't miss the latest text
         self._current_partial_text = text
-
-        # Throttling: Cap at ~20fps (50ms)
         now = time.time()
         if now - self._last_redraw_at < 0.05:
             return
         self._last_redraw_at = now
-
         self._render_preview()
 
     def _render_preview(self):
-        """Computes and sends the combined (committed + partial) preview to the renderer."""
-        # 1. Combine
         full_text = self._committed_text
         if self._current_partial_text:
             if full_text:
@@ -506,26 +507,19 @@ class IndicatorWindow:
             full_text += self._current_partial_text
 
         if not full_text:
-            return
-
-        # 2. Tail Trim
-        if len(full_text) > self._max_preview_chars:
-            # Show only the end of the text
-            display_text = "..." + full_text[-(self._max_preview_chars - 3) :]
+            display_text = ""
+        elif len(full_text) > self._max_preview_chars:
+            display_text = "…" + full_text[-(self._max_preview_chars - 1) :]
         else:
             display_text = full_text
 
-        # 3. Push to Implementation
         if hasattr(self.impl, "update_partial_text"):
             self.impl.update_partial_text(display_text)
         else:
             self.impl.update_text(display_text)
 
     def on_final(self, text: str, linger_seconds: float = 2.0):
-        """Show 'Finalized' flash signal and append to session history."""
         self._last_final_time = time.time()
-
-        # 1. Append to session history (with dedup guard)
         clean_text = text.strip()
         if clean_text and clean_text != self._last_final_segment:
             if self._committed_text:
@@ -533,21 +527,14 @@ class IndicatorWindow:
             self._committed_text += clean_text
             self._last_final_segment = clean_text
 
-        # 2. Reset partial segment
         self._current_partial_text = ""
+        self._final_flash_until = time.time() + 0.2
 
-        # 3. Trigger Flash
-        self._final_flash_until = time.time() + 0.2  # 200ms flash
-
-        # Force immediate update to show the checkmark and the updated committed tail
         if hasattr(self.impl, "update_status_icon"):
             self.impl.update_status_icon("finalized")
 
-        # Render the updated committed tail
         self._render_preview()
 
-        # If we are already idle, make sure the window is visible
-        # and refresh the linger timer so the user can read it.
         if not self.is_recording:
             self.show()
             self._start_linger_timer(linger_seconds)

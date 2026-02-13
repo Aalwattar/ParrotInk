@@ -99,7 +99,7 @@ class HudOverlay:
 
         # UI Specs
         self.win_width = 1000
-        self.win_height = 60
+        self.win_height = 80
 
         # GDI Resources
         self._hdc_mem = None
@@ -122,7 +122,7 @@ class HudOverlay:
             self._hdc_mem,
             ctypes.byref(zero_pt),
             0,
-            ctypes.byref(blend),
+            ctypes.pointer(blend),
             ULW_ALPHA,
         )
         _user32.ReleaseDC(0, hdc_screen)
@@ -138,7 +138,7 @@ class HudOverlay:
             if qsize > 0:
                 latest_text = None
                 latest_status = None
-                
+
                 while True:
                     try:
                         item = self.text_queue.get_nowait()
@@ -154,7 +154,7 @@ class HudOverlay:
                             latest_text = item
                     except queue.Empty:
                         break
-                
+
                 # Apply only the latest state from the batch
                 if latest_text is not None:
                     self.last_text = latest_text
@@ -195,25 +195,18 @@ class HudOverlay:
         except Exception:
             pass
 
-        try:
-            # Get Work Area (excludes taskbar)
-            rect = wintypes.RECT()
-            _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0) # SPI_GETWORKAREA
-            work_bottom = rect.bottom
-            work_width = rect.right - rect.left
-        except Exception:
-            # Fallback
-            work_bottom = _user32.GetSystemMetrics(1)
-            work_width = _user32.GetSystemMetrics(0)
+        # Robust Bottom-Center Position
+        screen_w = _user32.GetSystemMetrics(0)
+        screen_h = _user32.GetSystemMetrics(1)
 
-        x_pos = (work_width - self.win_width) // 2
-        y_pos = work_bottom - 10 - self.win_height # 10px margin above taskbar
+        x_pos = (screen_w - self.win_width) // 2
+        y_pos = screen_h - self.win_height - 60
 
         self._hwnd = win32gui.CreateWindowEx(
-            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW,
             class_name,
             "V2T HUD",
-            WS_POPUP,
+            win32con.WS_POPUP,
             x_pos,
             y_pos,
             self.win_width,
@@ -223,6 +216,10 @@ class HudOverlay:
             hinst,
             None,
         )
+        if self._hwnd:
+            logger.info(f"HUD Window Created: {self._hwnd} at ({x_pos}, {y_pos})")
+        else:
+            logger.error(f"Failed to create HUD window: {win32gui.GetLastError()}")
 
         # Setup GDI DIB Section
         hdc_screen = _user32.GetDC(0)
@@ -274,10 +271,10 @@ class HudOverlay:
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
         if is_recording:
-             # Reset state for new session to prevent flicker of old text
-             self.last_text = ""
-             self.text_queue.put(("TEXT", ""))
-             self.text_queue.put(("STATUS", "listening"))
+            # Reset state for new session to prevent flicker of old text
+            self.last_text = ""
+            self.text_queue.put(("TEXT", ""))
+            self.text_queue.put(("STATUS", "listening"))
 
     def update_status_icon(self, status: str):
         """Supported status: 'finalized', 'listening', 'connecting'"""
@@ -289,7 +286,4 @@ class HudOverlay:
             self.text_queue.put(("TEXT", text))
 
     def update_partial_text(self, text: str):
-        words = text.split()
-        limit = self._partial_words
-        buffer = " ".join(words[-limit:]) if len(words) > limit else text
-        self.update_text(buffer)
+        self.update_text(text)

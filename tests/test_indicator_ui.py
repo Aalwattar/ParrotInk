@@ -22,26 +22,20 @@ def test_indicator_status_update():
     assert indicator.is_recording is False
 
 
-def test_indicator_partial_text_buffer():
-    """Test that the partial text display maintains a short buffer of 3-5 words."""
+def test_indicator_partial_text_truncation():
+    """Test that the partial text display is truncated by character count (180)."""
     indicator = IndicatorWindow()
     indicator.start()
 
-    # Send 1 word
-    indicator.update_partial_text("Hello")
+    # Send a very long string (> 180 chars)
+    long_text = "A" * 200
+    indicator.update_partial_text(long_text)
 
-    time.sleep(0.2)  # Wait for HUD thread to process queue
-    assert indicator.partial_text == "Hello"
-
-    # Send more than 5 words
-    indicator.update_partial_text("one two three four five six seven")
     time.sleep(0.2)
-    # Should keep only the last few words.
-    # Exact behavior depends on implementation, but let's say last 5 words.
-    words = indicator.partial_text.split()
-    assert len(words) <= 5
-    assert words[-1] == "seven"
-    assert words[0] == "three"
+    # Should keep only the last few characters with an ellipsis.
+    # length should be around 180 (including ellipsis).
+    assert len(indicator.partial_text) <= 180
+    assert indicator.partial_text.startswith("…")
 
 
 def test_indicator_visibility_toggle():
