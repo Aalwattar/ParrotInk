@@ -225,11 +225,11 @@ class GdiFallbackWindow:
         # Get Work Area to place at bottom
         rect = wintypes.RECT()
         _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
-        # Note: GDI Window is currently created at 500,50 then sized. 
+        # Note: GDI Window is currently created at 500,50 then sized.
         # But we are drawing INSIDE the window. The window itself is self._width x self._height.
         # So we just center the capsule inside the window surface.
         # WAIT: The window position is set in _run_loop.
-        
+
         # Center horizontally in the bitmap surface
         x_start = (w - capsule_w) / 2.0
         y_start = (h - capsule_h) / 2.0
@@ -328,13 +328,13 @@ class GdiFallbackWindow:
             0,
         )
         _user32.RegisterClassExW(ctypes.byref(wcex))
-        
+
         # Calculate Position
         rect = wintypes.RECT()
         _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
         work_w = rect.right - rect.left
         work_bottom = rect.bottom
-        
+
         x_pos = (work_w - self._width) // 2
         y_pos = work_bottom - 10 - self._height
 
@@ -401,6 +401,9 @@ class IndicatorWindow:
         self._final_flash_until = 0.0
         self._last_redraw_at = 0.0
         self._current_partial_text = ""
+        self._committed_text = ""
+        self._last_final_segment = ""
+        self._max_preview_chars = 160
 
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
@@ -452,6 +455,8 @@ class IndicatorWindow:
         if is_recording:
             self._last_final_time = 0.0
             self._current_partial_text = ""
+            self._committed_text = ""
+            self._last_final_segment = ""
 
         if hasattr(self.impl, "update_status"):
             self.impl.update_status(is_recording)
@@ -489,26 +494,57 @@ class IndicatorWindow:
             return
         self._last_redraw_at = now
 
-        # Use the latest stored text
-        text_to_show = self._current_partial_text
+        self._render_preview()
 
-        if hasattr(self.impl, "update_partial_text"):
-            self.impl.update_partial_text(text_to_show)
+    def _render_preview(self):
+        """Computes and sends the combined (committed + partial) preview to the renderer."""
+        # 1. Combine
+        full_text = self._committed_text
+        if self._current_partial_text:
+            if full_text:
+                full_text += " "
+            full_text += self._current_partial_text
+
+        if not full_text:
+            return
+
+        # 2. Tail Trim
+        if len(full_text) > self._max_preview_chars:
+            # Show only the end of the text
+            display_text = "..." + full_text[-(self._max_preview_chars - 3) :]
         else:
-            self.impl.update_text(text_to_show)
+            display_text = full_text
+
+        # 3. Push to Implementation
+        if hasattr(self.impl, "update_partial_text"):
+            self.impl.update_partial_text(display_text)
+        else:
+            self.impl.update_text(display_text)
 
     def on_final(self, text: str, linger_seconds: float = 2.0):
-        """Show 'Finalized' flash signal instead of text echo."""
+        """Show 'Finalized' flash signal and append to session history."""
         self._last_final_time = time.time()
 
-        # Trigger Flash
+        # 1. Append to session history (with dedup guard)
+        clean_text = text.strip()
+        if clean_text and clean_text != self._last_final_segment:
+            if self._committed_text:
+                self._committed_text += " "
+            self._committed_text += clean_text
+            self._last_final_segment = clean_text
+
+        # 2. Reset partial segment
+        self._current_partial_text = ""
+
+        # 3. Trigger Flash
         self._final_flash_until = time.time() + 0.2  # 200ms flash
 
-        # Force immediate update to show the checkmark
+        # Force immediate update to show the checkmark and the updated committed tail
         if hasattr(self.impl, "update_status_icon"):
             self.impl.update_status_icon("finalized")
 
-        # We DO NOT call update_partial_text(text) anymore.
+        # Render the updated committed tail
+        self._render_preview()
 
         # If we are already idle, make sure the window is visible
         # and refresh the linger timer so the user can read it.
