@@ -53,6 +53,7 @@ class AudioPipeline:
 
     async def _run_pipe(self, adapter: AudioAdapter, provider: BaseProvider):
         """Internal loop that pulls from streamer and sends to provider."""
+        chunks_sent = 0
         try:
             async for chunk, capture_time in self.streamer.async_generator():
                 # Strict gating: only process if we are still marked as running
@@ -61,6 +62,10 @@ class AudioPipeline:
 
                 processed = adapter.process(chunk)
                 await provider.send_audio(processed, capture_time)
+
+                chunks_sent += 1
+                if chunks_sent % 100 == 0:
+                    logger.debug(f"Pipeline heartbeat: sent {chunks_sent} chunks")
         except Exception as e:
             # We don't want to crash the whole app if the pipe fails,
             # but we should log it prominently.

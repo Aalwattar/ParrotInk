@@ -95,7 +95,10 @@ class AssemblyAIProvider(BaseProvider):
 
     async def stop(self):
         """Close connection and stop tasks."""
-        if self.ws and self._is_running:
+        is_active = self._is_running
+        self._is_running = False
+
+        if self.ws and is_active:
             try:
                 # Send end of stream message
                 terminate_msg = json.dumps({"terminate_session": True})

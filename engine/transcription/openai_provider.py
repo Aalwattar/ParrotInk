@@ -40,9 +40,9 @@ class OpenAIProvider(BaseProvider):
         return self._is_running
 
     def get_audio_spec(self) -> ProviderAudioSpec:
-        # OpenAI Realtime requires 24kHz Mono PCM16 for audio/pcm
+        # OpenAI Realtime requires PCM16 Mono
         return ProviderAudioSpec(
-            sample_rate_hz=24000,
+            sample_rate_hz=self.config.providers.openai.core.input_audio_rate,
             wire_encoding="pcm16_base64",
         )
 
@@ -93,6 +93,11 @@ class OpenAIProvider(BaseProvider):
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
 
+        # Map noise reduction
+        noise_reduction = None
+        if adv.noise_reduction == "auto":
+            noise_reduction = "auto"
+
         # Restore 'type': 'transcription' for GA behavior
         session_update = {
             "type": "session.update",
@@ -100,23 +105,25 @@ class OpenAIProvider(BaseProvider):
                 "type": "transcription",
                 "audio": {
                     "input": {
-                        "format": {"type": "audio/pcm", "rate": 24000},
-                        "noise_reduction": None,  # Disabled to prevent clipping
+                        "format": {"type": "audio/pcm", "rate": core.input_audio_rate},
+                        "noise_reduction": noise_reduction,
                         "transcription": {
                             "model": core.model,  # e.g., gpt-4o-transcribe-latest
                             "language": core.language,
                         },
                         "turn_detection": {
                             "type": "server_vad",
-                            "threshold": 0.6,  # Slightly more robust
-                            "prefix_padding_ms": 300,
-                            "silence_duration_ms": 500,  # Increased for cohesive sentences
+                            "threshold": adv.vad_threshold,
+                            "prefix_padding_ms": adv.prefix_padding_ms,
+                            "silence_duration_ms": adv.silence_duration_ms,
                         }
                         if adv.turn_detection_type == "server_vad"
                         else None,
                     }
                 },
-                "include": ["item.input_audio_transcription.logprobs"],
+                "include": ["item.input_audio_transcription.logprobs"]
+                if adv.include_logprobs
+                else [],
             },
         }
 

@@ -114,4 +114,5 @@ async def main_gui(cli_args):
         pass
     finally:
         # Ensure shutdown is called if we exited wait() for some other reason
+        coordinator.input_monitor.stop()  # Stop listener first to prevent new events
         await coordinator.shutdown("Finalizing")

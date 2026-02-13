@@ -1,3 +1,4 @@
+import sys
 from typing import Callable, Optional
 
 from pynput import keyboard
@@ -29,15 +30,22 @@ class InputMonitor:
         self._is_any_key_enabled = enabled
 
     def _on_press(self, key):
-        # 1. Always trigger the primary on_press for hotkey logic
-        self._on_press_callback(key)
+        try:
+            # 1. Always trigger the primary on_press for hotkey logic
+            self._on_press_callback(key)
 
-        # 2. If 'any-key' monitoring is active, trigger the secondary callback
-        if self._is_any_key_enabled and self._any_key_callback:
-            self._any_key_callback(key)
+            # 2. If 'any-key' monitoring is active, trigger the secondary callback
+            if self._is_any_key_enabled and self._any_key_callback:
+                self._any_key_callback(key)
+        except Exception as e:
+            # Prevent listener thread from crashing
+            print(f"Error in keyboard listener: {e}", file=sys.stderr)
 
     def _on_release(self, key):
-        self._on_release_callback(key)
+        try:
+            self._on_release_callback(key)
+        except Exception as e:
+            print(f"Error in keyboard listener (release): {e}", file=sys.stderr)
 
     def start(self):
         """Starts the global keyboard listener."""

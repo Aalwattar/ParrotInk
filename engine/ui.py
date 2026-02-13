@@ -8,7 +8,6 @@ from PIL import Image, ImageDraw
 
 from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
-from .indicator_ui import IndicatorWindow
 from .logging import get_logger
 
 if TYPE_CHECKING:
@@ -44,9 +43,21 @@ class TrayApp:
 
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
-        self.indicator = IndicatorWindow(
-            partial_words=self.config.ui.floating_indicator.partial_text_words
-        )
+
+        # Lazy-load indicator (I5)
+        self.indicator = None
+        if self.config.ui.floating_indicator.enabled:
+            logger.info("Initializing Floating Indicator...")
+            try:
+                from .indicator_ui import IndicatorWindow
+
+                self.indicator = IndicatorWindow(
+                    partial_words=self.config.ui.floating_indicator.partial_text_words
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize indicator: {e}")
+        else:
+            logger.info("Floating Indicator is disabled.")
 
     def _create_image(self, color: str) -> Image.Image:
         width, height = 64, 64
@@ -148,16 +159,17 @@ class TrayApp:
         self.icon.icon = self._create_image(self._get_icon_color(state))
 
         # Sync indicator visibility and status
-        if state == AppState.LISTENING:
-            logger.debug("TrayApp: Showing indicator (LISTENING)")
-            self.indicator.update_status(True)
-            self.indicator.show()
-        elif state == AppState.IDLE:
-            logger.debug("TrayApp: Updating status to idle (IDLE)")
-            self.indicator.update_status(False)
-            # Removed self.indicator.hide() here to allow on_final to handle lingering text
-        elif state == AppState.ERROR:
-            self.indicator.update_status(False)
+        if self.indicator:
+            if state == AppState.LISTENING:
+                logger.debug("TrayApp: Showing indicator (LISTENING)")
+                self.indicator.update_status(True)
+                self.indicator.show()
+            elif state == AppState.IDLE:
+                logger.debug("TrayApp: Updating status to idle (IDLE)")
+                self.indicator.update_status(False)
+                # Removed self.indicator.hide() here to allow on_final to handle lingering text
+            elif state == AppState.ERROR:
+                self.indicator.update_status(False)
             # We might want to keep it visible to show the error,
             # but for now let's hide it or just update color
             pass
@@ -191,9 +203,11 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_AVAILABILITY:
                 self.update_availability(data)
             elif msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
-                self.indicator.update_partial_text(data)
+                if self.indicator:
+                    self.indicator.update_partial_text(data)
             elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
-                self.indicator.on_final(data)
+                if self.indicator:
+                    self.indicator.on_final(data)
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()
@@ -201,7 +215,8 @@ class TrayApp:
     def run(self) -> None:
         if self.bridge:
             threading.Thread(target=self._poll_bridge, daemon=True).start()
-        self.indicator.start()
+        if self.indicator:
+            self.indicator.start()
         self.icon.run()
 
     def stop(self) -> None:

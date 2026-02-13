@@ -116,3 +116,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Architecture & State Overhaul**
 *Link: [./tracks/arch_state_overhaul_20260212/](./tracks/arch_state_overhaul_20260212/)*
+
+---
+
+- [x] **Track: Reliability & Configuration**
+*Link: [./tracks/reliability_and_config_20260212/](./tracks/reliability_and_config_20260212/)*
+
+---
+
+- [x] **Track: Stability & Optimization**
+*Link: [./tracks/stability_optimization_20260213/](./tracks/stability_optimization_20260213/)*

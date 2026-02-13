@@ -122,16 +122,35 @@ class AudioStreamer:
                 break
 
         self._drop_count = 0
-        self._stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=1,  # Default to 1, callback handles downmixing if device is stereo
-            dtype="float32",
-            blocksize=self.chunk_size,
-            callback=self._callback,
-        )
+        try:
+            self._stream = sd.InputStream(
+                samplerate=self.sample_rate,
+                channels=1,
+                dtype="float32",
+                blocksize=self.chunk_size,
+                callback=self._callback,
+            )
+        except Exception as e:
+            logger.info(f"Mono capture failed ({e}), attempting stereo fallback...")
+            try:
+                self._stream = sd.InputStream(
+                    samplerate=self.sample_rate,
+                    channels=2,
+                    dtype="float32",
+                    blocksize=self.chunk_size,
+                    callback=self._callback,
+                )
+                logger.info("Stereo capture fallback successful.")
+            except Exception as e2:
+                logger.error(f"Stereo capture fallback also failed: {e2}")
+                raise e2
+
         self._stream.start()
         self.is_running = True
-        logger.info(f"Audio capture started at {self.sample_rate}Hz (chunk_size={self.chunk_size})")
+        logger.info(
+            f"Audio capture started at {self.sample_rate}Hz "
+            f"(channels={self._stream.channels}, chunk_size={self.chunk_size})"
+        )
 
     def stop(self):
         """Stops the audio capture stream."""

@@ -105,13 +105,18 @@ class ConnectionManager:
         logger.info(f"Connecting to {self.config.default_provider}...")
         self.set_state(AppState.CONNECTING)
         try:
+            logger.debug(f"Starting provider {self.config.default_provider}...")
             async with asyncio.timeout(10.0):
                 await self.provider.start()
+            logger.debug("Provider started.")
             self._session_start_time = time.time()
             self._rotation_pending = False
             self._backoff_delay = 1.0
             logger.info("Connected successfully.")
-            self.set_state(AppState.IDLE)
+
+            # If we are NOT in the middle of a listening command, transition to IDLE
+            if not is_listening:
+                self.set_state(AppState.IDLE)
         except Exception as e:
             self._last_fail_time = time.time()
             self._backoff_delay = min(self._backoff_delay * 2, 60.0)
@@ -146,6 +151,11 @@ class ConnectionManager:
             self._last_activity_time = time.time()
             if not self._idle_timer_task or self._idle_timer_task.done():
                 self._idle_timer_task = asyncio.create_task(self._idle_timer_check())
+
+        # I3: Check for rotation immediately after stopping (during idle)
+        if self._rotation_pending:
+            logger.info("Session rotation pending. Scheduling immediate rotation during idle.")
+            asyncio.create_task(self.ensure_connected(is_listening=False))
 
     async def _idle_timer_check(self):
         """Task that waits for idle timeout and closes connection."""

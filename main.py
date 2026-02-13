@@ -272,7 +272,8 @@ class AppCoordinator:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     async def start_listening(self):
-        if self.is_listening or self.is_connecting:
+        if self.state not in (AppState.IDLE, AppState.ERROR):
+            logger.debug(f"start_listening ignored: current state is {self.state.name}")
             return
 
         # Credential check
@@ -297,21 +298,42 @@ class AppCoordinator:
 
         # Capture Anchor
         if self.config.interaction.cancel_on_click_outside_anchor:
-            self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
-            self.mouse_monitor.start()
+            logger.debug("Capturing anchor...")
+            try:
+                self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
+                logger.debug(f"Anchor captured: {self.anchor}")
+            except Exception as e:
+                logger.error(f"Failed to capture anchor: {e}")
+
+            logger.debug("Starting mouse monitor...")
+            try:
+                self.mouse_monitor.start()
+                logger.debug("Mouse monitor started.")
+            except Exception as e:
+                logger.error(f"Failed to start mouse monitor: {e}")
 
         try:
             # Ensure connection
+            logger.debug("Ensuring connection...")
             await self.connection_manager.ensure_connected(is_listening=True)
+            logger.debug("Connection ensured.")
 
             # Play start sound AFTER successful connection
             self._play_feedback_sound("start")
 
             if self.audio_adapter and self.provider and self.loop:
+                logger.debug("Starting audio pipeline...")
                 await self.pipeline.start(self.audio_adapter, self.provider, self.loop)
+                logger.debug("Audio pipeline started.")
+            else:
+                logger.warning(
+                    f"Skipping pipeline start: adapter={bool(self.audio_adapter)}, "
+                    f"provider={bool(self.provider)}, loop={bool(self.loop)}"
+                )
 
             self.input_monitor.enable_any_key_monitoring(True)
             self.set_state(AppState.LISTENING)
+            logger.info("Dictation session active.")
         except Exception as e:
             logger.exception(f"Error starting transcription: {e}")
             self.set_state(AppState.ERROR)
