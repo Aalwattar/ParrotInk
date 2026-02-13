@@ -1,6 +1,6 @@
 [project]
 name = "voice2text"
-version = "0.1.0"
+version = "0.2.0-alpha"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
