@@ -94,7 +94,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Architecture & Design Cleanup (ROI-Focused)**
+- [x] **Track: Architecture & Design Cleanup (ROI-Focused)** (Superseded)
 *Link: [./tracks/arch_cleanup_20260212/](./arch_cleanup_20260212/)*
 
 ---
@@ -109,7 +109,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Consultant Security & Stability Improvements**
+- [x] **Track: Consultant Security & Stability Improvements**
 *Link: [./tracks/consultant_improvements_20260212/](./tracks/consultant_improvements_20260212/)*
 
 ---
