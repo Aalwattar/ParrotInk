@@ -255,6 +255,11 @@ class HudOverlay:
 
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
+        if is_recording:
+             # Reset state for new session to prevent flicker of old text
+             self.last_text = ""
+             self.text_queue.put(("TEXT", ""))
+             self.text_queue.put(("STATUS", "listening"))
 
     def update_status_icon(self, status: str):
         """Supported status: 'finalized', 'listening', 'connecting'"""
