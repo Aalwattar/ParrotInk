@@ -185,11 +185,19 @@ class HudOverlay:
         except Exception:
             pass
 
-        screen_w = _user32.GetSystemMetrics(0)
-        screen_h = _user32.GetSystemMetrics(1)
+        try:
+            # Get Work Area (excludes taskbar)
+            rect = wintypes.RECT()
+            _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0) # SPI_GETWORKAREA
+            work_bottom = rect.bottom
+            work_width = rect.right - rect.left
+        except Exception:
+            # Fallback
+            work_bottom = _user32.GetSystemMetrics(1)
+            work_width = _user32.GetSystemMetrics(0)
 
-        x_pos = (screen_w - self.win_width) // 2
-        y_pos = screen_h - 60 - self.win_height
+        x_pos = (work_width - self.win_width) // 2
+        y_pos = work_bottom - 10 - self.win_height # 10px margin above taskbar
 
         self._hwnd = win32gui.CreateWindowEx(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,

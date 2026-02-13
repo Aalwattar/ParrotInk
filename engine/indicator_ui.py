@@ -222,9 +222,17 @@ class GdiFallbackWindow:
         display_text = self.partial_text if self.partial_text else "Listening..."
         capsule_w = min(max(200.0, len(display_text) * 8.0 + 60.0), self._width - 20)
 
-        # Center horizontally
+        # Get Work Area to place at bottom
+        rect = wintypes.RECT()
+        _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
+        # Note: GDI Window is currently created at 500,50 then sized. 
+        # But we are drawing INSIDE the window. The window itself is self._width x self._height.
+        # So we just center the capsule inside the window surface.
+        # WAIT: The window position is set in _run_loop.
+        
+        # Center horizontally in the bitmap surface
         x_start = (w - capsule_w) / 2.0
-        y_start = h - capsule_h - 60.0 # Bottom-Center with 60px margin
+        y_start = (h - capsule_h) / 2.0
 
         bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC330000
         border_color = 0x44FFFFFF
@@ -320,13 +328,23 @@ class GdiFallbackWindow:
             0,
         )
         _user32.RegisterClassExW(ctypes.byref(wcex))
+        
+        # Calculate Position
+        rect = wintypes.RECT()
+        _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
+        work_w = rect.right - rect.left
+        work_bottom = rect.bottom
+        
+        x_pos = (work_w - self._width) // 2
+        y_pos = work_bottom - 10 - self._height
+
         self._hwnd = _user32.CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             self._class_name,
             "V2T Fallback",
             WS_POPUP,
-            500,
-            50,
+            x_pos,
+            y_pos,
             self._width,
             self._height,
             None,
