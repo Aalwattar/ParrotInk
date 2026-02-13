@@ -163,6 +163,11 @@ class AudioStreamer:
             self._stream = None
 
         self.is_running = False
+        
+        # Unblock any waiting consumers
+        if self._loop:
+            self._loop.call_soon_threadsafe(self.async_q.put_nowait, (None, 0.0))
+            
         self._loop = None
         logger.info("Audio capture stopped.")
 
@@ -172,11 +177,15 @@ class AudioStreamer:
 
     async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
         """Yields (audio_chunk, timestamp) tuples asynchronously."""
-        while self.is_running or not self.async_q.empty():
+        while self.is_running:
             try:
-                chunk, capture_time = self.async_q.get_nowait()
-                yield chunk, capture_time
-            except asyncio.QueueEmpty:
-                if not self.is_running:
+                # Use await to avoid busy-waiting
+                item = await self.async_q.get()
+                
+                # Check for sentinel
+                if item[0] is None:
                     break
-                await asyncio.sleep(0.01)
+                    
+                yield item
+            except asyncio.CancelledError:
+                break
