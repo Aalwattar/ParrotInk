@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from platformdirs import user_log_dir
+from .platform_win.paths import get_log_path
 
 # Regex for redacting sensitive information
 # Redacts things like: authorization: Bearer sk-..., "api_key": "...", etc.
@@ -39,9 +39,9 @@ class SanitizingFormatter(logging.Formatter):
 
 def get_default_log_path() -> Path:
     """Get the default platform-specific log file path."""
-    log_dir = Path(user_log_dir("Voice2Text", "alwat"))
-    log_dir.mkdir(parents=True, exist_ok=True)
-    return log_dir / "voice2text.log"
+    log_path = Path(get_log_path())
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    return log_path
 
 
 # Global listener to keep it alive
