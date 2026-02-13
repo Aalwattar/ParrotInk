@@ -131,3 +131,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Debug Silent Failure**
 *Link: [./tracks/debug_silent_failure_20260213/](./tracks/debug_silent_failure_20260213/)*
+
+---
+
+- [ ] **Track: Verify Config Fidelity**
+*Link: [./tracks/verify_config_fidelity_20260213/](./tracks/verify_config_fidelity_20260213/)*
+
+---
+
+- [x] **Track: HUD Visual Refinement**
+*Link: [./tracks/hud_refinement_20260213/](./tracks/hud_refinement_20260213/)*

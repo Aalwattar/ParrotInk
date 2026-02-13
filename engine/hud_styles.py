@@ -5,29 +5,61 @@ import skia
 
 class HudStyle(ABC):
     @abstractmethod
-    def draw(self, canvas: skia.Canvas, width: int, height: int, text: str, is_recording: bool):
+    def draw(
+        self,
+        canvas: skia.Canvas,
+        width: int,
+        height: int,
+        text: str,
+        is_recording: bool,
+        status_override: str | None = None,
+    ):
         pass
 
 
 class GlassStyle(HudStyle):
     def __init__(self):
-        self.radius = 12.0
-        self.capsule_height = 42.0  # Narrower (thinner) for a sleeker look
-        self.max_capsule_width = 800.0  # Longer to fit more text
+        self.radius = 10.0
+        self.capsule_height = 34.0  # Compact height
+        self.max_capsule_width = 800.0
         self.padding = 30.0
 
-    def draw(self, canvas: skia.Canvas, width: int, height: int, text: str, is_recording: bool):
+    def draw(
+        self,
+        canvas: skia.Canvas,
+        width: int,
+        height: int,
+        text: str,
+        is_recording: bool,
+        status_override: str | None = None,
+    ):
         canvas.clear(skia.ColorTRANSPARENT)
+
+        display_text = text
+        draw_checkmark = False
+
+        if status_override == "finalized":
+            display_text = "Finalized"
+            draw_checkmark = True
+        elif status_override == "connecting":
+            display_text = "Connecting..."
 
         # 1. Measure Text
         font = skia.Font(skia.Typeface("Segoe UI"), 14)
-        blob = skia.TextBlob.MakeFromString(text, font)
-        text_width = font.measureText(text)
+        blob = skia.TextBlob.MakeFromString(display_text, font)
+        text_width = font.measureText(display_text)
+
+        # Extra width for checkmark
+        icon_width = 24.0 if draw_checkmark else 0.0
 
         # 2. Layout
         # Adjust width to fit text + padding for status dot
-        capsule_w = max(120.0, min(text_width + 80.0, self.max_capsule_width))
-        rect = skia.Rect.MakeXYWH(self.padding, self.padding, capsule_w, self.capsule_height)
+        capsule_w = max(120.0, min(text_width + 80.0 + icon_width, self.max_capsule_width))
+
+        # Center horizontally
+        x_pos = (width - capsule_w) / 2.0
+
+        rect = skia.Rect.MakeXYWH(x_pos, self.padding, capsule_w, self.capsule_height)
         rrect = skia.RRect.MakeEmpty()
         rrect.setRectXY(rect, self.radius, self.radius)
 
@@ -55,10 +87,28 @@ class GlassStyle(HudStyle):
         )
         canvas.drawRRect(rrect, rim_paint)
 
-        # 6. Cyan Glow / Active Dot
+        # 6. Cyan Glow / Active Dot (Only if not finalized)
         dot_x, dot_y = rect.fLeft + 20.0, rect.centerY()
         dot_radius = 4.0
-        if is_recording:
+
+        if draw_checkmark:
+            # Draw Checkmark Icon (Green Circle + White Tick)
+            check_paint = skia.Paint(Color=skia.ColorSetARGB(255, 40, 200, 80), AntiAlias=True)
+            canvas.drawCircle(dot_x, dot_y, 8.0, check_paint)
+            # Simple tick path
+            path = skia.Path()
+            path.moveTo(dot_x - 3, dot_y)
+            path.lineTo(dot_x - 1, dot_y + 3)
+            path.lineTo(dot_x + 4, dot_y - 3)
+            tick_paint = skia.Paint(
+                Style=skia.Paint.kStroke_Style,
+                StrokeWidth=2.0,
+                Color=skia.ColorWHITE,
+                AntiAlias=True,
+            )
+            canvas.drawPath(path, tick_paint)
+
+        elif is_recording:
             glow_colors = [skia.ColorCYAN, skia.ColorTRANSPARENT]
             glow_shader = skia.GradientShader.MakeRadial(
                 skia.Point(dot_x, dot_y), dot_radius * 3.0, glow_colors
@@ -80,4 +130,5 @@ class GlassStyle(HudStyle):
 
         # 7. Text (Pure White)
         text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
-        canvas.drawTextBlob(blob, rect.fLeft + 40.0, rect.centerY() + 6.0, text_paint)
+        text_x_offset = 40.0 if not draw_checkmark else 40.0
+        canvas.drawTextBlob(blob, rect.fLeft + text_x_offset, rect.centerY() + 6.0, text_paint)

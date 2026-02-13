@@ -56,8 +56,13 @@ def test_on_final_lingers_on_fallback():
         indicator.impl.is_recording = False  # Idle
 
         with patch.object(indicator, "_start_linger_timer") as mock_linger:
-            # Protection should not block the first on_final
+            # Set initial text
+            indicator.update_partial_text("preview")
+            
+            # on_final should NOT overwrite the preview with "final text"
+            # It should trigger the flash logic instead
             indicator.on_final("final text", linger_seconds=1.0)
 
-            assert indicator.impl.partial_text == "final text"
+            # Assert text is UNCHANGED (or cleared if implementation decided to, but definitely not "final text")
+            assert indicator.impl.partial_text == "preview"
             mock_linger.assert_called_once_with(1.0)

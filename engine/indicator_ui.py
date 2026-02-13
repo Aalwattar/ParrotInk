@@ -189,6 +189,11 @@ class GdiFallbackWindow:
         hdc_screen = _user32.GetDC(0)
         hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
 
+        # New Geometry
+        capsule_h = 34.0
+        r = 10.0  # radius
+
+        # ... (keep bitmap setup) ...
         bmi = bytearray(40)
         bmi[0:4] = (40).to_bytes(4, "little")
         bmi[4:8] = (self._width).to_bytes(4, "little")
@@ -212,17 +217,35 @@ class GdiFallbackWindow:
         self._gdiplus.GdipSetTextRenderingHint(graphics, 4)
 
         w, h = float(self._width), float(self._height)
+
+        # Calculate width based on text length (simplified dynamic width for GDI fallback)
+        display_text = self.partial_text if self.partial_text else "Listening..."
+        capsule_w = min(max(200.0, len(display_text) * 8.0 + 60.0), self._width - 20)
+
+        # Center horizontally
+        x_start = (w - capsule_w) / 2.0
+        y_start = (h - capsule_h) / 2.0
+
         bg_color = 0xCC1A1A1A if not self.is_recording else 0xCC330000
         border_color = 0x44FFFFFF
         text_color = 0xCCFFFFFF
-        r = h / 2.0 - 2.0
 
         path = ctypes.c_void_p()
         self._gdiplus.GdipCreatePath(0, ctypes.byref(path))
-        self._gdiplus.GdipAddPathArc(path, 1.0, 1.0, r * 2, r * 2, 180.0, 90.0)
-        self._gdiplus.GdipAddPathArc(path, w - r * 2 - 2, 1.0, r * 2, r * 2, 270.0, 90.0)
-        self._gdiplus.GdipAddPathArc(path, w - r * 2 - 2, h - r * 2 - 2, r * 2, r * 2, 0.0, 90.0)
-        self._gdiplus.GdipAddPathArc(path, 1.0, h - r * 2 - 2, r * 2, r * 2, 90.0, 90.0)
+        # Top-Left
+        self._gdiplus.GdipAddPathArc(path, x_start, y_start, r * 2, r * 2, 180.0, 90.0)
+        # Top-Right
+        self._gdiplus.GdipAddPathArc(
+            path, x_start + capsule_w - r * 2, y_start, r * 2, r * 2, 270.0, 90.0
+        )
+        # Bottom-Right
+        self._gdiplus.GdipAddPathArc(
+            path, x_start + capsule_w - r * 2, y_start + capsule_h - r * 2, r * 2, r * 2, 0.0, 90.0
+        )
+        # Bottom-Left
+        self._gdiplus.GdipAddPathArc(
+            path, x_start, y_start + capsule_h - r * 2, r * 2, r * 2, 90.0, 90.0
+        )
         self._gdiplus.GdipClosePathFigure(path)
 
         brush = ctypes.c_void_p()
@@ -233,10 +256,13 @@ class GdiFallbackWindow:
         self._gdiplus.GdipCreatePen1(border_color, 1.0, 2, ctypes.byref(pen))
         self._gdiplus.GdipDrawPath(graphics, pen, path)
 
+        # Status Dot
         led_argb = 0xFFFF0000 if self.is_recording else 0x88AAAAAA
         led_brush = ctypes.c_void_p()
         self._gdiplus.GdipCreateSolidFill(led_argb, ctypes.byref(led_brush))
-        self._gdiplus.GdipFillEllipse(graphics, led_brush, 18.0, h / 2.0 - 5.0, 10.0, 10.0)
+        self._gdiplus.GdipFillEllipse(
+            graphics, led_brush, x_start + 15.0, h / 2.0 - 5.0, 10.0, 10.0
+        )
 
         font_family = ctypes.c_void_p()
         self._gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
@@ -245,8 +271,7 @@ class GdiFallbackWindow:
         text_brush = ctypes.c_void_p()
         self._gdiplus.GdipCreateSolidFill(text_color, ctypes.byref(text_brush))
 
-        lrect = (ctypes.c_float * 4)(42.0, h / 2.0 - 9.0, w - 60.0, 22.0)
-        display_text = self.partial_text if self.partial_text else "Standing by..."
+        lrect = (ctypes.c_float * 4)(x_start + 35.0, h / 2.0 - 9.0, capsule_w - 40.0, 22.0)
         self._gdiplus.GdipDrawString(
             graphics, display_text, -1, font, ctypes.byref(lrect), None, text_brush
         )
@@ -338,6 +363,11 @@ class GdiFallbackWindow:
         self.is_recording = is_recording
         self._draw_ui()
 
+    def update_status_icon(self, status: str):
+        # Fallback: Just clear text or show status text if needed
+        # For now, we can just redraw to ensure checks are handled
+        pass
+
     def update_partial_text(self, text: str):
         words = text.split()
         self.partial_text = " ".join(words[-5:]) if len(words) > 5 else text
@@ -349,6 +379,10 @@ class IndicatorWindow:
 
     def __init__(self, design_style="glass", partial_words=5):
         self._last_final_time = 0.0
+        self._shown_at = 0.0
+        self._final_flash_until = 0.0
+        self._last_redraw_at = 0.0
+
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
             self.impl = HudOverlay()
@@ -385,6 +419,8 @@ class IndicatorWindow:
             self.impl.start()
 
     def show(self):
+        if not self.visible:
+            self._shown_at = time.time()
         self.impl.show()
 
     def hide(self):
@@ -409,7 +445,14 @@ class IndicatorWindow:
 
     def _start_linger_timer(self, duration: float = 2.5):
         def _hide_after():
+            # Enforce Minimum Visible Time (300ms)
+            elapsed = time.time() - self._shown_at
+            if elapsed < 0.3:
+                time.sleep(0.3 - elapsed)
+
+            # Wait for the requested linger duration (usually short now)
             time.sleep(duration)
+
             # Only hide if we are still in IDLE state
             if not self.is_recording:
                 self.hide()
@@ -417,6 +460,12 @@ class IndicatorWindow:
         threading.Thread(target=_hide_after, daemon=True).start()
 
     def update_partial_text(self, text: str):
+        # Throttling: Cap at ~20fps (50ms)
+        now = time.time()
+        if now - self._last_redraw_at < 0.05:
+            return
+        self._last_redraw_at = now
+
         # PROTECT: If we just showed a final result, don't let a RACING partial
         # from the SAME sentence (which would be a subset or equal) overwrite it.
         # But if it's new/different text, let it through.
@@ -429,9 +478,17 @@ class IndicatorWindow:
             self.impl.update_text(text)
 
     def on_final(self, text: str, linger_seconds: float = 2.0):
-        """Show final text and ensure it stays visible if we are idle."""
+        """Show 'Finalized' flash signal instead of text echo."""
         self._last_final_time = time.time()
-        self.update_partial_text(text)
+
+        # Trigger Flash
+        self._final_flash_until = time.time() + 0.2  # 200ms flash
+
+        # Force immediate update to show the checkmark
+        if hasattr(self.impl, "update_status_icon"):
+            self.impl.update_status_icon("finalized")
+
+        # We DO NOT call update_partial_text(text) anymore.
 
         # If we are already idle, make sure the window is visible
         # and refresh the linger timer so the user can read it.

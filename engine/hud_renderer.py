@@ -83,7 +83,7 @@ class HudOverlay:
         if not HUD_AVAILABLE:
             return
 
-        self.text_queue: queue.Queue[str] = queue.Queue()
+        self.text_queue: queue.Queue[str | tuple[str, str]] = queue.Queue()
         self.last_text = ""
         self.is_recording = False
         self.visible = False
@@ -98,8 +98,8 @@ class HudOverlay:
             self.style = GlassStyle()  # Fallback
 
         # UI Specs
-        self.win_width = 650
-        self.win_height = 150
+        self.win_width = 1000
+        self.win_height = 100
 
         # GDI Resources
         self._hdc_mem = None
@@ -130,27 +130,35 @@ class HudOverlay:
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
             changed = False
-            # If the queue is backed up, skip to the latest message.
-            # If there's only 1-2 messages, we'll process them in sequence
-            # (one per 50ms tick) to show more "streaming" growth.
+            status_override = None
+
+            # Process Queue
             qsize = self.text_queue.qsize()
-            if qsize > 3:
-                # Burst mode: jump to the end
-                while not self.text_queue.empty():
-                    self.last_text = self.text_queue.get()
+            if qsize > 0:
+                # We process up to 5 events per tick to drain burst
+                count = 0
+                while not self.text_queue.empty() and count < 5:
+                    item = self.text_queue.get()
+                    if isinstance(item, tuple):
+                        kind, payload = item
+                        if kind == "TEXT":
+                            self.last_text = payload
+                        elif kind == "STATUS":
+                            status_override = payload
+                    else:
+                        # Legacy string support
+                        self.last_text = item
                     changed = True
-            elif qsize > 0:
-                # Fluid mode: take one per tick
-                self.last_text = self.text_queue.get()
-                changed = True
+                    count += 1
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(
                     self._canvas,
                     self.win_width,
                     self.win_height,
-                    self.last_text if self.last_text else "Standby",
+                    self.last_text if self.last_text else "Listening...",
                     self.is_recording,
+                    status_override,
                 )
                 self._update_window()
             return 0
@@ -177,13 +185,19 @@ class HudOverlay:
         except Exception:
             pass
 
+        screen_w = _user32.GetSystemMetrics(0)
+        screen_h = _user32.GetSystemMetrics(1)
+
+        x_pos = (screen_w - self.win_width) // 2
+        y_pos = screen_h - 100 - self.win_height
+
         self._hwnd = win32gui.CreateWindowEx(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class_name,
             "V2T HUD",
             WS_POPUP,
-            100,
-            100,
+            x_pos,
+            y_pos,
             self.win_width,
             self.win_height,
             0,
@@ -242,9 +256,14 @@ class HudOverlay:
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
 
+    def update_status_icon(self, status: str):
+        """Supported status: 'finalized', 'listening', 'connecting'"""
+        if HUD_AVAILABLE:
+            self.text_queue.put(("STATUS", status))
+
     def update_text(self, text: str):
         if HUD_AVAILABLE:
-            self.text_queue.put(text)
+            self.text_queue.put(("TEXT", text))
 
     def update_partial_text(self, text: str):
         words = text.split()

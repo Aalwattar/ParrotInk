@@ -31,10 +31,6 @@ class UIBridge:
         self.queue.put((UIEvent.SET_STATE, state))
 
     def update_partial_text(self, text: str):
-        # OPTIMIZATION: If a final result was just received (e.g. within 300ms),
-        # ignore partials that might be racing it from the same phrase.
-        if time.time() - self._last_final_time < 0.3:
-            return
         self.queue.put((UIEvent.UPDATE_PARTIAL_TEXT, text))
 
     def update_final_text(self, text: str):
