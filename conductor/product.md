@@ -40,6 +40,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
     - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
     - **Granular Advanced Settings:** Fine-tune transcription behavior (VAD thresholds, models, silence duration, word boosting) directly through the configuration file.
+    - **Configuration Fidelity:** All engine parameters, including session rotation, connection timeouts, and voice activity thresholds, are exposed and respected, ensuring the config file is the single source of truth.
     - **AssemblyAI V3 Integration:** Leverages the latest AssemblyAI Streaming V3 API for improved performance and more detailed session control.
     - **Verbose Debugging & Structured Logging:** Multi-level, non-blocking logging to console and file, with automatic redaction of secrets and truncation of audio data.
     - Hotkey assignment and "hold_mode" boolean.
