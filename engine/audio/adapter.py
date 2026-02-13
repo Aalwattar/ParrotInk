@@ -17,11 +17,16 @@ class ProviderAudioSpec:
 
 
 class AudioAdapter:
-    def __init__(self, capture_rate_hz: int, provider_spec: ProviderAudioSpec):
+    def __init__(
+        self,
+        capture_rate_hz: int,
+        provider_spec: ProviderAudioSpec,
+        energy_threshold: float = 0.005,
+    ):
         self.capture_rate_hz = capture_rate_hz
         self.spec = provider_spec
         self.voice_active = False
-        self._energy_threshold = 0.005  # Configurable threshold
+        self._energy_threshold = energy_threshold
 
         self._resampler = None
         if capture_rate_hz != provider_spec.sample_rate_hz:

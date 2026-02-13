@@ -59,13 +59,16 @@ class ConnectionManager:
             # Check for rotation
             if self.config.default_provider == "openai":
                 age = time.time() - self._session_start_time
-                if age > 3300:  # 55 minutes
+                rotation_threshold = self.config.providers.openai.core.session_rotation_seconds
+                if age > rotation_threshold:
                     if is_listening:
                         if not self._rotation_pending:
-                            logger.info("Session age > 55m, marking rotation pending.")
+                            logger.info(
+                                f"Session age > {rotation_threshold}s, marking rotation pending."
+                            )
                             self._rotation_pending = True
                     else:
-                        logger.info("Rotating OpenAI session due to age.")
+                        logger.info(f"Rotating OpenAI session due to age ({age:.1f}s).")
                         await self.stop_provider()
                         # Fall through to reconnect
                 elif self._rotation_pending and not is_listening:
@@ -98,6 +101,7 @@ class ConnectionManager:
             self.audio_adapter = AudioAdapter(
                 capture_rate_hz=self.config.audio.capture_sample_rate,
                 provider_spec=self.provider.get_audio_spec(),
+                energy_threshold=self.config.audio.voice_activity_threshold,
             )
 
         # Connect
@@ -112,7 +116,7 @@ class ConnectionManager:
         self.set_state(AppState.CONNECTING)
         try:
             logger.debug(f"Starting provider {self.config.default_provider}...")
-            async with asyncio.timeout(10.0):
+            async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
                 await self.provider.start()
             logger.debug("Provider started.")
             self._session_start_time = time.time()
@@ -140,7 +144,7 @@ class ConnectionManager:
 
         if self.provider:
             try:
-                async with asyncio.timeout(5.0):
+                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
                     await self.provider.stop()
             except Exception as e:
                 logger.error(f"Error stopping provider ({type(e).__name__}): {e}")

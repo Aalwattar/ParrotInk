@@ -58,9 +58,9 @@ class FloatingIndicatorConfig(BaseModel):
     enabled: bool = True
     opacity_idle: float = 0.3
     opacity_active: float = 0.8
-    x: int = 500
-    y: int = 50
-    partial_text_words: int = 5
+    y_offset: int = 60
+    max_characters: int = 180
+    refresh_rate_ms: int = 50
 
 
 class InteractionConfig(BaseModel):
@@ -77,6 +77,8 @@ class AudioConfig(BaseModel):
     chunk_ms: int = 100
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
     warm_idle_timeout_seconds: int = Field(default=300, ge=30, le=1800)
+    connection_timeout_seconds: float = 10.0
+    voice_activity_threshold: float = 0.005
 
 
 class TranscriptionConfig(BaseModel):
@@ -106,6 +108,7 @@ class OpenAICoreConfig(BaseModel):
     prompt: str = ""
     input_audio_type: str = "audio/pcm16"
     input_audio_rate: int = 24000
+    session_rotation_seconds: int = 3300  # 55 minutes
 
 
 class OpenAIAdvancedConfig(BaseModel):
@@ -143,6 +146,7 @@ class AssemblyAIAdvancedConfig(BaseModel):
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
     max_turn_silence_ms: int = 1000  # Default 1280
+    utterance_silence_threshold_ms: int = 700
     format_turns: bool = False
     language_detection: bool = False
 

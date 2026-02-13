@@ -51,9 +51,7 @@ class TrayApp:
             try:
                 from .indicator_ui import IndicatorWindow
 
-                self.indicator = IndicatorWindow(
-                    partial_words=self.config.ui.floating_indicator.partial_text_words
-                )
+                self.indicator = IndicatorWindow(config=self.config)
             except Exception as e:
                 logger.error(f"Failed to initialize indicator: {e}")
         else:

@@ -2,7 +2,7 @@ import ctypes
 import queue
 import threading
 from ctypes import wintypes
-from typing import Any
+from typing import Any, Optional
 
 from engine.logging import get_logger
 
@@ -80,10 +80,11 @@ _user32.UpdateLayeredWindow.argtypes = [
 
 
 class HudOverlay:
-    def __init__(self, style_name: str = "glass"):
+    def __init__(self, config: Optional[Any] = None, style_name: str = "glass"):
         if not HUD_AVAILABLE:
             return
 
+        self.config = config
         self.text_queue: queue.Queue[str | tuple[str, Any]] = queue.Queue()
         self.last_text = ""
         self.last_status = None
@@ -92,13 +93,6 @@ class HudOverlay:
         self.visible = False
         self._hwnd = None
         self._ready_event = threading.Event()
-        self._partial_words = 5
-
-        # Select style
-        if style_name == "glass":
-            self.style = GlassStyle()
-        else:
-            self.style = GlassStyle()  # Fallback
 
         # UI Specs
         self.win_width = 1000
@@ -108,6 +102,12 @@ class HudOverlay:
         self._hdc_mem = None
         self._hbmp = None
         self._pixel_ptr = None
+
+        # Select style
+        if style_name == "glass":
+            self.style = GlassStyle()
+        else:
+            self.style = GlassStyle()  # Fallback
 
     def _update_window(self):
         if not self._hwnd:
@@ -204,8 +204,14 @@ class HudOverlay:
         screen_w = _user32.GetSystemMetrics(0)
         screen_h = _user32.GetSystemMetrics(1)
 
+        y_offset = 60
+        refresh_rate = 50
+        if self.config:
+            y_offset = getattr(self.config.ui.floating_indicator, "y_offset", 60)
+            refresh_rate = getattr(self.config.ui.floating_indicator, "refresh_rate_ms", 50)
+
         x_pos = (screen_w - self.win_width) // 2
-        y_pos = screen_h - self.win_height - 60
+        y_pos = screen_h - self.win_height - y_offset
 
         self._hwnd = win32gui.CreateWindowEx(
             win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW,
@@ -255,7 +261,7 @@ class HudOverlay:
         self._surface = skia.Surface.MakeRasterDirect(info, pixel_data, self.win_width * 4)
         self._canvas = self._surface.getCanvas()
 
-        _user32.SetTimer(self._hwnd, 1, 50, None)
+        _user32.SetTimer(self._hwnd, 1, refresh_rate, None)
         self._ready_event.set()
         win32gui.PumpMessages()
 

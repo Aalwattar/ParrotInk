@@ -2,7 +2,10 @@ import ctypes
 import threading
 import time
 from ctypes import wintypes
-from typing import Any
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from .config import Config
 
 from engine.logging import get_logger
 
@@ -416,7 +419,10 @@ class GdiFallbackWindow:
 class IndicatorWindow:
     """Universal Indicator that uses HudOverlay (Skia) if available, otherwise GdiFallbackWindow."""
 
-    def __init__(self, design_style="glass", partial_words=5):
+    def __init__(self, config: Optional["Config"] = None, design_style="glass"):
+        from .config import Config
+
+        self.config = config or Config()
         self._last_final_time = 0.0
         self._shown_at = 0.0
         self._final_flash_until = 0.0
@@ -424,18 +430,14 @@ class IndicatorWindow:
         self._current_partial_text = ""
         self._committed_text = ""
         self._last_final_segment = ""
-        self._max_preview_chars = 180
+        self._max_preview_chars = getattr(self.config.ui.floating_indicator, "max_characters", 180)
 
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
-            self.impl = HudOverlay()
-            if hasattr(self.impl, "_partial_words"):
-                self.impl._partial_words = partial_words
+            self.impl = HudOverlay(config=self.config)
         else:
             logger.info("Skia not available. Falling back to GDI+ indicator.")
-            self.impl = GdiFallbackWindow(design_style=design_style)
-            if hasattr(self.impl, "partial_text_words"):
-                self.impl.partial_text_words = partial_words
+            self.impl = GdiFallbackWindow(design_style=design_style)  # type: ignore
 
     @property
     def is_recording(self):

@@ -64,10 +64,10 @@ class AssemblyAIProvider(BaseProvider):
             "inactivity_timeout": core.inactivity_timeout_seconds
             if core.inactivity_timeout_seconds > 0
             else None,
-            "end_of_turn_confidence_threshold": 0.4,
-            "min_end_of_turn_silence_when_confident": 350,
-            "max_turn_silence": 1200,
-            "utterance_silence_threshold": 700,  # Legacy field, kept low for safety
+            "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
+            "min_end_of_turn_silence_when_confident": adv.min_end_of_turn_silence_when_confident_ms,
+            "max_turn_silence": adv.max_turn_silence_ms,
+            "utterance_silence_threshold": adv.utterance_silence_threshold_ms,
             "format_turns": "true" if adv.format_turns else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
