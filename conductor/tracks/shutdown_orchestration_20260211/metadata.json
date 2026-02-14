@@ -1,8 +1,0 @@
-{
-  "track_id": "shutdown_orchestration_20260211",
-  "type": "chore",
-  "status": "new",
-  "created_at": "2026-02-11T13:10:00Z",
-  "updated_at": "2026-02-11T13:10:00Z",
-  "description": "Shutdown orchestration: prevent hangs on exit"
-}

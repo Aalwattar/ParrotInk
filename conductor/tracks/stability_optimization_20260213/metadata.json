@@ -1,8 +1,0 @@
-{
-  "id": "stability_optimization_20260213",
-  "name": "Stability & Optimization",
-  "description": "Replace pywin32 with ctypes and lazy-load UI components.",
-  "status": "completed",
-  "created_at": "2026-02-13T03:10:00Z",
-  "checkpoint": null
-}

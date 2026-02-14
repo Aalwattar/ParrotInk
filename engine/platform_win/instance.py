@@ -55,14 +55,16 @@ class SingleInstance:
 
     def show_warning(self):
         """Shows a standard Win32 MessageBox indicating the app is already running."""
+        from .paths import APP_NAME
+
         message = (
-            "Voice2Text is already running.\n\n"
+            f"{APP_NAME} is already running.\n\n"
             "Please check the system tray icon for the active instance."
         )
         MessageBoxW(
             None,
             message,
-            "Voice2Text",
+            APP_NAME,
             MB_OK | MB_ICONINFORMATION,
         )
 

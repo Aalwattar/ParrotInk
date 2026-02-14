@@ -56,7 +56,7 @@ class SoundsConfig(BaseModel):
 
 
 class FloatingIndicatorConfig(BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     opacity_idle: float = 0.3
     opacity_active: float = 0.8
     y_offset: int = 60

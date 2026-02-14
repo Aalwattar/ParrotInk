@@ -1,8 +1,0 @@
-{
-  "track_id": "verify_hud_isolation_20260212",
-  "type": "chore",
-  "status": "new",
-  "created_at": "2026-02-12T09:05:00Z",
-  "updated_at": "2026-02-12T09:05:00Z",
-  "description": "Compare the code with master to verify that the HUD was added as independent code with no impact on the original system, and verify that the HUD is not essential (app functions without it)."
-}

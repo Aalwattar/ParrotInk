@@ -514,7 +514,9 @@ if __name__ == "__main__":
     cli_args = handle_cli()
 
     # Single Instance Protection
-    instance = SingleInstance("Global\\Voice2Text_Mutex_2026")
+    from engine.platform_win.paths import APP_NAME
+
+    instance = SingleInstance(f"Global\\{APP_NAME}_Mutex_2026")
     if instance.already_running:
         if not cli_args.background:
             instance.show_warning()

@@ -1,8 +1,0 @@
-{
-  "track_id": "connection_lifecycle_20260211",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-11T13:22:00Z",
-  "updated_at": "2026-02-11T13:22:00Z",
-  "description": "Connection Lifecycle: Warm-connection optional"
-}

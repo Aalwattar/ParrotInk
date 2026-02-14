@@ -1,8 +1,0 @@
-{
-  "id": "consultant_improvements_20260212",
-  "name": "Consultant Security & Stability Improvements",
-  "description": "Apply consultant recommendations regarding keyboard listeners, logging lifecycle, credential security, and eval signaling.",
-  "status": "completed",
-  "created_at": "2026-02-12T18:50:00Z",
-  "checkpoint": null
-}
