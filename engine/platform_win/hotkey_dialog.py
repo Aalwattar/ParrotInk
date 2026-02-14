@@ -138,13 +138,9 @@ class HotkeyRecordingWindow:
     A HUD-styled modal window that captures a hotkey combination.
     """
 
-        def __init__(
-
-            self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
-
-        ):
-
-    
+    def __init__(
+        self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
+    ):
         _setup_gdiplus_prototypes()
         self.on_captured = on_captured
         self.is_valid_cb = is_valid_cb
