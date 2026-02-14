@@ -5,9 +5,9 @@ Goal: Modernize the tray icon and HUD typography.
 
 - [x] Task: Create `engine/ui_utils.py` for shared UI helpers. [bffa869]
     - [x] Task: Implement `get_app_version() -> str` by parsing `pyproject.toml`. [bffa869]
-- [ ] Task: Refactor `TrayApp` icon generation in `engine/ui.py`.
-    - [ ] Task: Replace the ellipse design with a rounded-corner square ("Modern Square").
-    - [ ] Task: Update color palette for Idle, Listening, and Error states to be more "Fluent/Modern".
+- [x] Task: Refactor `TrayApp` icon generation in `engine/ui.py`. [b64c8bb]
+    - [x] Task: Replace the ellipse design with a rounded-corner square ("Modern Square"). [b64c8bb]
+    - [x] Task: Update color palette for Idle, Listening, and Error states to be more "Fluent/Modern". [b64c8bb]
 - [ ] Task: Update HUD Typography in `engine/hud_styles.py`.
     - [ ] Task: Change default font to "Segoe UI".
     - [ ] Task: Adjust font size to the lower end of the high-readability range (e.g., 14pt-16pt).
