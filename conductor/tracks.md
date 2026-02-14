@@ -141,8 +141,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: HUD Visual Refinement**
 *Link: [./tracks/hud_refinement_20260213/](./tracks/hud_refinement_20260213/)*
-
----
-
-- [x] **Track: Build a standalone single EXE on demand (DevOps/build track)**
-*Link: [./tracks/standalone_exe_20260213/](./tracks/standalone_exe_20260213/)*

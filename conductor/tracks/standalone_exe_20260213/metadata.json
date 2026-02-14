@@ -1,8 +1,0 @@
-{
-  "track_id": "standalone_exe_20260213",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-13T17:54:00Z",
-  "updated_at": "2026-02-13T17:54:00Z",
-  "description": "Build a standalone single EXE on demand (DevOps/build track)"
-}
