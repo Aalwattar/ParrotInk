@@ -22,7 +22,7 @@ Goal: Implement smart updates and ensure strict API compliance.
 - [x] Task: Update `AudioAdapter` to support resampling to 24k for OpenAI. 6db4b0f
 - [ ] Task: Conductor - User Manual Verification 'In-Flight Updates & Provider Alignment' (Protocol in workflow.md)
 
-## Phase 3: Interactive Hotkey UI
+## Phase 3: Interactive Hotkey UI [checkpoint: fc0e7ab]
 Goal: Implement the "Change Hotkey" flow.
 
 - [~] Task: Create `engine/platform_win/hotkey_recorder.py` for Win32 key capture.
