@@ -65,6 +65,68 @@ _gdi32 = ctypes.windll.gdi32
 _gdiplus = ctypes.windll.gdiplus
 
 
+def _setup_gdiplus_prototypes():
+    """Explicitly define ctypes argument types to prevent 64-bit overflow errors."""
+    _gdiplus.GdipCreatePath.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
+    _gdiplus.GdipAddPathArc.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_float,
+        ctypes.c_float,
+    ]
+    _gdiplus.GdipCreateSolidFill.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
+    _gdiplus.GdipFillPath.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+    _gdiplus.GdipCreatePen1.argtypes = [
+        ctypes.c_uint32,
+        ctypes.c_float,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    _gdiplus.GdipDrawPath.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
+    _gdiplus.GdipCreateFontFamilyFromName.argtypes = [
+        ctypes.c_wchar_p,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    _gdiplus.GdipCreateFont.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_float,
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    _gdiplus.GdipCreateStringFormat.argtypes = [
+        ctypes.c_int,
+        ctypes.c_int,
+        ctypes.POINTER(ctypes.c_void_p),
+    ]
+    _gdiplus.GdipSetStringFormatAlign.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    _gdiplus.GdipDrawString.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_wchar_p,
+        ctypes.c_int,
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_float * 4),
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    ]
+
+    _user32.UpdateLayeredWindow.argtypes = [
+        wintypes.HWND,
+        wintypes.HDC,
+        ctypes.POINTER(wintypes.POINT),
+        ctypes.POINTER(wintypes.SIZE),
+        wintypes.HDC,
+        ctypes.POINTER(wintypes.POINT),
+        wintypes.COLORREF,
+        ctypes.POINTER(BLENDFUNCTION),
+        wintypes.DWORD,
+    ]
+
+
 class HotkeyRecordingWindow:
     """
     A HUD-styled modal window that captures a hotkey combination.
@@ -73,6 +135,7 @@ class HotkeyRecordingWindow:
     def __init__(
         self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
     ):
+        _setup_gdiplus_prototypes()
         self.on_captured = on_captured
         self.is_valid_cb = is_valid_cb
         self.current_keys: Set[str] = set()
@@ -126,12 +189,22 @@ class HotkeyRecordingWindow:
         path = ctypes.c_void_p()
         _gdiplus.GdipCreatePath(0, ctypes.byref(path))
         r = 15.0
-        _gdiplus.GdipAddPathArc(path, 10, 10, r * 2, r * 2, 180, 90)
-        _gdiplus.GdipAddPathArc(path, self._width - 10 - r * 2, 10, r * 2, r * 2, 270, 90)
+        _gdiplus.GdipAddPathArc(path, 10.0, 10.0, r * 2, r * 2, 180.0, 90.0)
         _gdiplus.GdipAddPathArc(
-            path, self._width - 10 - r * 2, self._height - 10 - r * 2, r * 2, r * 2, 0, 90
+            path, float(self._width - 10 - r * 2), 10.0, r * 2, r * 2, 270.0, 90.0
         )
-        _gdiplus.GdipAddPathArc(path, 10, self._height - 10 - r * 2, r * 2, r * 2, 90, 90)
+        _gdiplus.GdipAddPathArc(
+            path,
+            float(self._width - 10 - r * 2),
+            float(self._height - 10 - r * 2),
+            r * 2,
+            r * 2,
+            0.0,
+            90.0,
+        )
+        _gdiplus.GdipAddPathArc(
+            path, 10.0, float(self._height - 10 - r * 2), r * 2, r * 2, 90.0, 90.0
+        )
         _gdiplus.GdipClosePathFigure(path)
 
         brush = ctypes.c_void_p()
@@ -145,7 +218,6 @@ class HotkeyRecordingWindow:
 
         # Text
         font_family = ctypes.c_void_p()
-        _gdiplus.GdiplusStartup.restype = ctypes.c_int
         _gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
 
         font = ctypes.c_void_p()
@@ -158,7 +230,8 @@ class HotkeyRecordingWindow:
         if self.current_keys:
             display_text = " + ".join(sorted(list(self.current_keys))).upper()
 
-        rect = (ctypes.c_float * 4)(20, 30, self._width - 40, 40)
+        rect = (ctypes.c_float * 4)(20.0, 30.0, float(self._width - 40), 40.0)
+
         # Use center alignment
         str_format = ctypes.c_void_p()
         _gdiplus.GdipCreateStringFormat(0, 0, ctypes.byref(str_format))
@@ -186,7 +259,6 @@ class HotkeyRecordingWindow:
 
         # Cleanup
         _gdiplus.GdipDeleteBrush(brush)
-        _gdiplus.GdiplusStartup.restype = ctypes.c_int
         _gdiplus.GdipDeleteBrush(text_brush)
         _gdiplus.GdipDeleteFont(font)
         _gdiplus.GdipDeleteFontFamily(font_family)
@@ -278,19 +350,7 @@ class HotkeyRecordingWindow:
         # Start keyboard listener
         with keyboard.Listener(on_press=self._on_press, on_release=self._on_release) as listener:
             # Message loop
-            from ctypes import wintypes
-
-            class MSG(ctypes.Structure):
-                _fields_ = [
-                    ("hwnd", wintypes.HWND),
-                    ("message", ctypes.c_uint),
-                    ("wParam", ctypes.c_uint64),
-                    ("lParam", ctypes.c_uint64),
-                    ("time", wintypes.DWORD),
-                    ("pt", wintypes.POINT),
-                ]
-
-            msg = MSG()
+            msg = wintypes.MSG()
             while _user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
                 _user32.TranslateMessage(ctypes.byref(msg))
                 _user32.DispatchMessageW(ctypes.byref(msg))

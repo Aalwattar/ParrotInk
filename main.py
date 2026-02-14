@@ -536,13 +536,12 @@ if __name__ == "__main__":
         try:
             load_config()
         except ConfigError as e:
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                f"The application could not start because the configuration is invalid:\n\n{e}\n\n"
-                "Please fix your config.toml or delete it to reset to defaults.",
-                "Configuration Error",
-                0x10,  # MB_ICONERROR
+            msg = (
+                f"The application could not start because the configuration is invalid:\n\n{e}\n\n "
+                "Please fix your config.toml or delete it to reset to defaults."
             )
+            logger.error(f"[CONFIGURATION ERROR] {e}")
+            ctypes.windll.user32.MessageBoxW(0, msg, "Configuration Error", 0x10)  # MB_ICONERROR
             sys.exit(1)
 
     # Single Instance Protection

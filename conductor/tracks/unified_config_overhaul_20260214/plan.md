@@ -45,7 +45,11 @@ Goal: Address bug fixes, UX refinements, and quality gates.
   - [x] Sub-task: Implement live-update text in the recording dialog.
 - [x] Task: Fix HUD Click-Through. 2ac82e1
   - [x] Sub-task: Add `WS_EX_TRANSPARENT` style and set `WM_NCHITTEST` to `HTTRANSPARENT`.
-- [x] Task: Final Code Archaeology & Cleanup. 2ac82e1
+- [ ] Task: HUD Enhancements (User Requests).
+  - [ ] Sub-task: Add `click_through: bool = True` to `FloatingIndicatorConfig` and set `enabled = true` by default.
+  - [ ] Sub-task: Implement tray menu toggle for "Enable/Disable HUD".
+  - [ ] Sub-task: Make HUD click-through toggleable based on configuration.
+- [ ] Task: Final Code Archaeology & Cleanup.
   - [x] Sub-task: Remove any remaining dead code or legacy "bridge" variables.
 - [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). 2ac82e1
 - [x] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)

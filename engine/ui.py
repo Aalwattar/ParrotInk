@@ -28,6 +28,8 @@ class TrayApp:
         on_set_key: Callable[[str, str], None] | None = None,
         on_toggle_sounds: Callable[[bool], None] | None = None,
         on_hotkey_change: Callable[[str], None] | None = None,
+        on_toggle_hud: Callable[[bool], None] | None = None,
+        on_toggle_click_through: Callable[[bool], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -42,6 +44,8 @@ class TrayApp:
         self.on_set_key = on_set_key
         self.on_toggle_sounds = on_toggle_sounds
         self.on_hotkey_change = on_hotkey_change
+        self.on_toggle_hud = on_toggle_hud
+        self.on_toggle_click_through = on_toggle_click_through
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -87,6 +91,14 @@ class TrayApp:
         self.sounds_enabled = not self.sounds_enabled
         if self.on_toggle_sounds:
             self.on_toggle_sounds(self.sounds_enabled)
+
+    def _on_toggle_hud_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        if self.on_toggle_hud:
+            self.on_toggle_hud(not self.config.ui.floating_indicator.enabled)
+
+    def _on_toggle_click_through_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        if self.on_toggle_click_through:
+            self.on_toggle_click_through(not self.config.ui.floating_indicator.click_through)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         from .platform_win.hotkey_dialog import HotkeyRecordingWindow
@@ -165,6 +177,18 @@ class TrayApp:
                         "Enable Audio Feedback",
                         self._on_toggle_sounds_clicked,
                         checked=lambda item: self.sounds_enabled,
+                    ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Show HUD",
+                        self._on_toggle_hud_clicked,
+                        checked=lambda item: self.config.ui.floating_indicator.enabled,
+                    ),
+                    pystray.MenuItem(
+                        "HUD Click-Through",
+                        self._on_toggle_click_through_clicked,
+                        checked=lambda item: self.config.ui.floating_indicator.click_through,
+                        enabled=lambda item: self.config.ui.floating_indicator.enabled,
                     ),
                 ),
             ),

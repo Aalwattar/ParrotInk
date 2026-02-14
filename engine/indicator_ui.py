@@ -161,12 +161,13 @@ def _setup_api():
 class GdiFallbackWindow:
     """Fallback implementation using GDI+ if Skia is unavailable."""
 
-    def __init__(self, design_style="glass"):
+    def __init__(self, design_style="glass", click_through=True):
         _setup_api()
         self.is_recording = False
         self.partial_text = ""
         self.visible = False
         self.design_style = design_style
+        self._click_through = click_through
         self._hwnd = None
         self._width, self._height = 340, 60
         self._class_name = "Voice2TextGdiFallback"
@@ -184,10 +185,22 @@ class GdiFallbackWindow:
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == WM_NCHITTEST:
-            return HTTRANSPARENT
+            return HTTRANSPARENT if self._click_through else HTCAPTION
         if msg == WM_DESTROY:
             return 0
         return _user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+    def apply_click_through(self, enabled: bool):
+        """Dynamically toggles click-through style."""
+        self._click_through = enabled
+        if not self._hwnd:
+            return
+        style = _user32.GetWindowLongW(self._hwnd, -20)  # GWL_EXSTYLE
+        if enabled:
+            style |= WS_EX_TRANSPARENT
+        else:
+            style &= ~WS_EX_TRANSPARENT
+        _user32.SetWindowLongW(self._hwnd, -20, style)
 
     def _draw_ui(self):
         if not self._hwnd or not self._gdiplus:
@@ -357,8 +370,12 @@ class GdiFallbackWindow:
         x_pos = (work_w - self._width) // 2
         y_pos = work_bottom - 10 - self._height
 
+        ex_style = WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW
+        if self._click_through:
+            ex_style |= WS_EX_TRANSPARENT
+
         self._hwnd = _user32.CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT,
+            ex_style,
             self._class_name,
             "V2T Fallback",
             WS_POPUP,
@@ -433,13 +450,22 @@ class IndicatorWindow:
         self._committed_text = ""
         self._last_final_segment = ""
         self._max_preview_chars = getattr(self.config.ui.floating_indicator, "max_characters", 180)
+        click_through = getattr(self.config.ui.floating_indicator, "click_through", True)
 
         if HUD_AVAILABLE:
             logger.info("Using Skia-based HudOverlay for recording indicator.")
-            self.impl = HudOverlay(config=self.config)
+            self.impl = HudOverlay(config=self.config, click_through=click_through)
         else:
             logger.info("Skia not available. Falling back to GDI+ indicator.")
-            self.impl = GdiFallbackWindow(design_style=design_style)  # type: ignore
+            self.impl = GdiFallbackWindow(design_style=design_style, click_through=click_through)  # type: ignore
+
+        # Register for config changes
+        self.config.register_observer(self._on_config_changed)
+
+    def _on_config_changed(self, config: "Config"):
+        """Reacts to configuration updates in-flight."""
+        if hasattr(self.impl, "apply_click_through"):
+            self.impl.apply_click_through(config.ui.floating_indicator.click_through)
 
     @property
     def is_recording(self):

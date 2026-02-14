@@ -82,11 +82,12 @@ _user32.UpdateLayeredWindow.argtypes = [
 
 
 class HudOverlay:
-    def __init__(self, config: Optional[Any] = None, style_name: str = "glass"):
+    def __init__(self, config: Optional[Any] = None, style_name: str = "glass", click_through=True):
         if not HUD_AVAILABLE:
             return
 
         self.config = config
+        self._click_through = click_through
         self.text_queue: queue.Queue[str | tuple[str, Any]] = queue.Queue()
         self.last_text = ""
         self.last_status = None
@@ -183,8 +184,20 @@ class HudOverlay:
             win32gui.PostQuitMessage(0)
             return 0
         if msg == WM_NCHITTEST:
-            return HTTRANSPARENT
+            return HTTRANSPARENT if self._click_through else HTCAPTION
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
+
+    def apply_click_through(self, enabled: bool):
+        """Dynamically toggles click-through style."""
+        self._click_through = enabled
+        if not self._hwnd:
+            return
+        style = win32gui.GetWindowLong(self._hwnd, win32con.GWL_EXSTYLE)
+        if enabled:
+            style |= win32con.WS_EX_TRANSPARENT
+        else:
+            style &= ~win32con.WS_EX_TRANSPARENT
+        win32gui.SetWindowLong(self._hwnd, win32con.GWL_EXSTYLE, style)
 
     def run(self):
         if not HUD_AVAILABLE:
@@ -215,11 +228,13 @@ class HudOverlay:
         x_pos = (screen_w - self.win_width) // 2
         y_pos = screen_h - self.win_height - y_offset
 
+        # Extended styles
+        ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
+        if self._click_through:
+            ex_style |= WS_EX_TRANSPARENT
+
         self._hwnd = win32gui.CreateWindowEx(
-            win32con.WS_EX_LAYERED
-            | win32con.WS_EX_TOPMOST
-            | win32con.WS_EX_TOOLWINDOW
-            | WS_EX_TRANSPARENT,
+            ex_style,
             class_name,
             "V2T HUD",
             win32con.WS_POPUP,

@@ -83,6 +83,24 @@ async def main_gui(cli_args):
         config.interaction.sounds.enabled = enabled
         logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
 
+    def on_toggle_hud(enabled):
+        config.update_and_save({"ui": {"floating_indicator": {"enabled": enabled}}})
+        logger.info(f"HUD {'enabled' if enabled else 'disabled'}")
+        # Initialize indicator if enabling for the first time
+        if enabled and not app.indicator:
+            logger.info("Lazy-initializing HUD Indicator...")
+            try:
+                from .indicator_ui import IndicatorWindow
+
+                app.indicator = IndicatorWindow(config=config)
+                app.indicator.start()
+            except Exception as e:
+                logger.error(f"Failed to initialize HUD: {e}")
+
+    def on_toggle_click_through(enabled):
+        config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
+        logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
+
     def on_hotkey_change(new_hotkey):
         # This will trigger update_and_save which notifies the coordinator
         config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
@@ -98,6 +116,8 @@ async def main_gui(cli_args):
         on_set_key=on_set_key,
         on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,
+        on_toggle_hud=on_toggle_hud,
+        on_toggle_click_through=on_toggle_click_through,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
