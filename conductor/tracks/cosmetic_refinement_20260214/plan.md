@@ -13,7 +13,7 @@ Goal: Modernize the tray icon and HUD typography.
     - [x] Task: Adjust font size to the lower end of the high-readability range (e.g., 14pt-16pt). [e35f1b3]
 - [ ] Task: Conductor - User Manual Verification 'Visual Foundation & Icons' (Protocol in workflow.md)
 
-## Phase 2: Tray Menu & Feature Exposure
+## Phase 2: Tray Menu & Feature Exposure [checkpoint: dff5cea]
 Goal: Add the version header and "Hold to Talk" toggle to the Tray.
 
 - [x] Task: Update `TrayApp._create_icon` in `engine/ui.py`. [4e1f231]
