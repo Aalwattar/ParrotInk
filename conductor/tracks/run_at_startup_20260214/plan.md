@@ -7,8 +7,8 @@ Goal: Implement the core Windows Registry manipulation logic in a dedicated modu
     - [x] Task: Implement `set_run_at_startup(enabled: bool)` using `winreg` to create/delete the "Voice2Text" **value**.
     - [x] Task: Implement `is_run_at_startup_synced() -> bool` to check if registry matches current exe path.
     - [x] Task: Ensure the executable path is correctly resolved for both script and EXE modes.
-- [ ] Task: Update `engine/config.py` to include the new setting.
-    - [ ] Task: Add `run_at_startup: bool = False` to `InteractionConfig`.
+- [x] Task: Update `engine/config.py` to include the new setting. [0b6c0f7]
+    - [x] Task: Add `run_at_startup: bool = False` to `InteractionConfig`.
 - [ ] Task: Write unit tests for the startup logic.
     - [ ] Task: Create `tests/test_startup_win.py` to verify registry value manipulation (using mocks).
 - [ ] Task: Conductor - User Manual Verification 'Foundation & Registry Logic' (Protocol in workflow.md)
