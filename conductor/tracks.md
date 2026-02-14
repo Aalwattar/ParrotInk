@@ -170,4 +170,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Cosmetic & UI Refinements**
-*Link: [./tracks/cosmetic_refinement_20260214/](./tracks/cosmetic_refinement_20260214/)*
+*Link: [./archive/cosmetic_refinement_20260214/](./archive/cosmetic_refinement_20260214/)*

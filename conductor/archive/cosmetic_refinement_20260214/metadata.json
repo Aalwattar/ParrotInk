@@ -1,0 +1,8 @@
+{
+  "track_id": "cosmetic_refinement_20260214",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-14T16:24:00Z",
+  "updated_at": "2026-02-14T16:24:00Z",
+  "description": "Modernize tray icon to a crisp square design, standardize HUD font to Segoe UI with refined sizing, and expose 'Hold to Talk' and app version in the tray menu."
+}
