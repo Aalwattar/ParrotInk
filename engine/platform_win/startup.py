@@ -10,9 +10,23 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 APP_NAME = "Voice2Text"
 
 def get_executable_path() -> str:
-    """Returns the absolute path to the current executable."""
-    # sys.executable is usually the right choice for both script and frozen exe
-    return str(Path(sys.executable).absolute())
+    """
+    Returns the command line string to launch the current application.
+    Handles both frozen (PyInstaller) and script (Development) modes.
+    """
+    import sys
+    
+    # Absolute path to the current executable (python.exe or voice2text.exe)
+    exe_path = str(Path(sys.executable).absolute())
+    
+    if getattr(sys, "frozen", False):
+        # Frozen EXE: Just the path to the EXE
+        return exe_path
+    else:
+        # Script Mode: We need [python_path] [script_path]
+        # sys.argv[0] is usually the path to main.py
+        script_path = str(Path(sys.argv[0]).absolute())
+        return f'"{exe_path}" "{script_path}"'
 
 def set_run_at_startup(enabled: bool):
     """
@@ -57,8 +71,9 @@ def is_run_at_startup_synced() -> bool:
                 if reg_type != winreg.REG_SZ:
                     return False
                 
-                current_exe = get_executable_path()
-                return Path(value).absolute() == Path(current_exe).absolute()
+                current_cmd = get_executable_path()
+                # Use simple string comparison for commands which might include quotes
+                return value.strip().lower() == current_cmd.strip().lower()
             except FileNotFoundError:
                 return False
     except Exception as e:
