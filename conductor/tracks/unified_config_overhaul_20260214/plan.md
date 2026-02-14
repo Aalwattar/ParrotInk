@@ -1,6 +1,6 @@
 # Implementation Plan: Unified Configuration & Interaction Overhaul
 
-## Phase 1: Schema Refine & Validation
+## Phase 1: Schema Refine & Validation [checkpoint: eb5fc92]
 Goal: Simplify the TOML structure and implement high-level profiles.
 
 - [x] Task: Update `engine/config.py` with the new schema. e3983db
