@@ -9,8 +9,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Path Resolution' (Protocol in workflow.md)
 
 ## Phase 2: Build Configuration & Dependencies
-- [ ] Task: Add `pyinstaller` to development dependencies.
-    - [ ] Run `uv add --dev pyinstaller`.
+- [x] Task: Add `pyinstaller` to development dependencies. (1a29dd8)
+    - [x] Run `uv add --dev pyinstaller`.
 - [ ] Task: Create PyInstaller spec file at `build/pyinstaller/voice2text_onefile.spec`.
     - [ ] Configure `onefile` and `noconsole` modes.
     - [ ] Include hidden imports for `pynput`, `pystray`, `PIL`, `websockets`, `keyring`.
