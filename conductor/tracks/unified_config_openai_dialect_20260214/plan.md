@@ -21,8 +21,8 @@ Goal: Align OpenAI provider with the transcription-only convenience style.
 
 - [ ] Task: Update `engine/transcription/openai_provider.py`.
     - [ ] Task: Update WebSocket URL to strictly include `?intent=transcription`.
-    - [ ] Task: Implement `transcription_session.update` client event logic.
-    - [ ] Task: Enforce Dialect B payload keys (flat fields, no conversation keys).
+    - [ ] Task: Implement `transcription_session.update` client event logic with a **flat schema** (no wrapper).
+    - [ ] Task: Enforce Dialect B payload keys (`input_audio_noise_reduction`, etc.; no conversation keys).
     - [ ] Task: Add verbose logging for `delta` and `completed` events under `-vv`.
 - [ ] Task: Verify resampling logic.
     - [ ] Task: Confirm `get_audio_spec` returns `24000` and `pcm16_base64`.

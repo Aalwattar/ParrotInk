@@ -23,26 +23,24 @@ This track finalizes the configuration architecture of Voice2Text. It resolves t
 ### 3.3 AssemblyAI `[providers.assemblyai.core]` Section
 - **Remove:** `encoding`, `sample_rate`. (These must match capture rate or be fixed).
 - **Remove:** `utterance_silence_threshold_ms`. (Not supported in V3).
-- **Keep:** `speech_model`, `language_detection`.
+- **Keep:** `speech_model`, `language_detection`, `region`, and `ws_url` (optional override).
 
 ## 4. Technical Logic Implementation
 
 ### 4.1 OpenAI Provider (`OpenAIProvider`)
 - **Connection:** WebSocket URL MUST include `?intent=transcription`.
 - **Constants:** Define `OPENAI_TRANSCRIPTION_SCHEMA = "B"`.
-- **Format Invariants:** Hardcode `input_audio_format = "pcm16"` and `rate = 24000`.
+- **Format Invariants:** Hardcode `input_audio_format = "pcm16"` (implies 24kHz mono PCM16).
 - **Resampling:** Ensure the engine always resamples to 24kHz before sending.
 - **Update Event:** Use `type: "transcription_session.update"`.
-    - Payload structure:
+    - Payload structure (Flat fields, no wrapper):
       ```json
       {
         "type": "transcription_session.update",
-        "transcription_session": {
-          "input_audio_format": "pcm16",
-          "input_audio_transcription": { "model", "language", "prompt" },
-          "turn_detection": { "type": "server_vad", "threshold", "prefix_padding_ms", "silence_duration_ms" },
-          "noise_reduction": { "type": "auto" }
-        }
+        "input_audio_format": "pcm16",
+        "input_audio_transcription": { "model": "gpt-4o-mini-transcribe", "language": "en", "prompt": "" },
+        "turn_detection": { "type": "server_vad", "threshold": 0.5, "prefix_padding_ms": 300, "silence_duration_ms": 500 },
+        "input_audio_noise_reduction": { "type": "near_field" }
       }
       ```
 - **Logging:** Under `-vv`, log event type (`delta` vs `completed`), text length, and timestamp for all server messages.
