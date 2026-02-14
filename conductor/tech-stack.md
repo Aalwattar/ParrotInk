@@ -17,7 +17,7 @@
 - **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.
 - **platformdirs:** Resolves platform-specific user directories for log files and configuration.
 - **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
-- **pynput:** Powering the `InteractionMonitor`, used to detect global keyboard events for the "Stop on Any Key" functionality.
+- **pynput:** Powering the `InteractionMonitor` and `HotkeyRecorder`, used to detect global keyboard events and record user-defined shortcuts.
 - **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
 - **tomli-w:** Used for writing configuration files in TOML format.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.

@@ -39,11 +39,13 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - API provider selection, API keys, and **Test Mode** toggle.
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
     - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
-    - **Granular Advanced Settings:** Fine-tune transcription behavior (VAD thresholds, models, silence duration, word boosting) directly through the configuration file.
+    - **User-Friendly Profiles:** High-level `latency_profile` (fast, balanced, accurate) and `mic_profile` (headset, laptop) simplify complex engineering parameters.
+    - **Granular Advanced Settings:** Power users can still override profiles to fine-tune VAD thresholds, models, and silence durations.
     - **Configuration Fidelity:** All engine parameters, including session rotation, connection timeouts, and voice activity thresholds, are exposed and respected, ensuring the config file is the single source of truth.
     - **AssemblyAI V3 Integration:** Leverages the latest AssemblyAI Streaming V3 API for improved performance and more detailed session control.
     - **Verbose Debugging & Structured Logging:** Multi-level, non-blocking logging to console and file, with automatic redaction of secrets and truncation of audio data.
-    - Hotkey assignment and "hold_mode" boolean.
+    - **Interactive Hotkey Setup:** Users can record their desired hotkey combination directly through a tray-driven recording dialog.
+    - **Diagnostics:** A new `app config --explain` CLI command provides a clear report of how high-level profiles map to specific technical timings and thresholds.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
 
