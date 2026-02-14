@@ -3,8 +3,8 @@
 ## Phase 1: Visual Foundation & Icons
 Goal: Modernize the tray icon and HUD typography.
 
-- [ ] Task: Create `engine/ui_utils.py` for shared UI helpers.
-    - [ ] Task: Implement `get_app_version() -> str` by parsing `pyproject.toml`.
+- [x] Task: Create `engine/ui_utils.py` for shared UI helpers. [bffa869]
+    - [x] Task: Implement `get_app_version() -> str` by parsing `pyproject.toml`. [bffa869]
 - [ ] Task: Refactor `TrayApp` icon generation in `engine/ui.py`.
     - [ ] Task: Replace the ellipse design with a rounded-corner square ("Modern Square").
     - [ ] Task: Update color palette for Idle, Listening, and Error states to be more "Fluent/Modern".
