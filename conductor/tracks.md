@@ -161,3 +161,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Run at Startup Feature**
 *Link: [./tracks/run_at_startup_20260214/](./tracks/run_at_startup_20260214/)*
+
+---
+
+- [ ] **Track: Unified Configuration & OpenAI Dialect Alignment**
+*Link: [./tracks/unified_config_openai_dialect_20260214/](./tracks/unified_config_openai_dialect_20260214/)*
