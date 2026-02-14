@@ -15,13 +15,13 @@ datas = []
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
 # Include assets
-datas += [('assets', 'assets')]
+datas += [('../../assets', 'assets')]
 
 binaries = []
 binaries += collect_dynamic_libs("sounddevice")
 
 a = Analysis(
-    ["main.py"],
+    ["../../main.py"],
     pathex=[],
     binaries=binaries,
     datas=datas,

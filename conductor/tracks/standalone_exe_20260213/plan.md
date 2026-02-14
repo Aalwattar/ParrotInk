@@ -26,9 +26,9 @@
     - [x] Added `scripts/clean_build.ps1` for general cleanup.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Build Scripts & Distribution' (Protocol in workflow.md)
 
-## Phase 4: Final Verification
-- [ ] Task: Execute build script and verify artifact generation.
-- [ ] Task: Perform manual smoke test of the generated `dist/Voice2Text.exe`.
-    - [ ] Verify tray icon, hotkeys, and transcription functionality.
-    - [ ] Verify config and log placement in `%APPDATA%\Voice2Text`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Final Verification' (Protocol in workflow.md)
+## Phase 4: Final Verification [checkpoint: 5e426f9]
+- [x] Execute build script and verify artifact generation. (83274eb)
+- [x] Perform manual smoke test of the generated `dist/Voice2Text.exe`.
+    - [x] Verify tray icon, hotkeys, and transcription functionality.
+    - [x] Verify config and log placement in `%APPDATA%\Voice2Text`.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Final Verification' (Protocol in workflow.md)
