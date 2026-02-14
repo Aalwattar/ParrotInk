@@ -140,6 +140,9 @@ class InteractionConfig(BaseModel):
     # From auditory_feedback_20260210
     sounds: SoundsConfig = Field(default_factory=SoundsConfig)
 
+    # From run_at_startup_20260214
+    run_at_startup: bool = False
+
 
 class AudioConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
