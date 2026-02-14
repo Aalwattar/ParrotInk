@@ -166,3 +166,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Unified Configuration & OpenAI Dialect Alignment**
 *Link: [./tracks/unified_config_openai_dialect_20260214/](./tracks/unified_config_openai_dialect_20260214/)*
+
+---
+
+- [ ] **Track: Cosmetic & UI Refinements**
+*Link: [./tracks/cosmetic_refinement_20260214/](./tracks/cosmetic_refinement_20260214/)*
