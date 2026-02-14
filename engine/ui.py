@@ -9,7 +9,6 @@ from PIL import Image, ImageDraw
 from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
 from .logging import get_logger
-from .platform_win.hotkey_recorder import HotkeyRecorder
 
 if TYPE_CHECKING:
     from .config import Config
@@ -103,25 +102,17 @@ class TrayApp:
             self.on_toggle_click_through(not self.config.ui.floating_indicator.click_through)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
-        from .platform_win.hotkey_dialog import HotkeyRecordingWindow
-
-        def record():
-            if self.on_before_hotkey_change:
-                self.on_before_hotkey_change()
-
-            recorder_logic = HotkeyRecorder()
-
-            def on_captured(hk):
-                logger.info(f"New hotkey captured: {hk}")
-                if self.on_hotkey_change:
-                    self.on_hotkey_change(hk)
-
-            dialog = HotkeyRecordingWindow(
-                on_captured=on_captured, is_valid_cb=recorder_logic.is_valid
+        logger.info("Hotkey Change requested (Feature Under Development)")
+        if self.indicator:
+            # Show the message on the HUD
+            self.indicator.show()
+            self.indicator.on_final("Hotkey Configuration: Under Development")
+        else:
+            # Fallback to notification if HUD is disabled
+            self.notify(
+                "Hotkey configuration via UI is currently under development. Please edit config.toml manually.",
+                "Under Development",
             )
-            dialog.show()
-
-        threading.Thread(target=record, daemon=True).start()
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
         # We launch this in a thread because showing a dialog (console or GUI)

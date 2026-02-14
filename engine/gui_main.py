@@ -104,21 +104,13 @@ async def main_gui(cli_args):
     loop = asyncio.get_running_loop()
 
     def on_before_hotkey_change():
-        if coordinator:
-            logger.info("Pausing global inputs for hotkey recording...")
-            # Stop active recording if any
-            asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), loop)
-            # Stop the global pynput listener so it doesn't conflict with the dialog
-            coordinator.input_monitor.stop()
+        """Placeholder for when hotkey change is requested."""
+        logger.info("Hotkey change requested.")
 
     def on_hotkey_change(new_hotkey):
-        # Update config
+        """Placeholder for applying a new hotkey."""
+        logger.info(f"Applying new hotkey: {new_hotkey}")
         config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
-
-        # Restart the global listener with the new hotkey active
-        if coordinator:
-            logger.info("Resuming global inputs...")
-            coordinator.input_monitor.start()
 
     # Import TrayApp here to keep gui_main decoupled from other modules until needed
     from engine.ui import TrayApp
