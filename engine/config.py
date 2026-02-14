@@ -290,7 +290,9 @@ class Config(BaseModel):
             except Exception as e:
                 logger.error(f"Error notifying config observer: {e}")
 
-    def update_and_save(self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False):
+    def update_and_save(
+        self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False
+    ):
         """
         Performs a deep merge of updates into the current config,
         saves to disk, and notifies observers.
@@ -339,7 +341,7 @@ class Config(BaseModel):
         if blocking:
             perform_write()
         else:
-            # Execute write in a daemon thread to avoid blocking the event loop (useful for OneDrive folders)
+            # Execute write in a daemon thread to avoid blocking the event loop
             threading.Thread(target=perform_write, daemon=True).start()
 
     @classmethod
