@@ -16,7 +16,7 @@
     - [x] Include hidden imports for `pynput`, `pystray`, `PIL`, `websockets`, `keyring`.
     - [x] Include binaries for `sounddevice` (PortAudio).
     - [x] Include `assets/` directory.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Build Configuration & Dependencies' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Build Configuration & Dependencies' (Protocol in workflow.md)
 
 ## Phase 3: Build Scripts & Distribution
 - [ ] Task: Create manual build script `scripts/build_onefile.ps1`.
