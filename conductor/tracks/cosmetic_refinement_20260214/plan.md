@@ -16,13 +16,13 @@ Goal: Modernize the tray icon and HUD typography.
 ## Phase 2: Tray Menu & Feature Exposure
 Goal: Add the version header and "Hold to Talk" toggle to the Tray.
 
-- [ ] Task: Update `TrayApp._create_icon` in `engine/ui.py`.
-    - [ ] Task: Add the disabled version header at the top of the menu.
-    - [ ] Task: Add the "Hold to Talk" toggle in the Settings sub-menu.
-- [ ] Task: Implement "Hold to Talk" logic in `engine/gui_main.py`.
-    - [ ] Task: Connect the tray callback to `config.update_and_save()`.
-- [ ] Task: Verify end-to-end flow.
-    - [ ] Task: Check that toggling "Hold to Talk" in Tray updates `config.toml`.
-    - [ ] Task: Verify version display correctly reflects `pyproject.toml`.
-    - [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
+- [x] Task: Update `TrayApp._create_icon` in `engine/ui.py`. [4e1f231]
+    - [x] Task: Add the disabled version header at the top of the menu. [4e1f231]
+    - [x] Task: Add the "Hold to Talk" toggle in the Settings sub-menu. [4e1f231]
+- [x] Task: Implement "Hold to Talk" logic in `engine/gui_main.py`. [4e1f231]
+    - [x] Task: Connect the tray callback to `config.update_and_save()`. [4e1f231]
+- [x] Task: Verify end-to-end flow. [4e1f231]
+    - [x] Task: Check that toggling "Hold to Talk" in Tray updates `config.toml`. [4e1f231]
+    - [x] Task: Verify version display correctly reflects `pyproject.toml`. [4e1f231]
+    - [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). [4e1f231]
 - [ ] Task: Conductor - User Manual Verification 'Tray Menu & Feature Exposure' (Protocol in workflow.md)
