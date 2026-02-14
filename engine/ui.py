@@ -72,8 +72,8 @@ class TrayApp:
         # Use RGBA for transparency support (rounded corners)
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
-        # Modern rounded square design
-        dc.rounded_rectangle((4, 4, 60, 60), radius=14, fill=color)
+        # Modern rounded square design - Increased size and adjusted radius for clarity
+        dc.rounded_rectangle((2, 2, 62, 62), radius=12, fill=color)
         return image
 
     def _get_icon_color(self, state: AppState) -> str:
@@ -85,7 +85,7 @@ class TrayApp:
             return "#EF4444"  # Red-500
         if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
             return "#94A3B8"  # Slate-400
-        return "#334155"      # Slate-700 (Neutral/Idle)
+        return "#475569"      # Slate-600 (Better visibility than Slate-700)
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
         self.current_provider = provider

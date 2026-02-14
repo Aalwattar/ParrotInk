@@ -17,8 +17,8 @@ def test_get_icon_color(mock_config):
     
     # Fluent colors
     assert app._get_icon_color(AppState.LISTENING) == "#0078D4" # Microsoft Blue (as planned)
-    assert app._get_icon_color(AppState.IDLE) == "#334155"      # Slate Gray/Blue
-    assert app._get_icon_color(AppState.ERROR) == "#EF4444"     # Red/Soft Red
+    assert app._get_icon_color(AppState.IDLE) == "#475569"      # Slate-600
+    assert app._get_icon_color(AppState.ERROR) == "#EF4444"     # Red-500
 
 def test_create_image_size(mock_config):
     app = TrayApp(config=mock_config)
