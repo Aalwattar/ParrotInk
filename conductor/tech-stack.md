@@ -19,6 +19,8 @@
 - **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
 - **pynput:** Powering the `InteractionMonitor`, used to detect global keyboard events for the "Stop on Any Key" functionality.
 - **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
+- **tomli-w:** Used for writing configuration files in TOML format.
+- **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 
 ## 3. API SDKs
 

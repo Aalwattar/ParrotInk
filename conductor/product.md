@@ -59,6 +59,10 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - Custom word overrides or vocabulary lists to improve accuracy.
     - Simple post-processing rules for the transcribed text.
 
+### 2.9. Distribution
+- **Standalone Executable:** The application can be packaged as a single, portable Windows executable (`Voice2Text.exe`) for easy distribution and installation.
+- **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\Voice2Text` directory, ensuring it works even when launched from read-only locations.
+
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline
