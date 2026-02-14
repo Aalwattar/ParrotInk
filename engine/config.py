@@ -3,7 +3,7 @@ import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator, ConfigDict
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator, ConfigDict, PrivateAttr
 
 from .logging import get_logger
 from .platform_win.paths import get_config_path
@@ -138,6 +138,7 @@ class TranscriptionConfig(BaseModel):
     language: str = "en"
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
     mic_profile: Literal["headset", "laptop", "none"] = "headset"
+    format_text: bool = False
 
 
 class AppTestConfig(BaseModel):
@@ -160,7 +161,8 @@ class LoggingConfig(BaseModel):
 class OpenAICoreConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
-    model: str = "gpt-4o-mini-transcribe"  # Default transcription model
+    realtime_model: str = "gpt-4o-realtime-preview"  # Model for transport URL
+    transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
     prompt: str = ""
     input_audio_type: str = "audio/pcm16"
     input_audio_rate: int = 24000
@@ -169,6 +171,7 @@ class OpenAICoreConfig(BaseModel):
 
 class OpenAIAdvancedConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    override: bool = False
     noise_reduction: str = "off"
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.5
@@ -193,6 +196,7 @@ class OpenAIConfig(BaseModel):
 class AssemblyAICoreConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
+    region: Literal["us", "eu"] = "us"
     sample_rate: int = 16000
     vad_threshold: float = 0.4
     encoding: str = "pcm_s16le"
@@ -210,11 +214,10 @@ class AssemblyAICoreConfig(BaseModel):
 
 class AssemblyAIAdvancedConfig(BaseModel):
     model_config = ConfigDict(extra='forbid')
+    override: bool = False
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
     max_turn_silence_ms: int = 1000  # Default 1280
-    utterance_silence_threshold_ms: int = 700
-    format_turns: bool = False
     language_detection: bool = False
 
 
@@ -249,6 +252,39 @@ class Config(BaseModel):
     test: AppTestConfig = Field(default_factory=AppTestConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
+
+    # Private list of observers (not serialized)
+    _observers: List = PrivateAttr(default_factory=list)
+
+    def register_observer(self, callback):
+        """Registers a callback to be notified on config changes."""
+        if callback not in self._observers:
+            self._observers.append(callback)
+
+    def _notify_observers(self):
+        """Notifies all registered observers of a change."""
+        for callback in self._observers:
+            try:
+                callback(self)
+            except Exception as e:
+                logger.error(f"Error notifying config observer: {e}")
+
+    def update_and_save(self, updates: dict, path: Optional[Path | str] = None):
+        """
+        Performs a deep merge of updates into the current config,
+        saves to disk, and notifies observers.
+        """
+
+        def deep_merge(target, source):
+            for key, value in source.items():
+                if isinstance(value, dict) and hasattr(target, key):
+                    deep_merge(getattr(target, key), value)
+                else:
+                    setattr(target, key, value)
+
+        deep_merge(self, updates)
+        self.save(path)
+        self._notify_observers()
 
     def get_openai_key(self) -> Optional[str]:
         """Resolves OpenAI API key."""

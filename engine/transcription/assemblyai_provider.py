@@ -8,7 +8,7 @@ import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
 from engine.audio.adapter import ProviderAudioSpec
-from engine.config import Config
+from engine.config import LATENCY_PROFILES, Config
 from engine.logging import get_logger
 
 from .base import BaseProvider
@@ -53,8 +53,26 @@ class AssemblyAIProvider(BaseProvider):
 
         core = self.config.providers.assemblyai.core
         adv = self.config.providers.assemblyai.advanced
+        trans = self.config.transcription
 
-        # Build V3 query parameters with corrected keys
+        # 1. Resolve Region URL
+        base_url = "wss://streaming.assemblyai.com/v3/ws"
+        if core.region == "eu":
+            base_url = "wss://streaming.eu.assemblyai.com/v3/ws"
+
+        # 2. Resolve Latency Settings
+        if adv.override:
+            confidence = adv.end_of_turn_confidence_threshold
+            min_silence = adv.min_end_of_turn_silence_when_confident_ms
+            max_silence = adv.max_turn_silence_ms
+        else:
+            profile = LATENCY_PROFILES.get(trans.latency_profile, LATENCY_PROFILES["balanced"])
+            aai_params = profile["assemblyai"]
+            confidence = aai_params["end_of_turn_confidence_threshold"]
+            min_silence = aai_params["min_end_of_turn_silence_when_confident_ms"]
+            max_silence = aai_params["max_turn_silence_ms"]
+
+        # 3. Build Query Parameters
         params = {
             "sample_rate": core.sample_rate,
             "word_boost": json.dumps(core.keyterms_prompt) if core.keyterms_prompt else None,
@@ -64,11 +82,10 @@ class AssemblyAIProvider(BaseProvider):
             "inactivity_timeout": core.inactivity_timeout_seconds
             if core.inactivity_timeout_seconds > 0
             else None,
-            "end_of_turn_confidence_threshold": adv.end_of_turn_confidence_threshold,
-            "min_end_of_turn_silence_when_confident": adv.min_end_of_turn_silence_when_confident_ms,
-            "max_turn_silence": adv.max_turn_silence_ms,
-            "utterance_silence_threshold": adv.utterance_silence_threshold_ms,
-            "format_turns": "true" if adv.format_turns else "false",
+            "end_of_turn_confidence_threshold": confidence,
+            "min_end_of_turn_silence_when_confident": min_silence,
+            "max_turn_silence": max_silence,
+            "format_turns": "true" if trans.format_text else "false",
             "detect_language": "true" if adv.language_detection else "false",
         }
 
@@ -76,7 +93,7 @@ class AssemblyAIProvider(BaseProvider):
         params = {k: v for k, v in params.items() if v is not None}
 
         query_string = urllib.parse.urlencode(params)
-        return f"{core.ws_url}?{query_string}"
+        return f"{base_url}?{query_string}"
 
     async def start(self):
         """Connect to AssemblyAI and start receiving events."""
@@ -127,14 +144,8 @@ class AssemblyAIProvider(BaseProvider):
         if not self.ws or not self._is_running:
             return
 
-        send_start = time.perf_counter()
-        lag_ms = (send_start - capture_time) * 1000
-        if lag_ms > 500:
-            logger.warning(f"Audio chunk is very old: {lag_ms:.1f}ms")
-
         # In V3, we send the raw bytes directly. processed_chunk is already bytes.
         try:
-            # IMPORTANT: We MUST await here to ensure audio chunks are sent in the correct order.
             await self.ws.send(processed_chunk)
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")

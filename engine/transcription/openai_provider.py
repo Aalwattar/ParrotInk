@@ -6,7 +6,7 @@ import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
 from engine.audio.adapter import ProviderAudioSpec
-from engine.config import Config
+from engine.config import LATENCY_PROFILES, MIC_PROFILES, Config
 from engine.logging import get_logger
 
 from .base import BaseProvider
@@ -17,7 +17,6 @@ logger = get_logger("OpenAI")
 class OpenAIProvider(BaseProvider):
     """
     OpenAI Realtime API Provider optimized for transcription.
-    Migrated to session.update with nested audio.input schema.
     """
 
     def __init__(
@@ -52,20 +51,21 @@ class OpenAIProvider(BaseProvider):
     def _build_url(self) -> str:
         if self.config.test.enabled:
             return self.config.test.openai_mock_url
-        # Intent=transcription is still required in the URL for this flow
-        return f"{self.config.providers.openai.core.realtime_ws_url_base}?intent=transcription"
+        
+        base = self.config.providers.openai.core.realtime_ws_url_base
+        model = self.config.providers.openai.core.realtime_model
+        
+        # Construct URL with model parameter and intent=transcription
+        return f"{base}?model={model}&intent=transcription"
 
     async def start(self):
         """Connect and configure the session."""
-        # Removed "OpenAI-Beta": "realtime=v1" to support GA transcription features
         headers = {
             "Authorization": f"Bearer {self.api_key}",
         }
 
-        # Log host for GA vs Azure verification
         try:
             from urllib.parse import urlparse
-
             parsed = urlparse(self.url)
             logger.info(f"Connecting to OpenAI Realtime Host: {parsed.netloc}")
         except Exception:
@@ -78,7 +78,7 @@ class OpenAIProvider(BaseProvider):
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
 
-            # Configure session using the nested schema
+            # Configure session
             await self._update_session()
             logger.info("Connected to OpenAI successfully.")
         except Exception as e:
@@ -92,13 +92,26 @@ class OpenAIProvider(BaseProvider):
 
         core = self.config.providers.openai.core
         adv = self.config.providers.openai.advanced
+        trans = self.config.transcription
 
-        # Map noise reduction
-        noise_reduction = None
-        if adv.noise_reduction == "auto":
-            noise_reduction = "auto"
+        # 1. Resolve Latency/VAD Settings
+        if adv.override:
+            vad_threshold = adv.vad_threshold
+            silence_duration_ms = adv.silence_duration_ms
+        else:
+            profile = LATENCY_PROFILES.get(trans.latency_profile, LATENCY_PROFILES["balanced"])
+            vad_threshold = profile["openai"]["vad_threshold"]
+            silence_duration_ms = profile["openai"]["silence_duration_ms"]
 
-        # Restore 'type': 'transcription' for GA behavior
+        # 2. Resolve Mic/Noise Settings
+        if adv.override:
+            # For override mode, we'll still use the specific advanced noise_reduction string
+            # But the profiles map to specific types
+            noise_reduction_type = adv.noise_reduction if adv.noise_reduction != "off" else None
+        else:
+            noise_reduction_type = MIC_PROFILES.get(trans.mic_profile, "near_field")
+
+        # 3. Build session.update
         session_update = {
             "type": "session.update",
             "session": {
@@ -106,19 +119,17 @@ class OpenAIProvider(BaseProvider):
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": core.input_audio_rate},
-                        "noise_reduction": noise_reduction,
+                        "noise_reduction": {"type": noise_reduction_type} if noise_reduction_type else None,
                         "transcription": {
-                            "model": core.model,  # e.g., gpt-4o-transcribe-latest
-                            "language": core.language,
+                            "model": core.transcription_model,
+                            "language": trans.language,
                         },
                         "turn_detection": {
                             "type": "server_vad",
-                            "threshold": adv.vad_threshold,
+                            "threshold": vad_threshold,
                             "prefix_padding_ms": adv.prefix_padding_ms,
-                            "silence_duration_ms": adv.silence_duration_ms,
+                            "silence_duration_ms": silence_duration_ms,
                         }
-                        if adv.turn_detection_type == "server_vad"
-                        else None,
                     }
                 },
                 "include": ["item.input_audio_transcription.logprobs"]
@@ -150,7 +161,6 @@ class OpenAIProvider(BaseProvider):
         if not self.ws or not self._is_running:
             return
 
-        # processed_chunk is base64 string from AudioAdapter
         event = {"type": "input_audio_buffer.append", "audio": processed_chunk}
         try:
             await self.ws.send(json.dumps(event))
@@ -172,26 +182,18 @@ class OpenAIProvider(BaseProvider):
         """Route transcription events."""
         ev_type = event.get("type")
 
-        # Live typing updates
         if ev_type == "conversation.item.input_audio_transcription.delta":
             delta = event.get("delta")
             if delta:
                 self.current_transcript += delta
                 self.on_partial(self.current_transcript)
 
-        # Final segment completed
         elif ev_type == "conversation.item.input_audio_transcription.completed":
             transcript = event.get("transcript")
             if transcript:
                 logger.info(f"OpenAI Final Segment: {transcript.strip()}")
                 self.on_final(transcript.strip())
             self.current_transcript = ""
-
-        # Buffer committed (VAD trigger)
-        elif ev_type == "input_audio_buffer.committed":
-            logger.debug("OpenAI: Audio buffer committed by server VAD.")
-            # Reverted: Do NOT clear buffer here, as deltas for the committed segment
-            # may still be arriving. We clear only on 'completed'.
 
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
