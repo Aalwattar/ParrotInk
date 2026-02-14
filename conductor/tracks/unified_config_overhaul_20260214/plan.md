@@ -11,7 +11,7 @@ Goal: Simplify the TOML structure and implement high-level profiles.
 - [x] Task: Update `migrate_config_file` to handle the new structure. e3983db
 - [ ] Task: Conductor - User Manual Verification 'Schema Refine & Validation' (Protocol in workflow.md)
 
-## Phase 2: In-Flight Updates & Provider Alignment
+## Phase 2: In-Flight Updates & Provider Alignment [checkpoint: 84737ae]
 Goal: Implement smart updates and ensure strict API compliance.
 
 - [x] Task: Add `update_and_save()` method to the `Config` class. 6db4b0f
