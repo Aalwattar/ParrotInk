@@ -1,0 +1,8 @@
+{
+  "track_id": "hotkey_config_sync_20260214",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-14T05:11:00Z",
+  "updated_at": "2026-02-14T05:11:00Z",
+  "description": "Expand the Hotkey to the Tray settings, interactive recording, and generalized config synchronization."
+}
