@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw
 from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
 from .logging import get_logger
+from .ui_utils import get_app_version
 
 if TYPE_CHECKING:
     from .config import Config
@@ -31,6 +32,7 @@ class TrayApp:
         on_toggle_hud: Callable[[bool], None] | None = None,
         on_toggle_click_through: Callable[[bool], None] | None = None,
         on_toggle_startup: Callable[[bool], None] | None = None,
+        on_toggle_hold_mode: Callable[[bool], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -49,6 +51,7 @@ class TrayApp:
         self.on_toggle_hud = on_toggle_hud
         self.on_toggle_click_through = on_toggle_click_through
         self.on_toggle_startup = on_toggle_startup
+        self.on_toggle_hold_mode = on_toggle_hold_mode
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -85,7 +88,7 @@ class TrayApp:
             return "#EF4444"  # Red-500
         if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
             return "#94A3B8"  # Slate-400
-        return "#475569"      # Slate-600 (Better visibility than Slate-700)
+        return "#475569"  # Slate-600 (Better visibility than Slate-700)
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
         self.current_provider = provider
@@ -108,6 +111,10 @@ class TrayApp:
     def _on_toggle_startup_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_toggle_startup:
             self.on_toggle_startup(not self.config.interaction.run_at_startup)
+
+    def _on_toggle_hold_mode_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        if self.on_toggle_hold_mode:
+            self.on_toggle_hold_mode(not self.config.hotkeys.hold_mode)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         logger.info("Hotkey Change requested (Feature Under Development)")
@@ -141,7 +148,14 @@ class TrayApp:
             print(f"Config file not found at: {config_path}")
 
     def _create_icon(self) -> pystray.Icon:
+        version = get_app_version()
         menu = pystray.Menu(
+            pystray.MenuItem(
+                f"Voice2Text v{version}",
+                lambda: None,
+                enabled=False,
+            ),
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 "OpenAI",
                 lambda icon, item: self._on_provider_selection(icon, "openai"),
@@ -177,6 +191,12 @@ class TrayApp:
                         lambda item: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
                         self._on_change_hotkey_clicked,
                     ),
+                    pystray.MenuItem(
+                        "Hold to Talk",
+                        self._on_toggle_hold_mode_clicked,
+                        checked=lambda item: self.config.hotkeys.hold_mode,
+                    ),
+                    pystray.Menu.SEPARATOR,
                     pystray.MenuItem(
                         "Enable Audio Feedback",
                         self._on_toggle_sounds_clicked,

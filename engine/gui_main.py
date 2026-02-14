@@ -108,6 +108,10 @@ async def main_gui(cli_args):
         set_run_at_startup(enabled)
         logger.info(f"Run at Startup {'enabled' if enabled else 'disabled'}")
 
+    def on_toggle_hold_mode(enabled):
+        config.update_and_save({"hotkeys": {"hold_mode": enabled}})
+        logger.info(f"Hold to Talk {'enabled' if enabled else 'disabled'}")
+
     def on_before_hotkey_change():
         """Placeholder for when hotkey change is requested."""
         logger.info("Hotkey change requested.")
@@ -132,6 +136,7 @@ async def main_gui(cli_args):
         on_toggle_hud=on_toggle_hud,
         on_toggle_click_through=on_toggle_click_through,
         on_toggle_startup=on_toggle_startup,
+        on_toggle_hold_mode=on_toggle_hold_mode,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

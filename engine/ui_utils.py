@@ -1,6 +1,7 @@
 import tomllib
 from pathlib import Path
 
+
 def get_app_version() -> str:
     """
     Reads the application version from pyproject.toml.
@@ -17,6 +18,7 @@ def get_app_version() -> str:
     try:
         with open(pyproject_path, "rb") as f:
             data = tomllib.load(f)
-            return data.get("project", {}).get("version", "unknown")
+            version = data.get("project", {}).get("version", "unknown")
+            return str(version)
     except Exception:
         return "unknown"

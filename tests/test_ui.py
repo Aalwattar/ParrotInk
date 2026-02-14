@@ -68,7 +68,7 @@ def test_tray_app_availability(mocker, config):
 
 
 def test_tray_menu_structure(mocker, config):
-    """Verify that the tray menu does NOT contain the redundant Status: Ready item."""
+    """Verify that the tray menu contains the version header and NOT the redundant Status item."""
     with patch("engine.ui.pystray.Icon") as mock_icon:
         from engine.ui import TrayApp
 
@@ -76,8 +76,27 @@ def test_tray_menu_structure(mocker, config):
         args, kwargs = mock_icon.call_args
         menu = args[3]
         items = list(menu)
-        assert items[0].text == "OpenAI"
-        assert items[0].text != "Status: Ready"
+        # First item should be version header
+        assert "Voice2Text v" in items[0].text
+        assert items[0].enabled is False
+        # Second item is separator
+        assert items[2].text == "OpenAI"
+        assert all(item.text != "Status: Ready" for item in items)
+
+
+def test_tray_settings_menu_hold_mode(mocker, config):
+    """Verify that the Settings menu contains the Hold to Talk toggle."""
+    with patch("engine.ui.pystray.Icon") as mock_icon:
+        from engine.ui import TrayApp
+
+        TrayApp(config=config, initial_sounds_enabled=True)
+        args, kwargs = mock_icon.call_args
+        menu = args[3]
+        items = list(menu)
+        settings_item = next(item for item in items if item.text == "Settings")
+        submenu_items = list(settings_item.submenu)
+        hold_toggle = next(item for item in submenu_items if item.text == "Hold to Talk")
+        assert hold_toggle is not None
 
 
 def test_tray_settings_menu(mocker, config):

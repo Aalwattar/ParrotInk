@@ -1,7 +1,7 @@
-import pytest
+from unittest.mock import mock_open, patch
+
 from engine.ui_utils import get_app_version
-from pathlib import Path
-from unittest.mock import patch, mock_open
+
 
 def test_get_app_version_success():
     # Mock pyproject.toml content
@@ -14,6 +14,7 @@ version = "0.2.0-alpha"
         with patch("pathlib.Path.exists", return_value=True):
             version = get_app_version()
             assert version == "0.2.0-alpha"
+
 
 def test_get_app_version_not_found():
     with patch("pathlib.Path.exists", return_value=False):
