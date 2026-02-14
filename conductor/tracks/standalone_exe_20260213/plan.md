@@ -18,13 +18,13 @@
     - [x] Include `assets/` directory.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Build Configuration & Dependencies' (Protocol in workflow.md)
 
-## Phase 3: Build Scripts & Distribution
+## Phase 3: Build Scripts & Distribution [checkpoint: 83274eb]
 - [x] Task: Create manual build script `scripts/build_onefile.ps1`. (f6389f2)
     - [x] Implement cleaning of `build/` and `dist/` directories.
     - [x] Implement `uv sync --dev` for dependency management.
     - [x] Execute PyInstaller using the defined spec file.
     - [x] Added `scripts/clean_build.ps1` for general cleanup.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Build Scripts & Distribution' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Build Scripts & Distribution' (Protocol in workflow.md)
 
 ## Phase 4: Final Verification
 - [ ] Task: Execute build script and verify artifact generation.
