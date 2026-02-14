@@ -53,10 +53,10 @@ class OpenAIProvider(BaseProvider):
             return self.config.test.openai_mock_url
         
         base = self.config.providers.openai.core.realtime_ws_url_base
-        model = self.config.providers.openai.core.realtime_model
         
-        # Construct URL with model parameter and intent=transcription
-        return f"{base}?model={model}&intent=transcription"
+        # According to latest API: You must not provide a model parameter 
+        # for transcription sessions in the URL.
+        return f"{base}?intent=transcription"
 
     async def start(self):
         """Connect and configure the session."""

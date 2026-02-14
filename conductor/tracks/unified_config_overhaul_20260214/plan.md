@@ -14,11 +14,12 @@ Goal: Simplify the TOML structure and implement high-level profiles.
 ## Phase 2: In-Flight Updates & Provider Alignment
 Goal: Implement smart updates and ensure strict API compliance.
 
-- [ ] Task: Add `update_and_save()` method to the `Config` class.
-- [ ] Task: Refactor `OpenAIProvider` for Realtime Transcription alignment.
-  - [ ] Sub-task: `session.type = "transcription"`, 24k rate, model separation.
-- [ ] Task: Refactor `AssemblyAIProvider` for V3 alignment.
-  - [ ] Sub-task: Regional endpoints, remove legacy params.
+- [x] Task: Add `update_and_save()` method to the `Config` class. 6db4b0f
+- [x] Task: Refactor `OpenAIProvider` for Realtime Transcription alignment. 6db4b0f
+  - [x] Sub-task: `session.type = "transcription"`, 24k rate, model separation.
+- [x] Task: Refactor `AssemblyAIProvider` for V3 alignment. 6db4b0f
+  - [x] Sub-task: Regional endpoints, remove legacy params.
+- [x] Task: Update `AudioAdapter` to support resampling to 24k for OpenAI. 6db4b0f
 - [ ] Task: Conductor - User Manual Verification 'In-Flight Updates & Provider Alignment' (Protocol in workflow.md)
 
 ## Phase 3: Interactive Hotkey UI

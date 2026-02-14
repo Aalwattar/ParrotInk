@@ -14,14 +14,14 @@ class TranscriptionFactory:
     def create(
         config: Config, on_partial: Callable[[str], None], on_final: Callable[[str], None]
     ) -> BaseProvider:
-        if config.default_provider == "openai":
+        if config.transcription.provider == "openai":
             return OpenAIProvider(
                 api_key=config.get_openai_key() or "",
                 on_partial=on_partial,
                 on_final=on_final,
                 config=config,
             )
-        elif config.default_provider == "assemblyai":
+        elif config.transcription.provider == "assemblyai":
             return AssemblyAIProvider(
                 api_key=config.get_assemblyai_key() or "",
                 on_partial=on_partial,
@@ -29,4 +29,4 @@ class TranscriptionFactory:
                 config=config,
             )
         else:
-            raise ValueError(f"Unsupported transcription provider: {config.default_provider}")
+            raise ValueError(f"Unsupported transcription provider: {config.transcription.provider}")

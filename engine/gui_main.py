@@ -67,7 +67,7 @@ async def main_gui(cli_args):
             asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
             coordinator.provider = None
 
-        config.default_provider = provider_name
+        config.transcription.provider = provider_name
         logger.info(f"Provider changed to: {provider_name}")
 
     def on_set_key(account_id, key):
@@ -93,7 +93,7 @@ async def main_gui(cli_args):
         on_provider_change=on_provider_change,
         on_set_key=on_set_key,
         on_toggle_sounds=on_toggle_sounds,
-        initial_provider=config.default_provider,
+        initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
     )

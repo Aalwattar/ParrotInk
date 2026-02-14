@@ -82,7 +82,7 @@ class EvalCoordinator:
         logger.info(f"Connecting to {self.provider_name}...")
         try:
             # Force the selected provider in config for the factory
-            self.config.default_provider = self.provider_name
+            self.config.transcription.provider = self.provider_name
             provider = TranscriptionFactory.create(
                 self.config, on_partial=self.on_partial, on_final=self.on_final
             )

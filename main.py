@@ -278,15 +278,15 @@ class AppCoordinator:
 
         # Credential check
         availability = self.get_provider_availability()
-        if not availability.get(self.config.default_provider, False):
-            logger.error(f"Missing API Key for {self.config.default_provider}")
-            provider_title = self.config.default_provider.title()
+        if not availability.get(self.config.transcription.provider, False):
+            logger.error(f"Missing API Key for {self.config.transcription.provider}")
+            provider_title = self.config.transcription.provider.title()
             msg = f"Please set your {provider_title} API Key in the Credentials menu."
             self.ui_bridge.notify(msg, "Missing API Key")
             self.ui_bridge.set_state(AppState.ERROR)
             return
 
-        logger.info(f"Starting listening with {self.config.default_provider}...")
+        logger.info(f"Starting listening with {self.config.transcription.provider}...")
         self.session_cancelled = False
         self.start_time = time.time()
         self.last_injected_text = ""
@@ -336,7 +336,7 @@ class AppCoordinator:
             logger.exception(f"Error starting transcription: {e}")
             self.set_state(AppState.ERROR)
             if "401" in str(e) or "unauthorized" in str(e).lower():
-                provider_title = self.config.default_provider.title()
+                provider_title = self.config.transcription.provider.title()
                 msg = f"Invalid API Key for {provider_title}. Please check your credentials."
                 self.ui_bridge.notify(msg, "Authentication Failed")
 

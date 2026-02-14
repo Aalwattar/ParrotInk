@@ -65,23 +65,35 @@ def migrate_config_file(path: Path | str):
         # 2. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
         new_content = re.sub(r"(\binput_audio_rate\s*=\s*)16000\b", r"\g<1>24000", new_content)
 
-        # 3. Handle default_provider migration if not in transcription
-        if "default_provider" in new_content and "[transcription]" in new_content:
-            # Simple check if provider is already there
-            if "provider =" not in new_content.split("[transcription]")[1].split("[")[0]:
-                match = re.search(r'default_provider\s*=\s*"([^"]+)"', new_content)
-                if match:
-                    provider = match.group(1)
-                    # Add to [transcription] section
-                    new_content = new_content.replace(
-                        "[transcription]", f'[transcription]\nprovider = "{provider}"'
-                    )
-                    # Remove from root
-                    new_content = re.sub(r'default_provider\s*=\s*"[^"]+"\s*', "", new_content)
+        # 3. Handle default_provider/active_provider migration if not in transcription
+        for legacy_key in ["default_provider", "active_provider"]:
+            if legacy_key in new_content and "[transcription]" in new_content:
+                if "provider =" not in new_content.split("[transcription]")[1].split("[")[0]:
+                    match = re.search(rf'{legacy_key}\s*=\s*"([^"]+)"', new_content)
+                    if match:
+                        provider = match.group(1)
+                        new_content = new_content.replace(
+                            "[transcription]", f'[transcription]\nprovider = "{provider}"'
+                        )
+                        new_content = re.sub(rf'{legacy_key}\s*=\s*"[^"]+"\s*', "", new_content)
+
+        # 4. REMOVE OBSOLETE KEYS (since extra='forbid' is active)
+        obsolete_keys = [
+            r"active_provider\s*=\s*\"[^\"]*\"",
+            r"default_provider\s*=\s*\"[^\"]*\"",
+            r"sample_rate\s*=\s*\d+",
+            r"language\s*=\s*\"[^\"]*\"",
+            r"model\s*=\s*\"[^\"]*\"",
+            r"utterance_silence_threshold_ms\s*=\s*\d+",
+            r"format_turns\s*=\s*(true|false)",
+        ]
+        
+        for key_pattern in obsolete_keys:
+            new_content = re.sub(rf"\b{key_pattern}\b", "", new_content)
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")
-            logger.info(f"Migrated {path} to new configuration schema.")
+            logger.info(f"Migrated {path} to new configuration schema (removed obsolete keys).")
     except Exception as e:
         logger.warning(f"Failed to migrate config file {path}: {e}")
 

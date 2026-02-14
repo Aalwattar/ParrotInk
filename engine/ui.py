@@ -33,7 +33,7 @@ class TrayApp:
         self.config = config
         self.bridge = bridge
         self.state = AppState.IDLE
-        self.default_provider: ProviderType = initial_provider
+        self.current_provider: ProviderType = initial_provider
         self.sounds_enabled = initial_sounds_enabled
         self.on_quit_callback = on_quit_callback
         self.on_provider_change = on_provider_change
@@ -76,7 +76,7 @@ class TrayApp:
         return "black"
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
-        self.default_provider = provider
+        self.current_provider = provider
         if self.on_provider_change:
             self.on_provider_change(provider)
 
@@ -108,14 +108,14 @@ class TrayApp:
             pystray.MenuItem(
                 "OpenAI",
                 lambda icon, item: self._on_provider_selection(icon, "openai"),
-                checked=lambda item: self.default_provider == "openai",
+                checked=lambda item: self.current_provider == "openai",
                 enabled=lambda item: self.availability.get("openai", True),
                 radio=True,
             ),
             pystray.MenuItem(
                 "AssemblyAI",
                 lambda icon, item: self._on_provider_selection(icon, "assemblyai"),
-                checked=lambda item: self.default_provider == "assemblyai",
+                checked=lambda item: self.current_provider == "assemblyai",
                 enabled=lambda item: self.availability.get("assemblyai", True),
                 radio=True,
             ),

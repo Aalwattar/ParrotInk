@@ -1,55 +1,56 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-
+import time
+from unittest.mock import AsyncMock, patch
 import pytest
-
-from engine.app_types import AppState
 from engine.config import Config
-from main import AppCoordinator
-
+from engine.connection import ConnectionManager
+from engine.app_types import AppState
 
 @pytest.mark.asyncio
 async def test_immediate_rotation_after_stop():
     """Verify that rotation happens immediately after stop_listening if pending."""
-    from engine.audio.adapter import ProviderAudioSpec
-
     config = Config()
     config.test.enabled = True
     config.audio.connection_mode = "warm"
-    config.default_provider = "openai"
+    config.transcription.provider = "openai"
+    config.providers.openai.core.session_rotation_seconds = 1  # 1 second for test
 
-    coordinator = AppCoordinator(config)
-    coordinator.loop = asyncio.get_running_loop()
+    def set_state(s):
+        pass
 
-    spec = ProviderAudioSpec(sample_rate_hz=24000)
+    cm = ConnectionManager(
+        config=config,
+        on_partial=lambda x: None,
+        on_final=lambda x: None,
+        set_state_cb=set_state,
+    )
 
-    mock_provider = AsyncMock()
-    mock_provider.is_running = True
-    mock_provider.get_type = MagicMock(return_value="openai")
-    mock_provider.get_audio_spec = MagicMock(return_value=spec)
+    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
 
-    coordinator.provider = mock_provider
-    coordinator.state = AppState.LISTENING
+        # 1. Connect
+        await cm.ensure_connected(is_listening=True)
+        provider1 = cm.provider
+        assert provider1 is not None
 
-    # Force rotation pending
-    coordinator.connection_manager._rotation_pending = True
+        # 2. Wait for session to age
+        await asyncio.sleep(1.1)
 
-    # We expect a new provider to be created
-    new_mock = AsyncMock()
-    new_mock.is_running = False
-    new_mock.get_type = MagicMock(return_value="openai")
-    new_mock.get_audio_spec = MagicMock(return_value=spec)
+        # 3. Trigger rotation check while listening
+        await cm.ensure_connected(is_listening=True)
+        assert cm._rotation_pending is True
+        assert cm.provider is provider1
 
-    with patch("engine.transcription.factory.TranscriptionFactory.create", return_value=new_mock):
-        # Stop listening should trigger immediate rotation
-        await coordinator.stop_listening()
+        # 4. Stop listening should trigger immediate rotation
+        cm.start_idle_timer()
+        
+        # Give it a moment to run the async task
+        await asyncio.sleep(0.5)
+        
+        # Verify provider was rotated
+        assert cm.provider is not provider1
+        assert cm.provider is not None
+        assert cm._rotation_pending is False
 
-        # Give it a moment for the background task to run
-        await asyncio.sleep(0.1)
-
-    # Old provider should have been stopped
-    assert mock_provider.stop.called
-    # New provider should have been started
-    assert new_mock.start.called
-    assert coordinator.provider is new_mock
-    assert not coordinator.connection_manager._rotation_pending
+    await cm.shutdown()

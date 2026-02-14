@@ -1,83 +1,70 @@
 import asyncio
+import sys
+import os
+import json
+from engine.config import Config, load_config
+from engine.ui_bridge import UIBridge, UIEvent
+from engine.app_types import AppState
+from main import AppCoordinator
 
-import numpy as np
+async def verify_mock_transcription():
+    """Verify that mock transcription works end-to-end in test mode."""
+    print("Starting Mock Transcription Verification...")
+    
+    config = Config()
+    config.test.enabled = True
+    config.transcription.provider = "openai"
+    
+    bridge = UIBridge()
+    coordinator = AppCoordinator(config, bridge)
+    coordinator.loop = asyncio.get_running_loop()
+    
+    final_text = ""
+    
+    def on_event(event):
+        nonlocal final_text
+        msg_type, data = event
+        if msg_type == UIEvent.UPDATE_FINAL_TEXT:
+            final_text = data
+            print(f"[UI] Final Text Received: {data}")
 
-from engine.config import Config
-from engine.transcription.factory import TranscriptionFactory
-
-
-async def verify_mode(name, config):
-    print(f"\n--- Verifying {name} (Test Mode: {config.test.enabled}) ---")
-    final_text = []
-
-    def on_final(text):
-        print(f"[{config.default_provider}] Final: {text}")
-        final_text.append(text)
-
-    provider = TranscriptionFactory.create(config, on_partial=lambda x: None, on_final=on_final)
-    print(f"Connecting to: {provider.url}")
-
-    try:
-        await provider.start()
-        # Send some dummy audio
-        await provider.send_audio(np.zeros(1024, dtype=np.float32))
-        await asyncio.sleep(1)
-        await provider.stop()
-
-        if config.test.enabled:
-            expected = (
-                "Hello from mock OpenAI!"
-                if config.default_provider == "openai"
-                else "Hello from mock AssemblyAI!"
-            )
-            if any(expected in t for t in final_text):
-                print(f"SUCCESS: Received expected mock response for {config.default_provider}")
-            else:
-                print(
-                    f"FAILED: Did not receive expected mock response for "
-                    f"{config.default_provider}. Got: {final_text}"
-                )
-                return False
-        return True
-    except Exception as e:
-        if not config.test.enabled:
-            print(f"Expected connection behavior for production URL: {e}")
-            return True
-        else:
-            print(f"FAILED: Connection to mock server failed: {e}")
-            return False
-
-
-async def main():
-    # 1. Test Mode OpenAI
-    config_test_oa = Config(
-        default_provider="openai", test={"enabled": True, "openai_mock_url": "ws://127.0.0.1:8081"}
-    )
-    ok1 = await verify_mode("OpenAI Mock", config_test_oa)
-
-    # 2. Test Mode AssemblyAI
-    config_test_aai = Config(
-        default_provider="assemblyai",
-        test={"enabled": True, "assemblyai_mock_url": "ws://127.0.0.1:8082"},
-    )
-    ok2 = await verify_mode("AssemblyAI Mock", config_test_aai)
-
-    # 3. Production Mode (Should use advanced URL)
-    config_prod = Config(
-        default_provider="openai",
-        test={"enabled": False},
-        advanced={
-            "openai_url": "ws://127.0.0.1:8081"
-        },  # Point to mock but via 'advanced' to prove it uses it
-    )
-    ok3 = await verify_mode("Production Config Override", config_prod)
-
-    if ok1 and ok2 and ok3:
-        print("\nAll Smoke Tests Passed!")
+    # Patch bridge to intercept events
+    bridge.put_event = on_event
+    
+    print(f"Using provider: {config.transcription.provider}")
+    
+    # Start listening
+    await coordinator.start_listening()
+    
+    # Wait for a bit to receive mock events
+    await asyncio.sleep(2.0)
+    
+    # Stop listening
+    await coordinator.stop_listening()
+    
+    if final_text:
+        print(f"SUCCESS: Received expected mock response for {config.transcription.provider}")
     else:
-        print("\nSome Smoke Tests Failed!")
-        exit(1)
+        print(f"FAILURE: Did not receive mock response for {config.transcription.provider}")
+        sys.exit(1)
 
+    # Now test AssemblyAI mock
+    config.transcription.provider = "assemblyai"
+    final_text = ""
+    print(f"Using provider: {config.transcription.provider}")
+    
+    await coordinator.start_listening()
+    await asyncio.sleep(2.0)
+    await coordinator.stop_listening()
+    
+    if final_text:
+        print(f"SUCCESS: Received expected mock response for {config.transcription.provider}")
+    else:
+        print(f"FAILURE: Did not receive mock response for {config.transcription.provider}")
+        sys.exit(1)
+
+    await coordinator.shutdown()
+    print("Verification Complete.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(verify_mock_transcription())

@@ -57,7 +57,7 @@ class ConnectionManager:
 
         if self.provider and self.provider.is_running:
             # Check for rotation
-            if self.config.default_provider == "openai":
+            if self.config.transcription.provider == "openai":
                 age = time.time() - self._session_start_time
                 rotation_threshold = self.config.providers.openai.core.session_rotation_seconds
                 if age > rotation_threshold:
@@ -78,10 +78,10 @@ class ConnectionManager:
                     # Fall through to reconnect
 
             # Check if provider type matches configuration
-            if self.provider and self.provider.get_type() != self.config.default_provider:
+            if self.provider and self.provider.get_type() != self.config.transcription.provider:
                 logger.info(
                     f"Provider type mismatch ({self.provider.get_type()} != "
-                    f"{self.config.default_provider}). Reconnecting..."
+                    f"{self.config.transcription.provider}). Reconnecting..."
                 )
                 if not is_listening:
                     await self.stop_provider()
@@ -112,10 +112,10 @@ class ConnectionManager:
             logger.warning(f"Connection backoff active. Waiting {wait_time:.1f}s...")
             await asyncio.sleep(wait_time)
 
-        logger.info(f"Connecting to {self.config.default_provider}...")
+        logger.info(f"Connecting to {self.config.transcription.provider}...")
         self.set_state(AppState.CONNECTING)
         try:
-            logger.debug(f"Starting provider {self.config.default_provider}...")
+            logger.debug(f"Starting provider {self.config.transcription.provider}...")
             async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
                 await self.provider.start()
             logger.debug("Provider started.")

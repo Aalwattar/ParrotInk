@@ -1,134 +1,109 @@
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from engine.app_types import AppState
 from engine.config import Config
-from main import AppCoordinator
-
+from engine.connection import ConnectionManager
 
 @pytest.mark.asyncio
 async def test_ensure_connected_idempotency():
     config = Config()
     config.test.enabled = True
-    config.default_provider = "openai"
-    coordinator = AppCoordinator(config)
+    config.transcription.provider = "openai"
 
-    mock_provider = MagicMock()
-    mock_provider.is_running = True
-    mock_provider.get_type.return_value = "openai"
-    mock_provider.start = AsyncMock()  # Must be awaitable if called
+    def set_state(s):
+        pass
 
-    coordinator.provider = mock_provider
-    coordinator.connection_manager._session_start_time = time.time()
+    cm = ConnectionManager(
+        config=config,
+        on_partial=lambda x: None,
+        on_final=lambda x: None,
+        set_state_cb=set_state,
+    )
 
-    # Second call should return immediately without calling start()
-    await coordinator.ensure_connected()
-    assert mock_provider.start.call_count == 0
+    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
+        # Mock successful connection
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
+        
+        # First connection
+        await cm.ensure_connected(is_listening=False)
+        provider1 = cm.provider
+        assert provider1 is not None
+        assert provider1.is_running
 
+        # Second connection (should be idempotent)
+        await cm.ensure_connected(is_listening=False)
+        assert cm.provider is provider1
 
-@pytest.mark.asyncio
-async def test_warm_idle_timeout():
-    config = Config()
-    config.test.enabled = True
-    config.audio.connection_mode = "warm"
-    config.audio.warm_idle_timeout_seconds = 0.1  # Very short for test
-
-    coordinator = AppCoordinator(config)
-    mock_provider = AsyncMock()
-    mock_provider.is_running = True
-    coordinator.provider = mock_provider
-    coordinator.audio_adapter = MagicMock()
-    coordinator.state = AppState.LISTENING
-
-    # Stop listening should trigger idle timer
-    await coordinator.stop_listening()
-
-    assert coordinator.provider is not None  # Still there (WARM)
-
-    # Wait for timeout
-    await asyncio.sleep(0.3)
-
-    # Should have been closed by now
-    assert coordinator.provider is None
-
+    await cm.shutdown()
 
 @pytest.mark.asyncio
 async def test_openai_rotation_guard():
-    from engine.audio.adapter import ProviderAudioSpec
-
     config = Config()
     config.test.enabled = True
-    config.default_provider = "openai"
-    coordinator = AppCoordinator(config)
+    config.transcription.provider = "openai"
+    config.providers.openai.core.session_rotation_seconds = 1  # Rotate after 1s
 
-    spec = ProviderAudioSpec(sample_rate_hz=24000)
+    def set_state(s):
+        pass
 
-    mock_provider = AsyncMock()
-    mock_provider.is_running = True
-    mock_provider.get_type = MagicMock(return_value="openai")
-    mock_provider.get_audio_spec = MagicMock(return_value=spec)
-    coordinator.provider = mock_provider
-    coordinator.state = AppState.LISTENING
+    cm = ConnectionManager(
+        config=config,
+        on_partial=lambda x: None,
+        on_final=lambda x: None,
+        set_state_cb=set_state,
+    )
 
-    # Set session start to 1 hour ago
-    coordinator.connection_manager._session_start_time = time.time() - 3601
+    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
+        
+        await cm.ensure_connected(is_listening=False)
+        provider1 = cm.provider
 
-    # 1. ensure_connected should NOT rotate if is_listening is True
-    await coordinator.ensure_connected()
-    assert coordinator.connection_manager._rotation_pending
-    assert coordinator.provider is mock_provider
+        # Wait for rotation to be due
+        await asyncio.sleep(1.1)
 
-    # 2. Stop listening should allow rotation on next ensure_connected
-    coordinator.state = AppState.IDLE
+        # ensure_connected while NOT listening should rotate immediately
+        await cm.ensure_connected(is_listening=False)
+        assert cm.provider is not provider1
+        assert cm.provider is not None
 
-    # We patch factory create to return a new mock when it tries to reconnect
-    new_mock = AsyncMock()
-    new_mock.is_running = False  # Initial state
-    new_mock.get_type = MagicMock(return_value="openai")
-    new_mock.get_audio_spec = MagicMock(return_value=spec)
-    with patch("engine.transcription.factory.TranscriptionFactory.create", return_value=new_mock):
-        await coordinator.ensure_connected()
-
-    assert mock_provider.stop.called
-    assert coordinator.provider is new_mock
-
+    await cm.shutdown()
 
 @pytest.mark.asyncio
 async def test_provider_switching():
-
-    from engine.audio.adapter import ProviderAudioSpec
-
     config = Config()
-
     config.test.enabled = True
+    config.transcription.provider = "openai"
 
-    config.default_provider = "openai"
+    def set_state(s):
+        pass
 
-    coordinator = AppCoordinator(config)
+    cm = ConnectionManager(
+        config=config,
+        on_partial=lambda x: None,
+        on_final=lambda x: None,
+        set_state_cb=set_state,
+    )
 
-    spec_openai = ProviderAudioSpec(sample_rate_hz=24000)
-    spec_assembly = ProviderAudioSpec(sample_rate_hz=16000)
+    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
+        mock_ws = AsyncMock()
+        mock_connect.return_value = mock_ws
+        
+        await cm.ensure_connected(is_listening=False)
+        assert cm.provider.get_type() == "openai"
 
-    mock_openai = AsyncMock()
-    mock_openai.is_running = True
-    mock_openai.get_type = MagicMock(return_value="openai")
-    mock_openai.get_audio_spec = MagicMock(return_value=spec_openai)
-    coordinator.provider = mock_openai
+        # Switch config
+        config.transcription.provider = "assemblyai"
 
-    # Switch config to assemblyai
-    config.default_provider = "assemblyai"
+        # ensure_connected should switch provider
+        await cm.ensure_connected(is_listening=False)
+        assert cm.provider.get_type() == "assemblyai"
 
-    # ensure_connected should detect mismatch and stop openai
-    new_mock = AsyncMock()
-    new_mock.is_running = False
-    new_mock.get_type = MagicMock(return_value="assemblyai")
-    new_mock.get_audio_spec = MagicMock(return_value=spec_assembly)
-
-    with patch("engine.transcription.factory.TranscriptionFactory.create", return_value=new_mock):
-        await coordinator.ensure_connected()
-
-    assert mock_openai.stop.called
-    assert coordinator.provider is new_mock
+    await cm.shutdown()

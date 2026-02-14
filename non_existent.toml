@@ -1,5 +1,3 @@
-default_provider = "openai"
-
 [hotkeys]
 hotkey = "ctrl+alt+v"
 hold_mode = false
@@ -15,7 +13,7 @@ start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
 stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
 [ui.floating_indicator]
-enabled = true
+enabled = false
 opacity_idle = 0.3
 opacity_active = 0.8
 y_offset = 60
@@ -31,8 +29,11 @@ connection_timeout_seconds = 10.0
 voice_activity_threshold = 0.005
 
 [transcription]
+provider = "openai"
 language = "en"
-sample_rate = 16000
+latency_profile = "balanced"
+mic_profile = "headset"
+format_text = false
 
 [test]
 enabled = false
@@ -45,14 +46,15 @@ file_level = 1
 
 [providers.openai.core]
 realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
-model = "gpt-4o-mini-transcribe"
-language = "en"
+realtime_model = "gpt-4o-realtime-preview"
+transcription_model = "gpt-4o-mini-transcribe"
 prompt = ""
 input_audio_type = "audio/pcm16"
 input_audio_rate = 24000
 session_rotation_seconds = 3300
 
 [providers.openai.advanced]
+override = false
 noise_reduction = "off"
 turn_detection_type = "server_vad"
 vad_threshold = 0.5
@@ -62,7 +64,8 @@ include_logprobs = false
 
 [providers.assemblyai.core]
 ws_url = "wss://streaming.assemblyai.com/v3/ws"
-sample_rate = 16000
+region = "us"
+
 vad_threshold = 0.4
 encoding = "pcm_s16le"
 speech_model = "universal-streaming-english"
@@ -70,9 +73,8 @@ keyterms_prompt = []
 inactivity_timeout_seconds = 0
 
 [providers.assemblyai.advanced]
+override = false
 end_of_turn_confidence_threshold = 0.4
 min_end_of_turn_silence_when_confident_ms = 400
 max_turn_silence_ms = 1000
-utterance_silence_threshold_ms = 700
-format_turns = false
 language_detection = false
