@@ -26,3 +26,6 @@ Goal: Add the version header and "Hold to Talk" toggle to the Tray.
     - [x] Task: Verify version display correctly reflects `pyproject.toml`. [4e1f231]
     - [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). [4e1f231]
 - [ ] Task: Conductor - User Manual Verification 'Tray Menu & Feature Exposure' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions [e3a398a]
