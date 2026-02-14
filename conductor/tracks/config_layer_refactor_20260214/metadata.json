@@ -1,8 +1,0 @@
-{
-  "track_id": "config_layer_refactor_20260214",
-  "type": "refactor",
-  "status": "new",
-  "created_at": "2026-02-14T06:02:00Z",
-  "updated_at": "2026-02-14T06:02:00Z",
-  "description": "Implement UserConfig vs EffectiveConfig separation with a staged resolution pipeline and specialized compilers."
-}

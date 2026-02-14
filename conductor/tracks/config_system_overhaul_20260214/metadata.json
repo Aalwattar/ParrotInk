@@ -1,8 +1,0 @@
-{
-  "track_id": "config_system_overhaul_20260214",
-  "type": "refactor",
-  "status": "new",
-  "created_at": "2026-02-14T06:17:00Z",
-  "updated_at": "2026-02-14T06:17:00Z",
-  "description": "Consolidated overhaul of the configuration system: Staged resolution (UserConfig vs EffectiveConfig), strict API alignment (OpenAI/AssemblyAI), and diagnostic tools."
-}
