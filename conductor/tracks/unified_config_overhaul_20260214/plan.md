@@ -34,18 +34,18 @@ Goal: Implement the "Change Hotkey" flow.
 - [x] Task: Update `AppCoordinator` to reload the listener on config change.
 - [x] Task: Conductor - User Manual Verification 'Interactive Hotkey UI' (Protocol in workflow.md)
 
-## Phase 4: Polishing & Final DOD
+## Phase 4: Polishing & Final DOD [checkpoint: 2ac82e1]
 Goal: Address bug fixes, UX refinements, and quality gates.
 
-- [ ] Task: Fix `app config --explain` CLI crash.
-  - [ ] Sub-task: Wrap `load_config` in `main.py` to print a clean error instead of a stack trace for invalid TOML.
-- [ ] Task: Refine Hotkey Validation & UX.
-  - [ ] Sub-task: Update `HotkeyRecorder` to allow single keys (F1-F12, etc.) but block "Modifiers-Only."
-  - [ ] Sub-task: Create HUD-styled `HotkeyRecordingWindow` in `engine/platform_win/hotkey_dialog.py`.
-  - [ ] Sub-task: Implement live-update text in the recording dialog.
-- [ ] Task: Fix HUD Click-Through.
-  - [ ] Sub-task: Add `WS_EX_TRANSPARENT` style and set `WM_NCHITTEST` to `HTTRANSPARENT`.
-- [ ] Task: Final Code Archaeology & Cleanup.
-  - [ ] Sub-task: Remove any remaining dead code or legacy "bridge" variables.
-- [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
-- [ ] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
+- [x] Task: Fix `app config --explain` CLI crash. 2ac82e1
+  - [x] Sub-task: Wrap `load_config` in `main.py` to print a clean error instead of a stack trace for invalid TOML.
+- [x] Task: Refine Hotkey Validation & UX. 2ac82e1
+  - [x] Sub-task: Update `HotkeyRecorder` to allow single keys (F1-F12, etc.) but block "Modifiers-Only."
+  - [x] Sub-task: Create HUD-styled `HotkeyRecordingWindow` in `engine/platform_win/hotkey_dialog.py`.
+  - [x] Sub-task: Implement live-update text in the recording dialog.
+- [x] Task: Fix HUD Click-Through. 2ac82e1
+  - [x] Sub-task: Add `WS_EX_TRANSPARENT` style and set `WM_NCHITTEST` to `HTTRANSPARENT`.
+- [x] Task: Final Code Archaeology & Cleanup. 2ac82e1
+  - [x] Sub-task: Remove any remaining dead code or legacy "bridge" variables.
+- [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). 2ac82e1
+- [x] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
