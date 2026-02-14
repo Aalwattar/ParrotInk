@@ -21,7 +21,7 @@ class HudStyle(ABC):
 class GlassStyle(HudStyle):
     def __init__(self):
         self.radius = 18.0
-        self.capsule_height = 36.0  # Slightly taller for larger font
+        self.capsule_height = 44.0  # Increased for larger 16pt font
         self.max_capsule_width = 800.0
         self.padding = 8.0
 
@@ -37,13 +37,13 @@ class GlassStyle(HudStyle):
     ):
         canvas.clear(skia.ColorTRANSPARENT)
 
-        # 1. Setup Fonts - Increased to 14pt for readability
+        # 1. Setup Fonts - Increased to 16pt for top-tier readability
         try:
             tf_reg = skia.Typeface.MakeFromName("Segoe UI", skia.FontStyle.Normal())
         except Exception:
             tf_reg = skia.Typeface.MakeDefault()
 
-        font_text = skia.Font(tf_reg, 14)
+        font_text = skia.Font(tf_reg, 16)
 
         # 2. Content Preparation
         is_listening_placeholder = False
