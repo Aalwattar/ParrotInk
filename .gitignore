@@ -4,7 +4,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 .env
-uv.lock
 *.pyc
 config.toml
 *.log
+build/
+dist/

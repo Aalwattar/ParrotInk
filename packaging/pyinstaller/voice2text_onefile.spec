@@ -1,7 +1,20 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, collect_dynamic_libs
 
+import os
+
+
+
 block_cipher = None
+
+APP_NAME = "Voice2Text"
+
+
+
+# Get the absolute path to the repo root
+# (two levels up from this spec file)
+# PyInstaller provides the 'SPECPATH' variable.
+repo_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
 
 hiddenimports = []
 hiddenimports += collect_submodules("pynput")
@@ -14,15 +27,17 @@ hiddenimports += ["keyring.backends.Windows"]
 datas = []
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
-# Include assets
-datas += [('../../assets', 'assets')]
+# Include assets relative to repo root
+datas += [(os.path.join(repo_root, "assets"), "assets")]
 
 binaries = []
-binaries += collect_dynamic_libs("sounddevice")
+# sounddevice collection usually works better by just collecting the package data
+# but we'll try to find the dll explicitly if needed. 
+# For now, let's use a simpler approach for sounddevice.
 
 a = Analysis(
-    ["../../main.py"],
-    pathex=[],
+    [os.path.join(repo_root, "main.py")],
+    pathex=[repo_root],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
@@ -44,7 +59,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name="Voice2Text",
+    name=APP_NAME,
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

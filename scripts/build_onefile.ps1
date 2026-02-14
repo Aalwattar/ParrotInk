@@ -1,5 +1,9 @@
 $ErrorActionPreference = "Stop"
 
+# --- Configuration ---
+$APP_NAME = "Voice2Text"
+$SPEC_FILE = "packaging/pyinstaller/voice2text_onefile.spec"
+
 # 1) Go to repo root
 $repoRoot = (Split-Path -Parent $PSScriptRoot)
 Set-Location $repoRoot
@@ -7,17 +11,11 @@ Write-Host "Repo root: $repoRoot" -ForegroundColor Cyan
 
 # 2) Clean old outputs
 Write-Host "Cleaning previous build artifacts..." -ForegroundColor Yellow
-if (Test-Path "dist") {
-    Remove-Item -Recurse -Force "dist"
-}
-if (Test-Path "build/pyinstaller/build") {
-    # PyInstaller creates a 'build' folder inside the spec dir by default if not specified
-    # but we will just clean the root build/ if it exists, excluding the spec file dir.
-}
-
-# Actually, let's just clean specific folders to avoid deleting the spec itself if it were in root build
-if (Test-Path "build/Voice2Text") {
-    Remove-Item -Recurse -Force "build/Voice2Text"
+$tempFolders = @("dist", "build")
+foreach ($folder in $tempFolders) {
+    if (Test-Path $folder) {
+        Remove-Item -Recurse -Force $folder
+    }
 }
 
 # 3) Ensure uv is available
@@ -31,13 +29,18 @@ uv sync --dev
 
 # 5) Build
 Write-Host "Starting PyInstaller build (onefile)..." -ForegroundColor Magenta
-# We run pyinstaller through 'uv run' to use the synced environment
-uv run pyinstaller --clean --noconfirm build/pyinstaller/voice2text_onefile.spec
+if (-not (Test-Path $SPEC_FILE)) {
+    throw "Spec file not found at: $SPEC_FILE"
+}
 
-if (Test-Path "dist/Voice2Text.exe") {
+# We run pyinstaller through 'uv run' to use the synced environment
+uv run pyinstaller --clean --noconfirm $SPEC_FILE
+
+$exePath = "dist/$APP_NAME.exe"
+if (Test-Path $exePath) {
     Write-Host "`nBuild Successful!" -ForegroundColor Green
-    Write-Host "Artifact location: dist\Voice2Text.exe" -ForegroundColor Green
+    Write-Host "Artifact location: $exePath" -ForegroundColor Green
 } else {
-    Write-Host "`nBuild Failed: Artifact not found." -ForegroundColor Red
+    Write-Host "`nBuild Failed: Artifact not found at $exePath" -ForegroundColor Red
     exit 1
 }
