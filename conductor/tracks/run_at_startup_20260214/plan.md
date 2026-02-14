@@ -16,7 +16,7 @@ Goal: Implement the core Windows Registry manipulation logic in a dedicated modu
 ## Phase 2: Integration & UI
 Goal: Connect the registry logic to the configuration system and the tray UI.
 
-- [ ] Task: Implement "Startup Sync" in `main.py`.
+- [x] Task: Implement "Startup Sync" in `main.py`. [6e88d81]
     - [ ] Task: On app initialization, if `config.interaction.run_at_startup` is true, call `set_run_at_startup(True)`.
 - [ ] Task: Update `engine/ui.py` to add the tray menu toggle.
     - [ ] Task: Add "Run at Startup" to the Settings menu.
