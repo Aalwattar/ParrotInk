@@ -1,6 +1,6 @@
 # Implementation Plan: Cosmetic & UI Refinements
 
-## Phase 1: Visual Foundation & Icons
+## Phase 1: Visual Foundation & Icons [checkpoint: fc153a6]
 Goal: Modernize the tray icon and HUD typography.
 
 - [x] Task: Create `engine/ui_utils.py` for shared UI helpers. [bffa869]
