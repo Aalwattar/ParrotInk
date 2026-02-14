@@ -18,9 +18,9 @@ Goal: Connect the registry logic to the configuration system and the tray UI.
 
 - [x] Task: Implement "Startup Sync" in `main.py`. [6e88d81]
     - [ ] Task: On app initialization, if `config.interaction.run_at_startup` is true, call `set_run_at_startup(True)`.
-- [ ] Task: Update `engine/ui.py` to add the tray menu toggle.
-    - [ ] Task: Add "Run at Startup" to the Settings menu.
-    - [ ] Task: Implement click handler: `config.update_and_save(...)` -> then call `set_run_at_startup(...)` immediately.
+- [x] Task: Update `engine/ui.py` to add the tray menu toggle. [ec0a631]
+    - [x] Task: Add "Run at Startup" to the Settings menu.
+    - [x] Task: Implement click handler: `config.update_and_save(...)` -> then call `set_run_at_startup(...)` immediately.
 - [ ] Task: Verify end-to-end flow.
     - [ ] Task: Toggle the setting via UI and check `config.toml` and Registry.
     - [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
