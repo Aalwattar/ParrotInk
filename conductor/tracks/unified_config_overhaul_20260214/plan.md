@@ -25,7 +25,7 @@ Goal: Implement smart updates and ensure strict API compliance.
 ## Phase 3: Interactive Hotkey UI
 Goal: Implement the "Change Hotkey" flow.
 
-- [ ] Task: Create `engine/platform_win/hotkey_recorder.py` for Win32 key capture.
+- [~] Task: Create `engine/platform_win/hotkey_recorder.py` for Win32 key capture.
 - [ ] Task: Update `engine/ui.py` to add "Change Hotkey" tray menu item.
 - [ ] Task: Implement the recording flow:
   - [ ] Sub-task: Show modal prompt.

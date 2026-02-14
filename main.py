@@ -52,6 +52,9 @@ class AppCoordinator:
         self.input_monitor = InputMonitor(on_press=self.on_press, on_release=self.on_release)
         self.input_monitor.set_any_key_callback(self._on_manual_stop)
 
+        # Register for config changes
+        self.config.register_observer(self._on_config_changed)
+
         # Mouse monitoring for click-away
         self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
         self.anchor: Optional[Anchor] = None
@@ -96,6 +99,12 @@ class AppCoordinator:
     @property
     def is_listening(self) -> bool:
         return self.state == AppState.LISTENING
+
+    def _on_config_changed(self, config: Config):
+        """Reacts to configuration updates in-flight."""
+        logger.info("Configuration changed. Reloading settings...")
+        self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
+        logger.debug(f"Target hotkey updated to: {self.target_hotkey}")
 
     @property
     def is_connecting(self) -> bool:

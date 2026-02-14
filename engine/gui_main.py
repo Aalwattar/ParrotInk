@@ -83,6 +83,10 @@ async def main_gui(cli_args):
         config.interaction.sounds.enabled = enabled
         logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
 
+    def on_hotkey_change(new_hotkey):
+        # This will trigger update_and_save which notifies the coordinator
+        config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
+
     # Import TrayApp here to keep gui_main decoupled from other modules until needed
     from engine.ui import TrayApp
 
@@ -93,6 +97,7 @@ async def main_gui(cli_args):
         on_provider_change=on_provider_change,
         on_set_key=on_set_key,
         on_toggle_sounds=on_toggle_sounds,
+        on_hotkey_change=on_hotkey_change,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

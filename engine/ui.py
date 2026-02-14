@@ -1,3 +1,4 @@
+import ctypes
 import os
 import threading
 from pathlib import Path
@@ -9,6 +10,7 @@ from PIL import Image, ImageDraw
 from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
 from .logging import get_logger
+from .platform_win.hotkey_recorder import HotkeyRecorder
 
 if TYPE_CHECKING:
     from .config import Config
@@ -26,6 +28,7 @@ class TrayApp:
         on_provider_change: Callable[[ProviderType], None] | None = None,
         on_set_key: Callable[[str, str], None] | None = None,
         on_toggle_sounds: Callable[[bool], None] | None = None,
+        on_hotkey_change: Callable[[str], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -39,6 +42,7 @@ class TrayApp:
         self.on_provider_change = on_provider_change
         self.on_set_key = on_set_key
         self.on_toggle_sounds = on_toggle_sounds
+        self.on_hotkey_change = on_hotkey_change
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -84,6 +88,42 @@ class TrayApp:
         self.sounds_enabled = not self.sounds_enabled
         if self.on_toggle_sounds:
             self.on_toggle_sounds(self.sounds_enabled)
+
+    def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        def record():
+            # Show instruction message box
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                "The application will now record your next key combination.\n\n"
+                "1. Press and HOLD the keys (e.g. Ctrl + Shift + Space)\n"
+                "2. Release them to finish.\n\n"
+                "Click OK then press your keys.",
+                "Record New Hotkey",
+                0x40,  # MB_ICONINFORMATION
+            )
+
+            recorder = HotkeyRecorder()
+            captured = None
+
+            def on_captured(hk):
+                nonlocal captured
+                captured = hk
+
+            # recorder.start() is blocking until captured or stopped
+            recorder.start(on_captured)
+
+            if captured:
+                logger.info(f"New hotkey captured: {captured}")
+                if self.on_hotkey_change:
+                    self.on_hotkey_change(captured)
+
+                ctypes.windll.user32.MessageBoxW(
+                    0, f"Hotkey changed to: {captured}", "Hotkey Updated", 0x40
+                )
+            else:
+                logger.info("Hotkey recording cancelled or failed.")
+
+        threading.Thread(target=record, daemon=True).start()
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
         # We launch this in a thread because showing a dialog (console or GUI)
@@ -136,6 +176,10 @@ class TrayApp:
             pystray.MenuItem(
                 "Settings",
                 pystray.Menu(
+                    pystray.MenuItem(
+                        "Change Hotkey...",
+                        self._on_change_hotkey_clicked,
+                    ),
                     pystray.MenuItem(
                         "Enable Audio Feedback",
                         self._on_toggle_sounds_clicked,
