@@ -103,6 +103,7 @@ async def main_gui(cli_args):
 
     def on_toggle_startup(enabled):
         from engine.platform_win.startup import set_run_at_startup
+
         config.update_and_save({"interaction": {"run_at_startup": enabled}})
         set_run_at_startup(enabled)
         logger.info(f"Run at Startup {'enabled' if enabled else 'disabled'}")

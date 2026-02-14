@@ -538,6 +538,7 @@ if __name__ == "__main__":
             # Perform Startup Sync
             if config.interaction.run_at_startup:
                 from engine.platform_win.startup import set_run_at_startup
+
                 set_run_at_startup(True)
         except ConfigError as e:
             msg = (
