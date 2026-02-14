@@ -8,9 +8,9 @@ Goal: Modernize the tray icon and HUD typography.
 - [x] Task: Refactor `TrayApp` icon generation in `engine/ui.py`. [b64c8bb]
     - [x] Task: Replace the ellipse design with a rounded-corner square ("Modern Square"). [b64c8bb]
     - [x] Task: Update color palette for Idle, Listening, and Error states to be more "Fluent/Modern". [b64c8bb]
-- [ ] Task: Update HUD Typography in `engine/hud_styles.py`.
-    - [ ] Task: Change default font to "Segoe UI".
-    - [ ] Task: Adjust font size to the lower end of the high-readability range (e.g., 14pt-16pt).
+- [x] Task: Update HUD Typography in `engine/hud_styles.py`. [e35f1b3]
+    - [x] Task: Change default font to "Segoe UI". [e35f1b3]
+    - [x] Task: Adjust font size to the lower end of the high-readability range (e.g., 14pt-16pt). [e35f1b3]
 - [ ] Task: Conductor - User Manual Verification 'Visual Foundation & Icons' (Protocol in workflow.md)
 
 ## Phase 2: Tray Menu & Feature Exposure
