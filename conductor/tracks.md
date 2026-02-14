@@ -156,3 +156,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Single Instance Protection**
 *Link: [./archive/single_instance_protection_20260214/](./archive/single_instance_protection_20260214/)*
+
+---
+
+- [ ] **Track: Run at Startup Feature**
+*Link: [./tracks/run_at_startup_20260214/](./tracks/run_at_startup_20260214/)*
