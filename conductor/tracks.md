@@ -159,5 +159,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Unified Configuration & Interaction Overhaul**
+- [~] **Track: Unified Configuration & Interaction Overhaul**
 *Link: [./tracks/unified_config_overhaul_20260214/](./tracks/unified_config_overhaul_20260214/)*

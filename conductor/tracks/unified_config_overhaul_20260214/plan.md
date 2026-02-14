@@ -3,12 +3,12 @@
 ## Phase 1: Schema Refine & Validation
 Goal: Simplify the TOML structure and implement high-level profiles.
 
-- [ ] Task: Update `engine/config.py` with the new schema.
-  - [ ] Sub-task: Implement `latency_profile` and `mic_profile` enums.
-  - [ ] Sub-task: Add Pydantic validation for `volume` (0..1) and `inactivity_timeout` (5..3600).
-  - [ ] Sub-task: Consolidate `language` and `sample_rate` to global keys.
-- [ ] Task: Implement mapping logic to derive engineering values from profiles.
-- [ ] Task: Update `migrate_config_file` to handle the new structure.
+- [x] Task: Update `engine/config.py` with the new schema. e3983db
+  - [x] Sub-task: Implement `latency_profile` and `mic_profile` enums.
+  - [x] Sub-task: Add Pydantic validation for `volume` (0..1) and `inactivity_timeout` (5..3600).
+  - [x] Sub-task: Consolidate `language` and `sample_rate` to global keys.
+- [x] Task: Implement mapping logic to derive engineering values from profiles. e3983db
+- [x] Task: Update `migrate_config_file` to handle the new structure. e3983db
 - [ ] Task: Conductor - User Manual Verification 'Schema Refine & Validation' (Protocol in workflow.md)
 
 ## Phase 2: In-Flight Updates & Provider Alignment
