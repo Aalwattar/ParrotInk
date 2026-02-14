@@ -3,7 +3,7 @@ import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator, ConfigDict
 
 from .logging import get_logger
 from .platform_win.paths import get_config_path
@@ -11,12 +11,45 @@ from .security import SecurityManager
 
 logger = get_logger("Config")
 
+# --- Profile Mappings ---
+
+LATENCY_PROFILES = {
+    "fast": {
+        "openai": {"vad_threshold": 0.55, "silence_duration_ms": 300},
+        "assemblyai": {
+            "end_of_turn_confidence_threshold": 0.35,
+            "min_end_of_turn_silence_when_confident_ms": 300,
+            "max_turn_silence_ms": 800,
+        },
+    },
+    "balanced": {
+        "openai": {"vad_threshold": 0.60, "silence_duration_ms": 500},
+        "assemblyai": {
+            "end_of_turn_confidence_threshold": 0.4,
+            "min_end_of_turn_silence_when_confident_ms": 400,
+            "max_turn_silence_ms": 1000,
+        },
+    },
+    "accurate": {
+        "openai": {"vad_threshold": 0.65, "silence_duration_ms": 800},
+        "assemblyai": {
+            "end_of_turn_confidence_threshold": 0.5,
+            "min_end_of_turn_silence_when_confident_ms": 600,
+            "max_turn_silence_ms": 1500,
+        },
+    },
+}
+
+MIC_PROFILES = {
+    "headset": "near_field",
+    "laptop": "far_field",
+    "none": None,
+}
+
 
 def migrate_config_file(path: Path | str):
     """
     Automatically migrates config file values to current best practices.
-    - Standardizes capture_sample_rate to 16000.
-    - Standardizes OpenAI input_audio_rate to 24000.
     """
     path = Path(path)
     if not path.exists():
@@ -24,38 +57,51 @@ def migrate_config_file(path: Path | str):
 
     try:
         content = path.read_text(encoding="utf-8")
+        new_content = content
 
         # 1. capture_sample_rate -> 16000 (standard efficiency)
-        new_content = re.sub(r"(\bcapture_sample_rate\s*=\s*)24000\b", r"\g<1>16000", content)
+        new_content = re.sub(r"(\bcapture_sample_rate\s*=\s*)24000\b", r"\g<1>16000", new_content)
 
-        # 2. transcription.sample_rate -> 16000
-        new_content = re.sub(r"(\bsample_rate\s*=\s*)24000\b", r"\g<1>16000", new_content)
-
-        # 3. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
+        # 2. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
         new_content = re.sub(r"(\binput_audio_rate\s*=\s*)16000\b", r"\g<1>24000", new_content)
+
+        # 3. Handle default_provider migration if not in transcription
+        if "default_provider" in new_content and "[transcription]" in new_content:
+            # Simple check if provider is already there
+            if "provider =" not in new_content.split("[transcription]")[1].split("[")[0]:
+                match = re.search(r'default_provider\s*=\s*"([^"]+)"', new_content)
+                if match:
+                    provider = match.group(1)
+                    # Add to [transcription] section
+                    new_content = new_content.replace(
+                        "[transcription]", f'[transcription]\nprovider = "{provider}"'
+                    )
+                    # Remove from root
+                    new_content = re.sub(r'default_provider\s*=\s*"[^"]+"\s*', "", new_content)
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")
-            print(
-                f"Migrated {path} to standardized sample rates (16kHz capture, 24kHz OpenAI input)."
-            )
+            logger.info(f"Migrated {path} to new configuration schema.")
     except Exception as e:
-        print(f"Warning: Failed to migrate config file {path}: {e}")
+        logger.warning(f"Failed to migrate config file {path}: {e}")
 
 
 class HotkeysConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     hotkey: str = "ctrl+alt+v"
     hold_mode: bool = False
 
 
 class SoundsConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     enabled: bool = True
-    volume: float = 0.5
+    volume: float = Field(default=0.5, ge=0.0, le=1.0)
     start_sound_path: str = r"C:\Windows\Media\Speech On.wav"
     stop_sound_path: str = r"C:\Windows\Media\Speech Off.wav"
 
 
 class FloatingIndicatorConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     enabled: bool = False
     opacity_idle: float = 0.3
     opacity_active: float = 0.8
@@ -65,6 +111,7 @@ class FloatingIndicatorConfig(BaseModel):
 
 
 class InteractionConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     # From cancel_click_away_20260210
     cancel_on_click_outside_anchor: bool = True
     anchor_scope: Literal["control", "window"] = "control"
@@ -74,6 +121,7 @@ class InteractionConfig(BaseModel):
 
 
 class AudioConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     capture_sample_rate: int = 16000
     chunk_ms: int = 100
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
@@ -83,17 +131,24 @@ class AudioConfig(BaseModel):
 
 
 class TranscriptionConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    provider: Literal["openai", "assemblyai"] = Field(
+        default="openai", validation_alias=AliasChoices("provider", "active_provider")
+    )
     language: str = "en"
-    sample_rate: int = 16000
+    latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
+    mic_profile: Literal["headset", "laptop", "none"] = "headset"
 
 
 class AppTestConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     enabled: bool = False
     openai_mock_url: str = "ws://localhost:8081"
     assemblyai_mock_url: str = "ws://localhost:8081"
 
 
 class LoggingConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     file_enabled: bool = False
     file_path: Optional[str] = None
     file_level: int = 1
@@ -103,9 +158,9 @@ class LoggingConfig(BaseModel):
 
 
 class OpenAICoreConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
     model: str = "gpt-4o-mini-transcribe"  # Default transcription model
-    language: str = "en"
     prompt: str = ""
     input_audio_type: str = "audio/pcm16"
     input_audio_rate: int = 24000
@@ -113,6 +168,7 @@ class OpenAICoreConfig(BaseModel):
 
 
 class OpenAIAdvancedConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     noise_reduction: str = "off"
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.5
@@ -122,6 +178,7 @@ class OpenAIAdvancedConfig(BaseModel):
 
 
 class OpenAIConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     core: OpenAICoreConfig = Field(
         default_factory=OpenAICoreConfig, validation_alias=AliasChoices("core", "tier1")
     )
@@ -134,6 +191,7 @@ class OpenAIConfig(BaseModel):
 
 
 class AssemblyAICoreConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     sample_rate: int = 16000
     vad_threshold: float = 0.4
@@ -142,8 +200,16 @@ class AssemblyAICoreConfig(BaseModel):
     keyterms_prompt: List[str] = Field(default_factory=list)
     inactivity_timeout_seconds: int = 0
 
+    @field_validator("inactivity_timeout_seconds")
+    @classmethod
+    def check_inactivity_timeout(cls, v):
+        if v != 0 and (v < 5 or v > 3600):
+            raise ValueError("Inactivity timeout must be 0 or between 5 and 3600 seconds")
+        return v
+
 
 class AssemblyAIAdvancedConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
     max_turn_silence_ms: int = 1000  # Default 1280
@@ -153,6 +219,7 @@ class AssemblyAIAdvancedConfig(BaseModel):
 
 
 class AssemblyAIConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     core: AssemblyAICoreConfig = Field(
         default_factory=AssemblyAICoreConfig, validation_alias=AliasChoices("core", "tier1")
     )
@@ -162,18 +229,18 @@ class AssemblyAIConfig(BaseModel):
 
 
 class ProvidersConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
     assemblyai: AssemblyAIConfig = Field(default_factory=AssemblyAIConfig)
 
 
 class UIConfig(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     floating_indicator: FloatingIndicatorConfig = Field(default_factory=FloatingIndicatorConfig)
 
 
 class Config(BaseModel):
-    default_provider: Literal["openai", "assemblyai"] = Field(
-        default="openai", validation_alias=AliasChoices("default_provider", "active_provider")
-    )
+    model_config = ConfigDict(extra='forbid')
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     interaction: InteractionConfig = Field(default_factory=InteractionConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
