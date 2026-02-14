@@ -61,8 +61,9 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
 ### 2.9. Distribution
 - **Standalone Executable:** The application can be packaged as a single, portable Windows executable (`Voice2Text.exe`) for easy distribution and installation.
-- **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\Voice2Text` directory, ensuring it works even when launched from read-only locations.
-
+    - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\Voice2Text` directory, ensuring it works even when launched from read-only locations.
+    - **Single Instance Protection:** The application uses a Win32 Mutex to ensure only one instance is running at a time, preventing hotkey and microphone conflicts. If a second instance is launched, it displays a helpful notification and exits gracefully.
+    - **Automation-Friendly:** A `--background` CLI flag allows the application to start silently without the "already running" warning, ideal for startup scripts and automation.
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline
