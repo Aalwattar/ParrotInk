@@ -6,6 +6,21 @@ from typing import Any, Optional
 
 from engine.logging import get_logger
 
+from .platform_win.api import (
+    AC_SRC_ALPHA,
+    AC_SRC_OVER,
+    BITMAPINFO,
+    BITMAPINFOHEADER,
+    BLENDFUNCTION,
+    HTCAPTION,
+    HTTRANSPARENT,
+    ULW_ALPHA,
+    WM_NCHITTEST,
+    WS_EX_TRANSPARENT,
+    gdi32,
+    user32,
+)
+
 logger = get_logger("HudRenderer")
 
 try:
@@ -19,74 +34,6 @@ try:
     HUD_AVAILABLE = True
 except ImportError:
     HUD_AVAILABLE = False
-
-# --- Win32 Constants ---
-WS_EX_LAYERED = 0x00080000
-WS_EX_TOPMOST = 0x00000008
-WS_EX_TOOLWINDOW = 0x00000080
-WS_EX_TRANSPARENT = 0x00000020
-WS_POPUP = 0x80000000
-ULW_ALPHA = 0x00000002
-AC_SRC_ALPHA = 0x01
-AC_SRC_OVER = 0x00
-WM_NCHITTEST = 0x0084
-HTCAPTION = 2
-HTTRANSPARENT = -1
-WM_TIMER = 0x0113
-
-
-# --- Win32 Structs ---
-class BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [
-        ("BlendOp", ctypes.c_byte),
-        ("BlendFlags", ctypes.c_byte),
-        ("SourceConstantAlpha", ctypes.c_byte),
-        ("AlphaFormat", ctypes.c_byte),
-    ]
-
-
-class BITMAPINFOHEADER(ctypes.Structure):
-    _fields_ = [
-        ("biSize", wintypes.DWORD),
-        ("biWidth", wintypes.LONG),
-        ("biHeight", wintypes.LONG),
-        ("biPlanes", wintypes.WORD),
-        ("biBitCount", wintypes.WORD),
-        ("biCompression", wintypes.DWORD),
-        ("biSizeImage", wintypes.DWORD),
-        ("biXPelsPerMeter", wintypes.LONG),
-        ("biYPelsPerMeter", wintypes.LONG),
-        ("biClrUsed", wintypes.DWORD),
-        ("biClrImportant", wintypes.DWORD),
-    ]
-
-
-class BITMAPINFO(ctypes.Structure):
-    _fields_ = [("bmiHeader", BITMAPINFOHEADER), ("bmiColors", wintypes.DWORD * 3)]
-
-
-_user32 = ctypes.windll.user32
-_gdi32 = ctypes.windll.gdi32
-
-# Architecture-aware types for 64-bit safety
-WPARAM = ctypes.c_uint64
-LPARAM = ctypes.c_int64
-LRESULT = ctypes.c_int64
-
-_user32.UpdateLayeredWindow.argtypes = [
-    wintypes.HWND,
-    wintypes.HDC,
-    ctypes.POINTER(wintypes.POINT),
-    ctypes.POINTER(wintypes.SIZE),
-    wintypes.HDC,
-    ctypes.POINTER(wintypes.POINT),
-    wintypes.COLORREF,
-    ctypes.POINTER(BLENDFUNCTION),
-    wintypes.DWORD,
-]
-
-_user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
-_user32.DefWindowProcW.restype = LRESULT
 
 
 class HudOverlay:
@@ -123,12 +70,12 @@ class HudOverlay:
     def _update_window(self):
         if not self._hwnd:
             return
-        hdc_screen = _user32.GetDC(0)
+        hdc_screen = user32.GetDC(0)
         size = wintypes.SIZE(self.win_width, self.win_height)
         zero_pt = wintypes.POINT(0, 0)
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
 
-        _user32.UpdateLayeredWindow(
+        user32.UpdateLayeredWindow(
             self._hwnd,
             hdc_screen,
             None,
@@ -139,7 +86,7 @@ class HudOverlay:
             ctypes.byref(blend),
             ULW_ALPHA,
         )
-        _user32.ReleaseDC(0, hdc_screen)
+        user32.ReleaseDC(0, hdc_screen)
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
@@ -195,18 +142,6 @@ class HudOverlay:
             return HTTRANSPARENT if self._click_through else HTCAPTION
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
-    def apply_click_through(self, enabled: bool):
-        """Dynamically toggles click-through style."""
-        self._click_through = enabled
-        if not self._hwnd:
-            return
-        style = win32gui.GetWindowLong(self._hwnd, win32con.GWL_EXSTYLE)
-        if enabled:
-            style |= win32con.WS_EX_TRANSPARENT
-        else:
-            style &= ~win32con.WS_EX_TRANSPARENT
-        win32gui.SetWindowLong(self._hwnd, win32con.GWL_EXSTYLE, style)
-
     def run(self):
         if not HUD_AVAILABLE:
             return
@@ -224,8 +159,8 @@ class HudOverlay:
             pass
 
         # Robust Bottom-Center Position
-        screen_w = _user32.GetSystemMetrics(0)
-        screen_h = _user32.GetSystemMetrics(1)
+        screen_w = user32.GetSystemMetrics(0)
+        screen_h = user32.GetSystemMetrics(1)
 
         y_offset = 60
         refresh_rate = 50
@@ -261,8 +196,8 @@ class HudOverlay:
             logger.error(f"Failed to create HUD window: {win32gui.GetLastError()}")
 
         # Setup GDI DIB Section
-        hdc_screen = _user32.GetDC(0)
-        self._hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
+        hdc_screen = user32.GetDC(0)
+        self._hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
         bmi = BITMAPINFO()
         bmi.bmiHeader.biSize = ctypes.sizeof(BITMAPINFOHEADER)
         bmi.bmiHeader.biWidth = self.win_width
@@ -271,11 +206,11 @@ class HudOverlay:
         bmi.bmiHeader.biBitCount = 32
         bmi.bmiHeader.biCompression = 0
         self._pixel_ptr = ctypes.c_void_p()
-        self._hbmp = _gdi32.CreateDIBSection(
+        self._hbmp = gdi32.CreateDIBSection(
             self._hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(self._pixel_ptr), None, 0
         )
-        _gdi32.SelectObject(self._hdc_mem, self._hbmp)
-        _user32.ReleaseDC(0, hdc_screen)
+        gdi32.SelectObject(self._hdc_mem, self._hbmp)
+        user32.ReleaseDC(0, hdc_screen)
 
         # Skia surface wrapping the DIB section directly
         info = skia.ImageInfo.Make(
@@ -289,7 +224,7 @@ class HudOverlay:
         self._surface = skia.Surface.MakeRasterDirect(info, pixel_data, self.win_width * 4)
         self._canvas = self._surface.getCanvas()
 
-        _user32.SetTimer(self._hwnd, 1, refresh_rate, None)
+        user32.SetTimer(self._hwnd, 1, refresh_rate, None)
         self._ready_event.set()
         win32gui.PumpMessages()
 
@@ -330,3 +265,15 @@ class HudOverlay:
 
     def update_partial_text(self, text: str):
         self.update_text(text)
+
+    def apply_click_through(self, enabled: bool):
+        """Dynamically toggles click-through style."""
+        self._click_through = enabled
+        if not self._hwnd:
+            return
+        style = win32gui.GetWindowLong(self._hwnd, win32con.GWL_EXSTYLE)
+        if enabled:
+            style |= win32con.WS_EX_TRANSPARENT
+        else:
+            style &= ~win32con.WS_EX_TRANSPARENT
+        win32gui.SetWindowLong(self._hwnd, win32con.GWL_EXSTYLE, style)

@@ -6,131 +6,25 @@ from pynput import keyboard
 
 from engine.logging import get_logger
 
+from .api import (
+    AC_SRC_ALPHA,
+    AC_SRC_OVER,
+    BLENDFUNCTION,
+    ULW_ALPHA,
+    WM_DESTROY,
+    WNDCLASSEXW,
+    WS_EX_LAYERED,
+    WS_EX_TOOLWINDOW,
+    WS_EX_TOPMOST,
+    WS_POPUP,
+    GdiplusStartupInput,
+    gdi32,
+    gdiplus,
+    kernel32,
+    user32,
+)
+
 logger = get_logger("HotkeyDialog")
-
-# --- Win32 Constants ---
-WS_EX_LAYERED = 0x00080000
-WS_EX_TOPMOST = 0x00000008
-WS_EX_TOOLWINDOW = 0x00000080
-WS_POPUP = 0x80000000
-WM_DESTROY = 0x0002
-ULW_ALPHA = 0x00000002
-AC_SRC_ALPHA = 0x01
-AC_SRC_OVER = 0x00
-
-
-class BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [
-        ("BlendOp", ctypes.c_byte),
-        ("BlendFlags", ctypes.c_byte),
-        ("SourceConstantAlpha", ctypes.c_byte),
-        ("AlphaFormat", ctypes.c_byte),
-    ]
-
-
-class GdiplusStartupInput(ctypes.Structure):
-    _fields_ = [
-        ("GdiplusVersion", ctypes.c_uint32),
-        ("DebugEventCallback", ctypes.c_void_p),
-        ("SuppressBackgroundThread", ctypes.c_bool),
-        ("SuppressExternalCodecs", ctypes.c_bool),
-    ]
-
-
-# Architecture-aware types for 64-bit safety
-WPARAM = ctypes.c_uint64
-LPARAM = ctypes.c_int64
-LRESULT = ctypes.c_int64
-
-WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM)
-
-
-class WNDCLASSEXW(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", ctypes.c_uint),
-        ("style", ctypes.c_uint),
-        ("lpfnWndProc", WNDPROC),
-        ("cbClsExtra", ctypes.c_int),
-        ("cbWndExtra", ctypes.c_int),
-        ("hInstance", wintypes.HINSTANCE),
-        ("hIcon", wintypes.HICON),
-        ("hCursor", wintypes.HICON),
-        ("hbrBackground", wintypes.HBRUSH),
-        ("lpszMenuName", wintypes.LPCWSTR),
-        ("lpszClassName", wintypes.LPCWSTR),
-        ("hIconSm", wintypes.HICON),
-    ]
-
-
-_user32 = ctypes.windll.user32
-_kernel32 = ctypes.windll.kernel32
-_gdi32 = ctypes.windll.gdi32
-_gdiplus = ctypes.windll.gdiplus
-
-
-def _setup_gdiplus_prototypes():
-    """Explicitly define ctypes argument types to prevent 64-bit overflow errors."""
-    _gdiplus.GdipCreatePath.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
-    _gdiplus.GdipAddPathArc.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_float,
-        ctypes.c_float,
-        ctypes.c_float,
-        ctypes.c_float,
-        ctypes.c_float,
-        ctypes.c_float,
-    ]
-    _gdiplus.GdipCreateSolidFill.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_void_p)]
-    _gdiplus.GdipFillPath.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-    _gdiplus.GdipCreatePen1.argtypes = [
-        ctypes.c_uint32,
-        ctypes.c_float,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_void_p),
-    ]
-    _gdiplus.GdipDrawPath.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-    _gdiplus.GdipCreateFontFamilyFromName.argtypes = [
-        ctypes.c_wchar_p,
-        ctypes.c_void_p,
-        ctypes.POINTER(ctypes.c_void_p),
-    ]
-    _gdiplus.GdipCreateFont.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_float,
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_void_p),
-    ]
-    _gdiplus.GdipCreateStringFormat.argtypes = [
-        ctypes.c_int,
-        ctypes.c_int,
-        ctypes.POINTER(ctypes.c_void_p),
-    ]
-    _gdiplus.GdipSetStringFormatAlign.argtypes = [ctypes.c_void_p, ctypes.c_int]
-    _gdiplus.GdipDrawString.argtypes = [
-        ctypes.c_void_p,
-        ctypes.c_wchar_p,
-        ctypes.c_int,
-        ctypes.c_void_p,
-        ctypes.POINTER(ctypes.c_float * 4),
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-    ]
-
-    _user32.UpdateLayeredWindow.argtypes = [
-        wintypes.HWND,
-        wintypes.HDC,
-        ctypes.POINTER(wintypes.POINT),
-        ctypes.POINTER(wintypes.SIZE),
-        wintypes.HDC,
-        ctypes.POINTER(wintypes.POINT),
-        wintypes.COLORREF,
-        ctypes.POINTER(BLENDFUNCTION),
-        wintypes.DWORD,
-    ]
-
-    _user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
-    _user32.DefWindowProcW.restype = LRESULT
 
 
 class HotkeyRecordingWindow:
@@ -141,7 +35,6 @@ class HotkeyRecordingWindow:
     def __init__(
         self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
     ):
-        _setup_gdiplus_prototypes()
         self.on_captured = on_captured
         self.is_valid_cb = is_valid_cb
         self.current_keys: Set[str] = set()
@@ -149,11 +42,14 @@ class HotkeyRecordingWindow:
         self._hwnd = None
         self._width, self._height = 400, 100
         self._class_name = "Voice2TextHotkeyRecorder"
+        # We must keep a reference to the WNDPROC to prevent it from being garbage collected
+        from .api import WNDPROC
+
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
 
         # GDI+ Token
         self._token = ctypes.c_ulonglong()
-        _gdiplus.GdiplusStartup(
+        gdiplus.GdiplusStartup(
             ctypes.byref(self._token),
             ctypes.byref(GdiplusStartupInput(1, None, False, False)),
             None,
@@ -162,13 +58,13 @@ class HotkeyRecordingWindow:
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == WM_DESTROY:
             return 0
-        return _user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
     def _draw(self):
         if not self._hwnd:
             return
-        hdc_screen = _user32.GetDC(0)
-        hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
+        hdc_screen = user32.GetDC(0)
+        hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
 
         bmi = bytearray(40)
         bmi[0:4] = (40).to_bytes(4, "little")
@@ -177,7 +73,7 @@ class HotkeyRecordingWindow:
         bmi[12:14] = (1).to_bytes(2, "little")
         bmi[14:16] = (32).to_bytes(2, "little")
 
-        hbmp = _gdi32.CreateDIBSection(
+        hbmp = gdi32.CreateDIBSection(
             hdc_mem,
             ctypes.byref((ctypes.c_char * 40).from_buffer(bmi)),
             0,
@@ -185,21 +81,21 @@ class HotkeyRecordingWindow:
             None,
             0,
         )
-        _gdi32.SelectObject(hdc_mem, hbmp)
+        gdi32.SelectObject(hdc_mem, hbmp)
 
         graphics = ctypes.c_void_p()
-        _gdiplus.GdipCreateFromHDC(hdc_mem, ctypes.byref(graphics))
-        _gdiplus.GdipSetSmoothingMode(graphics, 4)
+        gdiplus.GdipCreateFromHDC(hdc_mem, ctypes.byref(graphics))
+        gdiplus.GdipSetSmoothingMode(graphics, 4)
 
         # Background (Glassy Dark)
         path = ctypes.c_void_p()
-        _gdiplus.GdipCreatePath(0, ctypes.byref(path))
+        gdiplus.GdipCreatePath(0, ctypes.byref(path))
         r = 15.0
-        _gdiplus.GdipAddPathArc(path, 10.0, 10.0, r * 2, r * 2, 180.0, 90.0)
-        _gdiplus.GdipAddPathArc(
+        gdiplus.GdipAddPathArc(path, 10.0, 10.0, r * 2, r * 2, 180.0, 90.0)
+        gdiplus.GdipAddPathArc(
             path, float(self._width - 10 - r * 2), 10.0, r * 2, r * 2, 270.0, 90.0
         )
-        _gdiplus.GdipAddPathArc(
+        gdiplus.GdipAddPathArc(
             path,
             float(self._width - 10 - r * 2),
             float(self._height - 10 - r * 2),
@@ -208,29 +104,29 @@ class HotkeyRecordingWindow:
             0.0,
             90.0,
         )
-        _gdiplus.GdipAddPathArc(
+        gdiplus.GdipAddPathArc(
             path, 10.0, float(self._height - 10 - r * 2), r * 2, r * 2, 90.0, 90.0
         )
-        _gdiplus.GdipClosePathFigure(path)
+        gdiplus.GdipClosePathFigure(path)
 
         brush = ctypes.c_void_p()
-        _gdiplus.GdipCreateSolidFill(0xE01A1A1A, ctypes.byref(brush))
-        _gdiplus.GdipFillPath(graphics, brush, path)
+        gdiplus.GdipCreateSolidFill(0xE01A1A1A, ctypes.byref(brush))
+        gdiplus.GdipFillPath(graphics, brush, path)
 
         # Border
         pen = ctypes.c_void_p()
-        _gdiplus.GdipCreatePen1(0xFF444444, 1.5, 2, ctypes.byref(pen))
-        _gdiplus.GdipDrawPath(graphics, pen, path)
+        gdiplus.GdipCreatePen1(0xFF444444, 1.5, 2, ctypes.byref(pen))
+        gdiplus.GdipDrawPath(graphics, pen, path)
 
         # Text
         font_family = ctypes.c_void_p()
-        _gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
+        gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
 
         font = ctypes.c_void_p()
-        _gdiplus.GdipCreateFont(font_family, 12.0, 1, 3, ctypes.byref(font))
+        gdiplus.GdipCreateFont(font_family, 12.0, 1, 3, ctypes.byref(font))
 
         text_brush = ctypes.c_void_p()
-        _gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
+        gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
 
         display_text = "Press and hold keys..."
         if self.current_keys:
@@ -240,10 +136,10 @@ class HotkeyRecordingWindow:
 
         # Use center alignment
         str_format = ctypes.c_void_p()
-        _gdiplus.GdipCreateStringFormat(0, 0, ctypes.byref(str_format))
-        _gdiplus.GdipSetStringFormatAlign(str_format, 1)  # Center
+        gdiplus.GdipCreateStringFormat(0, 0, ctypes.byref(str_format))
+        gdiplus.GdipSetStringFormatAlign(str_format, 1)  # Center
 
-        _gdiplus.GdipDrawString(
+        gdiplus.GdipDrawString(
             graphics, display_text, -1, font, ctypes.byref(rect), str_format, text_brush
         )
 
@@ -251,7 +147,7 @@ class HotkeyRecordingWindow:
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
         size = wintypes.SIZE(self._width, self._height)
         zero_pt = wintypes.POINT(0, 0)
-        _user32.UpdateLayeredWindow(
+        user32.UpdateLayeredWindow(
             self._hwnd,
             hdc_screen,
             None,
@@ -264,17 +160,17 @@ class HotkeyRecordingWindow:
         )
 
         # Cleanup
-        _gdiplus.GdipDeleteBrush(brush)
-        _gdiplus.GdipDeleteBrush(text_brush)
-        _gdiplus.GdipDeleteFont(font)
-        _gdiplus.GdipDeleteFontFamily(font_family)
-        _gdiplus.GdipDeletePen(pen)
-        _gdiplus.GdipDeletePath(path)
-        _gdiplus.GdipDeleteStringFormat(str_format)
-        _gdiplus.GdipDeleteGraphics(graphics)
-        _gdi32.DeleteObject(hbmp)
-        _gdi32.DeleteDC(hdc_mem)
-        _user32.ReleaseDC(0, hdc_screen)
+        gdiplus.GdipDeleteBrush(brush)
+        gdiplus.GdipDeleteBrush(text_brush)
+        gdiplus.GdipDeleteFont(font)
+        gdiplus.GdipDeleteFontFamily(font_family)
+        gdiplus.GdipDeletePen(pen)
+        gdiplus.GdipDeletePath(path)
+        gdiplus.GdipDeleteStringFormat(str_format)
+        gdiplus.GdipDeleteGraphics(graphics)
+        gdi32.DeleteObject(hbmp)
+        gdi32.DeleteDC(hdc_mem)
+        user32.ReleaseDC(0, hdc_screen)
 
     def _normalize_key(self, key: keyboard.Key | keyboard.KeyCode) -> Optional[str]:
         if isinstance(key, keyboard.Key):
@@ -305,14 +201,14 @@ class HotkeyRecordingWindow:
             if self.is_valid_cb(keys_list):
                 self.final_hotkey = "+".join(keys_list)
                 self.on_captured(self.final_hotkey)
-                _user32.PostMessageW(self._hwnd, 0x0010, 0, 0)  # Close
+                user32.PostMessageW(self._hwnd, 0x0010, 0, 0)  # Close
             else:
                 # If invalid (e.g. only modifiers), clear and wait
                 self.current_keys.clear()
                 self._draw()
 
     def show(self):
-        hinst = _kernel32.GetModuleHandleW(None)
+        hinst = kernel32.GetModuleHandleW(None)
         wcex = WNDCLASSEXW(
             ctypes.sizeof(WNDCLASSEXW),
             0,
@@ -321,21 +217,21 @@ class HotkeyRecordingWindow:
             0,
             hinst,
             0,
-            _user32.LoadCursorW(None, 32512),
+            user32.LoadCursorW(None, 32512),
             0,
             None,
             self._class_name,
             0,
         )
-        _user32.RegisterClassExW(ctypes.byref(wcex))
+        user32.RegisterClassExW(ctypes.byref(wcex))
 
         # Center on screen
-        sw = _user32.GetSystemMetrics(0)
-        sh = _user32.GetSystemMetrics(1)
+        sw = user32.GetSystemMetrics(0)
+        sh = user32.GetSystemMetrics(1)
         x = (sw - self._width) // 2
         y = (sh - self._height) // 2
 
-        self._hwnd = _user32.CreateWindowExW(
+        self._hwnd = user32.CreateWindowExW(
             WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             self._class_name,
             "Record Hotkey",
@@ -351,15 +247,15 @@ class HotkeyRecordingWindow:
         )
 
         self._draw()
-        _user32.ShowWindow(self._hwnd, 5)
+        user32.ShowWindow(self._hwnd, 5)
 
         # Start keyboard listener
         with keyboard.Listener(on_press=self._on_press, on_release=self._on_release) as listener:
             # Message loop
             msg = wintypes.MSG()
-            while _user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
-                _user32.TranslateMessage(ctypes.byref(msg))
-                _user32.DispatchMessageW(ctypes.byref(msg))
+            while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+                user32.TranslateMessage(ctypes.byref(msg))
+                user32.DispatchMessageW(ctypes.byref(msg))
             listener.stop()
 
-        _gdiplus.GdiplusShutdown(self._token)
+        gdiplus.GdiplusShutdown(self._token)

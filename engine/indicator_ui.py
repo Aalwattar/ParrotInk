@@ -9,6 +9,28 @@ if TYPE_CHECKING:
 
 from engine.logging import get_logger
 
+from .platform_win.api import (
+    AC_SRC_ALPHA,
+    AC_SRC_OVER,
+    BLENDFUNCTION,
+    HTCAPTION,
+    HTTRANSPARENT,
+    ULW_ALPHA,
+    WM_DESTROY,
+    WM_NCHITTEST,
+    WNDCLASSEXW,
+    WS_EX_LAYERED,
+    WS_EX_TOOLWINDOW,
+    WS_EX_TOPMOST,
+    WS_EX_TRANSPARENT,
+    WS_POPUP,
+    GdiplusStartupInput,
+    gdi32,
+    gdiplus,
+    kernel32,
+    user32,
+)
+
 # Import the new HUD
 try:
     from .hud_renderer import HUD_AVAILABLE, HudOverlay
@@ -18,149 +40,11 @@ except ImportError:
 
 logger = get_logger("IndicatorUI")
 
-# --- Win32 Constants ---
-WS_EX_LAYERED = 0x00080000
-WS_EX_TOPMOST = 0x00000008
-WS_EX_TOOLWINDOW = 0x00000080
-WS_EX_TRANSPARENT = 0x00000020
-WS_POPUP = 0x80000000
-WM_DESTROY = 0x0002
-WM_NCHITTEST = 0x0084
-HTCAPTION = 2
-HTTRANSPARENT = -1
-ULW_ALPHA = 0x00000002
-AC_SRC_ALPHA = 0x01
-AC_SRC_OVER = 0x00
-
-
-# --- Win32 Structs ---
-class BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [
-        ("BlendOp", ctypes.c_byte),
-        ("BlendFlags", ctypes.c_byte),
-        ("SourceConstantAlpha", ctypes.c_byte),
-        ("AlphaFormat", ctypes.c_byte),
-    ]
-
-
-class GdiplusStartupInput(ctypes.Structure):
-    _fields_ = [
-        ("GdiplusVersion", ctypes.c_uint32),
-        ("DebugEventCallback", ctypes.c_void_p),
-        ("SuppressBackgroundThread", ctypes.c_bool),
-        ("SuppressExternalCodecs", ctypes.c_bool),
-    ]
-
-
-class MSG(ctypes.Structure):
-    _fields_ = [
-        ("hwnd", wintypes.HWND),
-        ("message", ctypes.c_uint),
-        ("wParam", ctypes.c_uint64),
-        ("lParam", ctypes.c_uint64),
-        ("time", wintypes.DWORD),
-        ("pt", wintypes.POINT),
-    ]
-
-
-# Architecture-aware types for 64-bit safety
-WPARAM = ctypes.c_uint64
-LPARAM = ctypes.c_int64
-LRESULT = ctypes.c_int64
-
-WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM)
-
-
-class WNDCLASSEXW(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", ctypes.c_uint),
-        ("style", ctypes.c_uint),
-        ("lpfnWndProc", WNDPROC),
-        ("cbClsExtra", ctypes.c_int),
-        ("cbWndExtra", ctypes.c_int),
-        ("hInstance", wintypes.HINSTANCE),
-        ("hIcon", wintypes.HICON),
-        ("hCursor", wintypes.HICON),
-        ("hbrBackground", wintypes.HBRUSH),
-        ("lpszMenuName", wintypes.LPCWSTR),
-        ("lpszClassName", wintypes.LPCWSTR),
-        ("hIconSm", wintypes.HICON),
-    ]
-
-
-# --- API Access ---
-_user32 = ctypes.windll.user32
-_kernel32 = ctypes.windll.kernel32
-_gdi32 = ctypes.windll.gdi32
-
-
-def _setup_api():
-    try:
-        _gdiplus = ctypes.windll.gdiplus
-        _gdiplus.GdipAddPathArc.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-        ]
-        _gdiplus.GdipFillEllipse.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-            ctypes.c_float,
-        ]
-        _gdiplus.GdipDrawPath.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-        _gdiplus.GdipCreatePen1.argtypes = [
-            ctypes.c_uint32,
-            ctypes.c_float,
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_void_p),
-        ]
-        _gdiplus.GdipCreateFont.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_float,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_void_p),
-        ]
-        _gdiplus.GdipDrawString.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_wchar_p,
-            ctypes.c_int,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-        ]
-    except Exception:
-        pass
-
-    _user32.UpdateLayeredWindow.argtypes = [
-        wintypes.HWND,
-        wintypes.HDC,
-        ctypes.POINTER(wintypes.POINT),
-        ctypes.POINTER(wintypes.SIZE),
-        wintypes.HDC,
-        ctypes.POINTER(wintypes.POINT),
-        wintypes.COLORREF,
-        ctypes.POINTER(BLENDFUNCTION),
-        wintypes.DWORD,
-    ]
-
-    _user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
-    _user32.DefWindowProcW.restype = LRESULT
-
 
 class GdiFallbackWindow:
     """Fallback implementation using GDI+ if Skia is unavailable."""
 
     def __init__(self, design_style="glass", click_through=True):
-        _setup_api()
         self.is_recording = False
         self.partial_text = ""
         self.visible = False
@@ -169,42 +53,43 @@ class GdiFallbackWindow:
         self._hwnd = None
         self._width, self._height = 340, 60
         self._class_name = "Voice2TextGdiFallback"
+        from .platform_win.api import WNDPROC
+
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
         self._status_override = None
 
         try:
-            self._gdiplus = ctypes.windll.gdiplus
             token = ctypes.c_ulonglong()
-            self._gdiplus.GdiplusStartup(
+            gdiplus.GdiplusStartup(
                 ctypes.byref(token), ctypes.byref(GdiplusStartupInput(1, None, False, False)), None
             )
         except Exception:
-            self._gdiplus = None
+            pass
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == WM_NCHITTEST:
             return HTTRANSPARENT if self._click_through else HTCAPTION
         if msg == WM_DESTROY:
             return 0
-        return _user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+        return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
     def apply_click_through(self, enabled: bool):
         """Dynamically toggles click-through style."""
         self._click_through = enabled
         if not self._hwnd:
             return
-        style = _user32.GetWindowLongW(self._hwnd, -20)  # GWL_EXSTYLE
+        style = user32.GetWindowLongW(self._hwnd, -20)  # GWL_EXSTYLE
         if enabled:
             style |= WS_EX_TRANSPARENT
         else:
             style &= ~WS_EX_TRANSPARENT
-        _user32.SetWindowLongW(self._hwnd, -20, style)
+        user32.SetWindowLongW(self._hwnd, -20, style)
 
     def _draw_ui(self):
-        if not self._hwnd or not self._gdiplus:
+        if not self._hwnd:
             return
-        hdc_screen = _user32.GetDC(0)
-        hdc_mem = _gdi32.CreateCompatibleDC(hdc_screen)
+        hdc_screen = user32.GetDC(0)
+        hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
 
         # New Geometry
         capsule_h = 28.0
@@ -217,7 +102,7 @@ class GdiFallbackWindow:
         bmi[12:14] = (1).to_bytes(2, "little")
         bmi[14:16] = (32).to_bytes(2, "little")
 
-        hbmp = _gdi32.CreateDIBSection(
+        hbmp = gdi32.CreateDIBSection(
             hdc_mem,
             ctypes.byref((ctypes.c_char * 40).from_buffer(bmi)),
             0,
@@ -225,12 +110,12 @@ class GdiFallbackWindow:
             None,
             0,
         )
-        _gdi32.SelectObject(hdc_mem, hbmp)
+        gdi32.SelectObject(hdc_mem, hbmp)
 
         graphics = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFromHDC(hdc_mem, ctypes.byref(graphics))
-        self._gdiplus.GdipSetSmoothingMode(graphics, 4)
-        self._gdiplus.GdipSetTextRenderingHint(graphics, 4)
+        gdiplus.GdipCreateFromHDC(hdc_mem, ctypes.byref(graphics))
+        gdiplus.GdipSetSmoothingMode(graphics, 4)
+        gdiplus.GdipSetTextRenderingHint(graphics, 4)
 
         w, h = float(self._width), float(self._height)
 
@@ -251,25 +136,22 @@ class GdiFallbackWindow:
         bg_color = 0xD01A1A1A if not self.is_recording else 0xD0222222
 
         path = ctypes.c_void_p()
-        self._gdiplus.GdipCreatePath(0, ctypes.byref(path))
-        self._gdiplus.GdipAddPathArc(path, x_start, y_start, r * 2, r * 2, 180.0, 90.0)
-        self._gdiplus.GdipAddPathArc(
+        gdiplus.GdipCreatePath(0, ctypes.byref(path))
+        gdiplus.GdipAddPathArc(path, x_start, y_start, r * 2, r * 2, 180.0, 90.0)
+        gdiplus.GdipAddPathArc(
             path, x_start + capsule_w - r * 2, y_start, r * 2, r * 2, 270.0, 90.0
         )
-        self._gdiplus.GdipAddPathArc(
+        gdiplus.GdipAddPathArc(
             path, x_start + capsule_w - r * 2, y_start + capsule_h - r * 2, r * 2, r * 2, 0.0, 90.0
         )
-        self._gdiplus.GdipAddPathArc(
-            path, x_start, y_start + capsule_h - r * 2, r * 2, r * 2, 90.0, 90.0
-        )
-        self._gdiplus.GdipClosePathFigure(path)
+        gdiplus.GdipAddPathArc(path, x_start, y_start + capsule_h - r * 2, r * 2, r * 2, 90.0, 90.0)
+        gdiplus.GdipClosePathFigure(path)
 
         brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(bg_color, ctypes.byref(brush))
-        self._gdiplus.GdipFillPath(graphics, brush, path)
+        gdiplus.GdipCreateSolidFill(bg_color, ctypes.byref(brush))
+        gdiplus.GdipFillPath(graphics, brush, path)
 
         # Status Dot
-        # Dynamic color/brightness for GDI feedback
         if self.is_recording:
             dot_color = 0xFF00FFFF if not getattr(self, "_voice_active", False) else 0xFF88FFFF
         else:
@@ -279,46 +161,46 @@ class GdiFallbackWindow:
             dot_color = 0xFF28C850
 
         led_brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(dot_color, ctypes.byref(led_brush))
-        self._gdiplus.GdipFillEllipse(
+        gdiplus.GdipCreateSolidFill(dot_color, ctypes.byref(led_brush))
+        gdiplus.GdipFillEllipse(
             graphics, led_brush, x_start + h_padding, y_start + (capsule_h / 2.0) - 3.0, 6.0, 6.0
         )
 
         # Fonts
         font_family = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
+        gdiplus.GdipCreateFontFamilyFromName("Segoe UI", None, ctypes.byref(font_family))
 
         # Single Line Baseline
         font_status = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFont(font_family, 8.0, 1, 3, ctypes.byref(font_status))
+        gdiplus.GdipCreateFont(font_family, 8.0, 1, 3, ctypes.byref(font_status))
         status_brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(0xBBFFFFFF, ctypes.byref(status_brush))
+        gdiplus.GdipCreateSolidFill(0xBBFFFFFF, ctypes.byref(status_brush))
 
         s_x = x_start + h_padding + 10.0
         srect = (ctypes.c_float * 4)(s_x, y_start + 7.0, len(status_label) * 8.0, 15.0)
-        self._gdiplus.GdipDrawString(
+        gdiplus.GdipDrawString(
             graphics, status_label, -1, font_status, ctypes.byref(srect), None, status_brush
         )
 
         # Text
         font_text = ctypes.c_void_p()
-        self._gdiplus.GdipCreateFont(font_family, 10.0, 0, 3, ctypes.byref(font_text))
+        gdiplus.GdipCreateFont(font_family, 10.0, 0, 3, ctypes.byref(font_text))
         text_brush = ctypes.c_void_p()
-        self._gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
+        gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
 
         t_x = s_x + (len(status_label) * 7.5) + 8.0
         trect = (ctypes.c_float * 4)(
             t_x, y_start + 6.0, capsule_w - (t_x - x_start) - h_padding, 20.0
         )
-        self._gdiplus.GdipDrawString(
+        gdiplus.GdipDrawString(
             graphics, display_text, -1, font_text, ctypes.byref(trect), None, text_brush
         )
 
-        self._gdiplus.GdipDeleteGraphics(graphics)
+        gdiplus.GdipDeleteGraphics(graphics)
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
         size = wintypes.SIZE(self._width, self._height)
         zero_pt = wintypes.POINT(0, 0)
-        _user32.UpdateLayeredWindow(
+        user32.UpdateLayeredWindow(
             self._hwnd,
             hdc_screen,
             None,
@@ -330,19 +212,19 @@ class GdiFallbackWindow:
             ULW_ALPHA,
         )
 
-        self._gdiplus.GdipDeleteBrush(brush)
-        self._gdiplus.GdipDeleteBrush(led_brush)
-        self._gdiplus.GdipDeleteBrush(text_brush)
-        self._gdiplus.GdipDeleteFont(font_status)
-        self._gdiplus.GdipDeleteFont(font_text)
-        self._gdiplus.GdipDeleteFontFamily(font_family)
-        self._gdiplus.GdipDeletePath(path)
-        _gdi32.DeleteObject(hbmp)
-        _gdi32.DeleteDC(hdc_mem)
-        _user32.ReleaseDC(0, hdc_screen)
+        gdiplus.GdipDeleteBrush(brush)
+        gdiplus.GdipDeleteBrush(led_brush)
+        gdiplus.GdipDeleteBrush(text_brush)
+        gdiplus.GdipDeleteFont(font_status)
+        gdiplus.GdipDeleteFont(font_text)
+        gdiplus.GdipDeleteFontFamily(font_family)
+        gdiplus.GdipDeletePath(path)
+        gdi32.DeleteObject(hbmp)
+        gdi32.DeleteDC(hdc_mem)
+        user32.ReleaseDC(0, hdc_screen)
 
     def _run_loop(self):
-        hinst = _kernel32.GetModuleHandleW(None)
+        hinst = kernel32.GetModuleHandleW(None)
         wcex = WNDCLASSEXW(
             ctypes.sizeof(WNDCLASSEXW),
             0,
@@ -351,17 +233,17 @@ class GdiFallbackWindow:
             0,
             hinst,
             0,
-            _user32.LoadCursorW(None, 32512),
+            user32.LoadCursorW(None, 32512),
             0,
             None,
             self._class_name,
             0,
         )
-        _user32.RegisterClassExW(ctypes.byref(wcex))
+        user32.RegisterClassExW(ctypes.byref(wcex))
 
         # Calculate Position
         rect = wintypes.RECT()
-        _user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
+        user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0)
         work_w = rect.right - rect.left
         work_bottom = rect.bottom
 
@@ -372,7 +254,7 @@ class GdiFallbackWindow:
         if self._click_through:
             ex_style |= WS_EX_TRANSPARENT
 
-        self._hwnd = _user32.CreateWindowExW(
+        self._hwnd = user32.CreateWindowExW(
             ex_style,
             self._class_name,
             "V2T Fallback",
@@ -388,11 +270,22 @@ class GdiFallbackWindow:
         )
         self._draw_ui()
         if self.visible:
-            _user32.ShowWindow(self._hwnd, 5)
+            user32.ShowWindow(self._hwnd, 5)
+
+        class MSG(ctypes.Structure):
+            _fields_ = [
+                ("hwnd", wintypes.HWND),
+                ("message", ctypes.c_uint),
+                ("wParam", ctypes.c_uint64),
+                ("lParam", ctypes.c_uint64),
+                ("time", wintypes.DWORD),
+                ("pt", wintypes.POINT),
+            ]
+
         msg = MSG()
-        while _user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
-            _user32.TranslateMessage(ctypes.byref(msg))
-            _user32.DispatchMessageW(ctypes.byref(msg))
+        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
+            user32.TranslateMessage(ctypes.byref(msg))
+            user32.DispatchMessageW(ctypes.byref(msg))
 
     def start(self):
         threading.Thread(target=self._run_loop, daemon=True).start()
@@ -400,16 +293,16 @@ class GdiFallbackWindow:
     def show(self):
         self.visible = True
         if self._hwnd:
-            _user32.ShowWindow(self._hwnd, 5)
+            user32.ShowWindow(self._hwnd, 5)
 
     def hide(self):
         self.visible = False
         if self._hwnd:
-            _user32.ShowWindow(self._hwnd, 0)
+            user32.ShowWindow(self._hwnd, 0)
 
     def stop(self):
         if self._hwnd:
-            _user32.PostMessageW(self._hwnd, 0x0010, 0, 0)  # WM_CLOSE
+            user32.PostMessageW(self._hwnd, 0x0010, 0, 0)  # WM_CLOSE
 
     def update_status(self, is_recording: bool):
         self.is_recording = is_recording
@@ -427,8 +320,6 @@ class GdiFallbackWindow:
         self._draw_ui()
 
     def update_voice_active(self, active: bool):
-        # Fallback doesn't necessarily need visual for voice,
-        # but we add it for API compatibility.
         self._voice_active = active
         self._draw_ui()
 
@@ -525,8 +416,6 @@ class IndicatorWindow:
 
     def update_partial_text(self, text: str):
         self._current_partial_text = text
-        # If text is coming in, we can infer voice activity if not already set,
-        # but better to have explicit signal.
         now = time.time()
         if now - self._last_redraw_at < 0.05:
             return
