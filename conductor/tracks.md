@@ -144,5 +144,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Build a standalone single EXE on demand (DevOps/build track)**
+- [~] **Track: Build a standalone single EXE on demand (DevOps/build track)**
 *Link: [./tracks/standalone_exe_20260213/](./tracks/standalone_exe_20260213/)*
