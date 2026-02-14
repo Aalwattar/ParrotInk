@@ -101,6 +101,12 @@ async def main_gui(cli_args):
         config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
         logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
 
+    def on_toggle_startup(enabled):
+        from engine.platform_win.startup import set_run_at_startup
+        config.update_and_save({"interaction": {"run_at_startup": enabled}})
+        set_run_at_startup(enabled)
+        logger.info(f"Run at Startup {'enabled' if enabled else 'disabled'}")
+
     def on_before_hotkey_change():
         """Placeholder for when hotkey change is requested."""
         logger.info("Hotkey change requested.")
@@ -124,6 +130,7 @@ async def main_gui(cli_args):
         on_before_hotkey_change=on_before_hotkey_change,
         on_toggle_hud=on_toggle_hud,
         on_toggle_click_through=on_toggle_click_through,
+        on_toggle_startup=on_toggle_startup,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

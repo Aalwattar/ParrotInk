@@ -30,6 +30,7 @@ class TrayApp:
         on_before_hotkey_change: Callable[[], None] | None = None,
         on_toggle_hud: Callable[[bool], None] | None = None,
         on_toggle_click_through: Callable[[bool], None] | None = None,
+        on_toggle_startup: Callable[[bool], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -47,6 +48,7 @@ class TrayApp:
         self.on_before_hotkey_change = on_before_hotkey_change
         self.on_toggle_hud = on_toggle_hud
         self.on_toggle_click_through = on_toggle_click_through
+        self.on_toggle_startup = on_toggle_startup
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -100,6 +102,10 @@ class TrayApp:
     def _on_toggle_click_through_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_toggle_click_through:
             self.on_toggle_click_through(not self.config.ui.floating_indicator.click_through)
+
+    def _on_toggle_startup_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        if self.on_toggle_startup:
+            self.on_toggle_startup(not self.config.interaction.run_at_startup)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         logger.info("Hotkey Change requested (Feature Under Development)")
@@ -173,6 +179,11 @@ class TrayApp:
                         "Enable Audio Feedback",
                         self._on_toggle_sounds_clicked,
                         checked=lambda item: self.sounds_enabled,
+                    ),
+                    pystray.MenuItem(
+                        "Run at Startup",
+                        self._on_toggle_startup_clicked,
+                        checked=lambda item: self.config.interaction.run_at_startup,
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem(
