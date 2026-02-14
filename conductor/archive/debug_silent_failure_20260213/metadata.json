@@ -1,0 +1,8 @@
+{
+  "id": "debug_silent_failure_20260213",
+  "name": "Debug Silent Failure",
+  "description": "Emergency debugging of the start_listening hang.",
+  "status": "completed",
+  "created_at": "2026-02-13T03:35:00Z",
+  "checkpoint": null
+}

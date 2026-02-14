@@ -70,22 +70,22 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Audio pipeline: remove polling + enforce invariants** [checkpoint: adb1c95]
-*Link: [./tracks/audio_pipeline_20260211/](./tracks/audio_pipeline_20260211/)*
+*Link: [./archive/audio_pipeline_20260211/](./archive/audio_pipeline_20260211/)*
 
 ---
 
 - [x] **Track: Explicit provider audio contracts + resampling** [checkpoint: adb1c95]
-*Link: [./tracks/resampling_contracts_20260211/](./tracks/resampling_contracts_20260211/)*
+*Link: [./archive/resampling_contracts_20260211/](./archive/resampling_contracts_20260211/)*
 
 ---
 
 - [x] **Track: Shutdown orchestration: prevent hangs on exit** [checkpoint: adb1c95]
-*Link: [./tracks/shutdown_orchestration_20260211/](./tracks/shutdown_orchestration_20260211/)*
+*Link: [./archive/shutdown_orchestration_20260211/](./archive/shutdown_orchestration_20260211/)*
 
 ---
 
 - [x] **Track: Connection Lifecycle: Warm-connection optional** [checkpoint: adb1c95]
-*Link: [./tracks/connection_lifecycle_20260211/](./tracks/connection_lifecycle_20260211/)*
+*Link: [./archive/connection_lifecycle_20260211/](./archive/connection_lifecycle_20260211/)*
 
 ---
 
@@ -95,7 +95,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Architecture & Design Cleanup (ROI-Focused)** (Superseded)
-*Link: [./tracks/arch_cleanup_20260212/](./arch_cleanup_20260212/)*
+*Link: [./archive/arch_cleanup_20260212/](./archive/arch_cleanup_20260212/)*
+
+---
+
+- [x] **Track: Optimize Latency**
+*Link: [./archive/optimize_latency_20260210/](./archive/optimize_latency_20260210/)*
 
 ---
 
@@ -110,27 +115,27 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Consultant Security & Stability Improvements**
-*Link: [./tracks/consultant_improvements_20260212/](./tracks/consultant_improvements_20260212/)*
+*Link: [./archive/consultant_improvements_20260212/](./archive/consultant_improvements_20260212/)*
 
 ---
 
 - [x] **Track: Architecture & State Overhaul**
-*Link: [./tracks/arch_state_overhaul_20260212/](./tracks/arch_state_overhaul_20260212/)*
+*Link: [./archive/arch_state_overhaul_20260212/](./archive/arch_state_overhaul_20260212/)*
 
 ---
 
 - [x] **Track: Reliability & Configuration**
-*Link: [./tracks/reliability_and_config_20260212/](./tracks/reliability_and_config_20260212/)*
+*Link: [./archive/reliability_and_config_20260212/](./archive/reliability_and_config_20260212/)*
 
 ---
 
 - [x] **Track: Stability & Optimization**
-*Link: [./tracks/stability_optimization_20260213/](./tracks/stability_optimization_20260213/)*
+*Link: [./archive/stability_optimization_20260213/](./archive/stability_optimization_20260213/)*
 
 ---
 
 - [x] **Track: Debug Silent Failure**
-*Link: [./tracks/debug_silent_failure_20260213/](./tracks/debug_silent_failure_20260213/)*
+*Link: [./archive/debug_silent_failure_20260213/](./archive/debug_silent_failure_20260213/)*
 
 ---
 
@@ -140,4 +145,14 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: HUD Visual Refinement**
-*Link: [./tracks/hud_refinement_20260213/](./tracks/hud_refinement_20260213/)*
+*Link: [./archive/hud_refinement_20260213/](./archive/hud_refinement_20260213/)*
+
+---
+
+- [x] **Track: Verify HUD Isolation**
+*Link: [./archive/verify_hud_isolation_20260212/](./archive/verify_hud_isolation_20260212/)*
+
+---
+
+- [~] **Track: Single Instance Protection**
+*Link: [./tracks/single_instance_protection_20260214/](./tracks/single_instance_protection_20260214/)*

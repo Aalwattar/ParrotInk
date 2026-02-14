@@ -1,0 +1,8 @@
+{
+  "id": "arch_state_overhaul_20260212",
+  "name": "Architecture & State Overhaul",
+  "description": "Decompose AppCoordinator and implement a robust AppState state machine.",
+  "status": "completed",
+  "created_at": "2026-02-12T19:08:00Z",
+  "checkpoint": null
+}
