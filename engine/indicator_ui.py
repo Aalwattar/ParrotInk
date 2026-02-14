@@ -63,9 +63,12 @@ class MSG(ctypes.Structure):
     ]
 
 
-WNDPROC = ctypes.WINFUNCTYPE(
-    ctypes.c_int64, wintypes.HWND, ctypes.c_uint, ctypes.c_uint64, ctypes.c_uint64
-)
+# Architecture-aware types for 64-bit safety
+WPARAM = ctypes.c_uint64
+LPARAM = ctypes.c_int64
+LRESULT = ctypes.c_int64
+
+WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM)
 
 
 class WNDCLASSEXW(ctypes.Structure):
@@ -149,13 +152,8 @@ def _setup_api():
         wintypes.DWORD,
     ]
 
-    _user32.DefWindowProcW.argtypes = [
-        wintypes.HWND,
-        ctypes.c_uint,
-        ctypes.c_uint64,
-        ctypes.c_uint64,
-    ]
-    _user32.DefWindowProcW.restype = ctypes.c_int64
+    _user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
+    _user32.DefWindowProcW.restype = LRESULT
 
 
 class GdiFallbackWindow:

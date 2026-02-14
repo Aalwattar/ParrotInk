@@ -170,6 +170,10 @@ class TrayApp:
                 "Settings",
                 pystray.Menu(
                     pystray.MenuItem(
+                        lambda item: f"Hotkey: {self.config.hotkeys.hotkey.upper()}",
+                        self._on_change_hotkey_clicked,
+                    ),
+                    pystray.MenuItem(
                         "Change Hotkey...",
                         self._on_change_hotkey_clicked,
                     ),

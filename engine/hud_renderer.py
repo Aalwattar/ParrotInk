@@ -68,6 +68,11 @@ class BITMAPINFO(ctypes.Structure):
 _user32 = ctypes.windll.user32
 _gdi32 = ctypes.windll.gdi32
 
+# Architecture-aware types for 64-bit safety
+WPARAM = ctypes.c_uint64
+LPARAM = ctypes.c_int64
+LRESULT = ctypes.c_int64
+
 _user32.UpdateLayeredWindow.argtypes = [
     wintypes.HWND,
     wintypes.HDC,
@@ -79,6 +84,9 @@ _user32.UpdateLayeredWindow.argtypes = [
     ctypes.POINTER(BLENDFUNCTION),
     wintypes.DWORD,
 ]
+
+_user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
+_user32.DefWindowProcW.restype = LRESULT
 
 
 class HudOverlay:
@@ -128,7 +136,7 @@ class HudOverlay:
             self._hdc_mem,
             ctypes.byref(zero_pt),
             0,
-            ctypes.pointer(blend),
+            ctypes.byref(blend),
             ULW_ALPHA,
         )
         _user32.ReleaseDC(0, hdc_screen)

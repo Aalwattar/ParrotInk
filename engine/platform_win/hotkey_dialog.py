@@ -37,9 +37,12 @@ class GdiplusStartupInput(ctypes.Structure):
     ]
 
 
-WNDPROC = ctypes.WINFUNCTYPE(
-    ctypes.c_int64, wintypes.HWND, ctypes.c_uint, ctypes.c_uint64, ctypes.c_uint64
-)
+# Architecture-aware types for 64-bit safety
+WPARAM = ctypes.c_uint64
+LPARAM = ctypes.c_int64
+LRESULT = ctypes.c_int64
+
+WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM)
 
 
 class WNDCLASSEXW(ctypes.Structure):
@@ -126,15 +129,22 @@ def _setup_gdiplus_prototypes():
         wintypes.DWORD,
     ]
 
+    _user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
+    _user32.DefWindowProcW.restype = LRESULT
+
 
 class HotkeyRecordingWindow:
     """
     A HUD-styled modal window that captures a hotkey combination.
     """
 
-    def __init__(
-        self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
-    ):
+        def __init__(
+
+            self, on_captured: Callable[[str], None], is_valid_cb: Callable[[list[str]], bool]
+
+        ):
+
+    
         _setup_gdiplus_prototypes()
         self.on_captured = on_captured
         self.is_valid_cb = is_valid_cb
@@ -289,7 +299,7 @@ class HotkeyRecordingWindow:
 
     def _on_press(self, key):
         k = self._normalize_key(key)
-        if k:
+        if k and k not in self.current_keys:
             self.current_keys.add(k)
             self._draw()
 
