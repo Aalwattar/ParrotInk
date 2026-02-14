@@ -503,9 +503,9 @@ def handle_cli():
 
 
 if __name__ == "__main__":
-    from engine.config import migrate_config_file
+    from engine.config import get_config_path, migrate_config_file
 
-    migrate_config_file("config.toml")
+    migrate_config_file(get_config_path())
 
     cli_args = handle_cli()
 

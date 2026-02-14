@@ -241,6 +241,14 @@ def load_config(path: Optional[str | Path] = None) -> Config:
     if path is None:
         path = get_config_path()
     migrate_config_file(path)
+
+    config_path = Path(path)
+    if not config_path.exists():
+        logger.info(f"No config found at {path}. Creating default config.")
+        config = Config()
+        config.save(path)
+        return config
+
     return Config.from_file(path)
 
 
