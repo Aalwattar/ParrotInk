@@ -34,22 +34,22 @@ Goal: Implement the "Change Hotkey" flow.
 - [x] Task: Update `AppCoordinator` to reload the listener on config change.
 - [x] Task: Conductor - User Manual Verification 'Interactive Hotkey UI' (Protocol in workflow.md)
 
-## Phase 4: Polishing & Final DOD [checkpoint: 2ac82e1]
+## Phase 4: Polishing & Final DOD [checkpoint: 6596dd1]
 Goal: Address bug fixes, UX refinements, and quality gates.
 
-- [x] Task: Fix `app config --explain` CLI crash. 2ac82e1
+- [x] Task: Fix `app config --explain` CLI crash. 6596dd1
   - [x] Sub-task: Wrap `load_config` in `main.py` to print a clean error instead of a stack trace for invalid TOML.
-- [x] Task: Refine Hotkey Validation & UX. 2ac82e1
+- [x] Task: Refine Hotkey Validation & UX. 6596dd1
   - [x] Sub-task: Update `HotkeyRecorder` to allow single keys (F1-F12, etc.) but block "Modifiers-Only."
   - [x] Sub-task: Create HUD-styled `HotkeyRecordingWindow` in `engine/platform_win/hotkey_dialog.py`.
   - [x] Sub-task: Implement live-update text in the recording dialog.
-- [x] Task: Fix HUD Click-Through. 2ac82e1
+- [x] Task: Fix HUD Click-Through. 6596dd1
   - [x] Sub-task: Add `WS_EX_TRANSPARENT` style and set `WM_NCHITTEST` to `HTTRANSPARENT`.
-- [ ] Task: HUD Enhancements (User Requests).
-  - [ ] Sub-task: Add `click_through: bool = True` to `FloatingIndicatorConfig` and set `enabled = true` by default.
-  - [ ] Sub-task: Implement tray menu toggle for "Enable/Disable HUD".
-  - [ ] Sub-task: Make HUD click-through toggleable based on configuration.
-- [ ] Task: Final Code Archaeology & Cleanup.
+- [x] Task: HUD Enhancements (User Requests). 6596dd1
+  - [x] Sub-task: Add `click_through: bool = True` to `FloatingIndicatorConfig` and set `enabled = true` by default.
+  - [x] Sub-task: Implement tray menu toggle for "Enable/Disable HUD".
+  - [x] Sub-task: Make HUD click-through toggleable based on configuration.
+- [x] Task: Final Code Archaeology & Cleanup. 6596dd1
   - [x] Sub-task: Remove any remaining dead code or legacy "bridge" variables.
-- [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). 2ac82e1
-- [x] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
+- [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). 6596dd1
+- [ ] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
