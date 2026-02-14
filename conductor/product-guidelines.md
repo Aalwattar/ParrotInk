@@ -9,12 +9,13 @@
 - **Communication:** All user-facing text (tooltips, notifications, error messages) will be clear, concise, and professional.
 - **Persona:** The application should feel like a silent, helpful assistant. It only acts when invoked and provides no unnecessary distractions.
 
-## 3. Visual Identity
+## 3. Visual Identity & UX
 - **UI:** The primary interface is a system tray icon. There will be no main application window.
-- **Iconography:** The tray icon must clearly communicate the application's state:
-    - **Idle/Ready:** A standard, neutral icon.
-    - **Listening:** A distinct visual indicator (e.g., a microphone symbol or a change in color) to show that audio is being captured.
-    - **Error:** An indicator (e.g., a red dot or an exclamation mark) to signal a problem with the API key or connection.
+- **Iconography:** The tray icon uses a "Modern Square" design with soft rounded corners.
+    - **Idle:** Neutral Slate color (#475569).
+    - **Listening:** Vibrant Microsoft Blue (#0078D4).
+    - **Error:** Alert Red (#EF4444).
+- **HUD:** The floating HUD provides real-time feedback using **Segoe UI 16pt** typography on an acrylic glass background, adhering to Windows modern design patterns.
 - **Configuration:** A simple configuration window can be accessed from the tray menu for setting up API keys, hotkeys, and other options. This window should be clean and functional.
 
 ## 4. Messaging

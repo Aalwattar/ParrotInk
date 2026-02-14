@@ -19,6 +19,9 @@
 - **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
 - **pynput:** Powering the `InteractionMonitor` and `HotkeyRecorder`, used to detect global keyboard events and record user-defined shortcuts.
 - **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
+- **Pillow (PIL):** Used for dynamic, procedural generation of high-DPI tray icons at runtime.
+- **skia-python:** Powers the high-performance, hardware-accelerated HUD rendering with anti-aliased typography.
+- **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
 - **tomli-w:** Used for writing configuration files in TOML format.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 

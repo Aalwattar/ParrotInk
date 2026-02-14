@@ -24,10 +24,12 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - The primary function is to inject the final transcribed text directly at the current text cursor's location in the active application.
 - The injection should simulate keyboard typing to ensure broad compatibility.
 
-### 2.5. System Tray Application
+### 2.5 System Tray Application
 - The application will run as a background process with an icon in the system tray.
-- The tray icon will provide visual feedback on the application's status (e.g., idle, listening, error).
+- **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
+- **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
 - A context menu on the tray icon will allow the user to:
+    - **Version Header:** Displays the current application version (e.g., "Voice2Text v0.2.0") at the top.
     - Enable or disable transcription.
     - Select the active transcription provider.
     - Open the settings/configuration file.
@@ -46,6 +48,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Verbose Debugging & Structured Logging:** Multi-level, non-blocking logging to console and file, with automatic redaction of secrets and truncation of audio data.
     - **Interactive Hotkey Setup:** Users can record their desired hotkey combination directly through a tray-driven recording dialog.
     - **Diagnostics:** A new `app config --explain` CLI command provides a clear report of how high-level profiles map to specific technical timings and thresholds.
+    - **Hold to Talk:** A toggle in the Tray menu to switch between "Hold to Talk" and "Smart Toggle" modes.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
 
@@ -66,6 +69,11 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\Voice2Text` directory, ensuring it works even when launched from read-only locations.
     - **Single Instance Protection:** The application uses a Win32 Mutex to ensure only one instance is running at a time, preventing hotkey and microphone conflicts. If a second instance is launched, it displays a helpful notification and exits gracefully.
     - **Automation-Friendly:** A `--background` CLI flag allows the application to start silently without the "already running" warning, ideal for startup scripts and automation.
+
+### 2.10 Visual Feedback & HUD
+- **Acrylic HUD:** A floating, minimalist "Acrylic" indicator appears during recording to show live transcription progress.
+- **Modern Typography:** The HUD uses the Windows system font (**Segoe UI**) at a high-readability size (16pt) for a professional, integrated look.
+- **Dynamic Status:** The HUD indicator pulses or changes color based on voice activity and finalization state.
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline
