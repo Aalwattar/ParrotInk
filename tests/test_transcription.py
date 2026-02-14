@@ -15,8 +15,14 @@ def base_config():
 async def test_assemblyai_v3_turn_events(base_config):
     on_partial = MagicMock()
     on_final = MagicMock()
+    from engine.config_resolver import resolve_effective_config
+
+    eff = resolve_effective_config(base_config)
     provider = AssemblyAIProvider(
-        api_key="test_key", on_partial=on_partial, on_final=on_final, config=base_config
+        api_key="test_key",
+        on_partial=on_partial,
+        on_final=on_final,
+        effective_config=eff.assemblyai,
     )
 
     # Test partial turn
@@ -39,8 +45,14 @@ async def test_assemblyai_v3_turn_events(base_config):
 async def test_assemblyai_provider_send_audio(base_config):
     on_partial = MagicMock()
     on_final = MagicMock()
+    from engine.config_resolver import resolve_effective_config
+
+    eff = resolve_effective_config(base_config)
     provider = AssemblyAIProvider(
-        api_key="test_key", on_partial=on_partial, on_final=on_final, config=base_config
+        api_key="test_key",
+        on_partial=on_partial,
+        on_final=on_final,
+        effective_config=eff.assemblyai,
     )
 
     with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:

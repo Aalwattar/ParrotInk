@@ -26,7 +26,7 @@ def test_config_save_default_path(tmp_path, monkeypatch):
     c = Config()
     c.transcription.provider = "openai"
     # save() with no args should use fake_config_path and create directories
-    c.save()
+    c.save(blocking=True)
 
     assert fake_config_path.exists()
     content = fake_config_path.read_text(encoding="utf-8")

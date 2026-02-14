@@ -55,11 +55,13 @@ class AudioStreamer:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._drop_count = 0
         self._last_drop_log = 0.0
+        self.last_status = None
 
     def _callback(self, indata: np.ndarray, frames: int, time_info, status):
         """This is called (from a separate thread) for each audio block."""
         if status:
-            logger.warning(f"Audio status warning: {status}")
+            # Store status instead of logging it to avoid thread contention
+            self.last_status = status
 
         capture_time = time.perf_counter()
 

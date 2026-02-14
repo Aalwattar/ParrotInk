@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from enum import Enum
-from typing import Literal
+from typing import List, Literal, Optional
 
 
 class AppState(Enum):
@@ -16,3 +17,48 @@ class CaptureFormatError(Exception):
 
 
 ProviderType = Literal["openai", "assemblyai"]
+
+
+@dataclass(frozen=True)
+class EffectiveOpenAIConfig:
+    url: str
+    realtime_model: str
+    transcription_model: str
+    input_audio_type: str
+    input_audio_rate: int
+    vad_threshold: float
+    silence_duration_ms: int
+    prefix_padding_ms: int
+    noise_reduction_type: Optional[str]
+    include_logprobs: bool
+    language: str
+    is_test: bool
+
+
+@dataclass(frozen=True)
+class EffectiveAssemblyAIConfig:
+    url: str
+    sample_rate: int
+    encoding: str
+    speech_model: str
+    vad_threshold: float
+    confidence_threshold: float
+    min_silence_ms: int
+    max_silence_ms: int
+    inactivity_timeout: Optional[int]
+    word_boost: Optional[List[str]]
+    format_text: bool
+    language_detection: bool
+    is_test: bool
+
+
+@dataclass(frozen=True)
+class EffectiveConfig:
+    provider_type: ProviderType
+    language: str
+    capture_sample_rate: int
+    chunk_ms: int
+    hotkey: str
+    hold_mode: bool
+    openai: EffectiveOpenAIConfig
+    assemblyai: EffectiveAssemblyAIConfig

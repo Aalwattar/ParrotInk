@@ -110,7 +110,7 @@ class TrayApp:
         else:
             # Fallback to notification if HUD is disabled
             self.notify(
-                "Hotkey configuration via UI is currently under development. Please edit config.toml manually.",
+                "Hotkey UI is under development. Please edit config.toml manually.",
                 "Under Development",
             )
 

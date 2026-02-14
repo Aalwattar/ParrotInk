@@ -101,8 +101,6 @@ async def main_gui(cli_args):
         config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
         logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
 
-    loop = asyncio.get_running_loop()
-
     def on_before_hotkey_change():
         """Placeholder for when hotkey change is requested."""
         logger.info("Hotkey change requested.")

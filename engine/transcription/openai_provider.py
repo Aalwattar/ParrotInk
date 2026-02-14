@@ -5,8 +5,8 @@ from typing import Callable, Optional, Union
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
+from engine.app_types import EffectiveOpenAIConfig
 from engine.audio.adapter import ProviderAudioSpec
-from engine.config import LATENCY_PROFILES, MIC_PROFILES, Config
 from engine.logging import get_logger
 
 from .base import BaseProvider
@@ -24,11 +24,11 @@ class OpenAIProvider(BaseProvider):
         api_key: str,
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
-        config: Config,
+        effective_config: EffectiveOpenAIConfig,
     ):
         super().__init__(api_key, on_partial, on_final, "")
-        self.config = config
-        self.url = self._build_url()
+        self.effective_config = effective_config
+        self.url = effective_config.url
         self.ws: Optional[ClientConnection] = None
         self._receive_task: Optional[asyncio.Task] = None
         self._is_running = False
@@ -41,22 +41,12 @@ class OpenAIProvider(BaseProvider):
     def get_audio_spec(self) -> ProviderAudioSpec:
         # OpenAI Realtime requires PCM16 Mono
         return ProviderAudioSpec(
-            sample_rate_hz=self.config.providers.openai.core.input_audio_rate,
+            sample_rate_hz=self.effective_config.input_audio_rate,
             wire_encoding="pcm16_base64",
         )
 
     def get_type(self) -> str:
         return "openai"
-
-    def _build_url(self) -> str:
-        if self.config.test.enabled:
-            return self.config.test.openai_mock_url
-
-        base = self.config.providers.openai.core.realtime_ws_url_base
-
-        # According to latest API: You must not provide a model parameter
-        # for transcription sessions in the URL.
-        return f"{base}?intent=transcription"
 
     async def start(self):
         """Connect and configure the session."""
@@ -74,7 +64,7 @@ class OpenAIProvider(BaseProvider):
 
         try:
             self.ws = await websockets.connect(
-                self.url, additional_headers=headers if not self.config.test.enabled else None
+                self.url, additional_headers=headers if not self.effective_config.is_test else None
             )
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -91,52 +81,33 @@ class OpenAIProvider(BaseProvider):
         if not self.ws:
             return
 
-        core = self.config.providers.openai.core
-        adv = self.config.providers.openai.advanced
-        trans = self.config.transcription
+        cfg = self.effective_config
 
-        # 1. Resolve Latency/VAD Settings
-        if adv.override:
-            vad_threshold = adv.vad_threshold
-            silence_duration_ms = adv.silence_duration_ms
-        else:
-            profile = LATENCY_PROFILES.get(trans.latency_profile, LATENCY_PROFILES["balanced"])
-            vad_threshold = profile["openai"]["vad_threshold"]
-            silence_duration_ms = profile["openai"]["silence_duration_ms"]
-
-        # 2. Resolve Mic/Noise Settings
-        if adv.override:
-            # For override mode, we'll still use the specific advanced noise_reduction string
-            # But the profiles map to specific types
-            noise_reduction_type = adv.noise_reduction if adv.noise_reduction != "off" else None
-        else:
-            noise_reduction_type = MIC_PROFILES.get(trans.mic_profile, "near_field")
-
-        # 3. Build session.update
+        # Build session.update using resolved snapshot
         session_update = {
             "type": "session.update",
             "session": {
                 "type": "transcription",
                 "audio": {
                     "input": {
-                        "format": {"type": "audio/pcm", "rate": core.input_audio_rate},
+                        "format": {"type": cfg.input_audio_type, "rate": cfg.input_audio_rate},
                         "noise_reduction": (
-                            {"type": noise_reduction_type} if noise_reduction_type else None
+                            {"type": cfg.noise_reduction_type} if cfg.noise_reduction_type else None
                         ),
                         "transcription": {
-                            "model": core.transcription_model,
-                            "language": trans.language,
+                            "model": cfg.transcription_model,
+                            "language": cfg.language,
                         },
                         "turn_detection": {
                             "type": "server_vad",
-                            "threshold": vad_threshold,
-                            "prefix_padding_ms": adv.prefix_padding_ms,
-                            "silence_duration_ms": silence_duration_ms,
+                            "threshold": cfg.vad_threshold,
+                            "prefix_padding_ms": cfg.prefix_padding_ms,
+                            "silence_duration_ms": cfg.silence_duration_ms,
                         },
                     }
                 },
                 "include": ["item.input_audio_transcription.logprobs"]
-                if adv.include_logprobs
+                if cfg.include_logprobs
                 else [],
             },
         }

@@ -61,6 +61,11 @@ class AudioPipeline:
                 if not self._is_running:
                     continue
 
+                # Safely log status changes if they happened in the driver thread
+                if self.streamer.last_status:
+                    logger.warning(f"Audio status warning: {self.streamer.last_status}")
+                    self.streamer.last_status = None
+
                 processed = adapter.process(chunk)
 
                 # Update Voice Activity Signal (Debounced for the HUD)

@@ -11,7 +11,9 @@ def test_config_observer_notification():
 
     config.register_observer(on_change)
 
-    config.update_and_save({"interaction": {"sounds": {"volume": 0.9}}}, path="test_observer.toml")
+    config.update_and_save(
+        {"interaction": {"sounds": {"volume": 0.9}}}, path="test_observer.toml", blocking=True
+    )
 
     assert len(notified) == 1
     assert notified[0] == 0.9

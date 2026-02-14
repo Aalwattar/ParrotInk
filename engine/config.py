@@ -185,7 +185,7 @@ class OpenAICoreConfig(BaseModel):
     realtime_model: str = "gpt-4o-realtime-preview"  # Model for transport URL
     transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
     prompt: str = ""
-    input_audio_type: str = "audio/pcm16"
+    input_audio_type: str = "audio/pcm"
     input_audio_rate: int = 24000
     session_rotation_seconds: int = 3300  # 55 minutes
 
@@ -195,9 +195,9 @@ class OpenAIAdvancedConfig(BaseModel):
     override: bool = False
     noise_reduction: str = "off"
     turn_detection_type: str = "server_vad"
-    vad_threshold: float = 0.5
+    vad_threshold: float = 0.6
     prefix_padding_ms: int = 300
-    silence_duration_ms: int = 350  # Reduced from 500
+    silence_duration_ms: int = 500
     include_logprobs: bool = False
 
 
@@ -290,7 +290,7 @@ class Config(BaseModel):
             except Exception as e:
                 logger.error(f"Error notifying config observer: {e}")
 
-    def update_and_save(self, updates: dict, path: Optional[Path | str] = None):
+    def update_and_save(self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False):
         """
         Performs a deep merge of updates into the current config,
         saves to disk, and notifies observers.
@@ -304,7 +304,7 @@ class Config(BaseModel):
                     setattr(target, key, value)
 
         deep_merge(self, updates)
-        self.save(path)
+        self.save(path, blocking=blocking)
         self._notify_observers()
 
     def get_openai_key(self) -> Optional[str]:
@@ -315,26 +315,32 @@ class Config(BaseModel):
         """Resolves AssemblyAI API key."""
         return SecurityManager.get_key("assemblyai_api_key")
 
-    def save(self, path: Optional[Path | str] = None):
+    def save(self, path: Optional[Path | str] = None, blocking: bool = False):
         """Saves the current configuration to a TOML file."""
+        import threading
+
         import tomli_w
 
         if path is None:
             path = get_config_path()
         path = Path(path)
-        # Ensure directory exists
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        # We convert to dict, but Pydantic's model_dump is better
-        # Use exclude_none=True to avoid issues with tomli_w and NoneType
         data = self.model_dump(exclude_none=True)
 
-        try:
-            content = tomli_w.dumps(data)
-            path.write_text(content, encoding="utf-8")
-            logger.debug(f"Configuration saved to {path}")
-        except Exception as e:
-            print(f"Error saving config: {e}")
+        def perform_write():
+            try:
+                content = tomli_w.dumps(data)
+                path.write_text(content, encoding="utf-8")
+                logger.debug(f"Configuration saved to {path}")
+            except Exception as e:
+                logger.error(f"Error saving config: {e}")
+
+        if blocking:
+            perform_write()
+        else:
+            # Execute write in a daemon thread to avoid blocking the event loop (useful for OneDrive folders)
+            threading.Thread(target=perform_write, daemon=True).start()
 
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":
@@ -380,33 +386,31 @@ def explain_config(config: Config, verbose: int = 0):
     """Prints a diagnostic report of the resolved configuration."""
     import json
 
-    print("\n--- Voice2Text Configuration Report ---")
-    print(f"Active Provider: {config.transcription.provider}")
-    print(f"Language:        {config.transcription.language}")
-    print(f"Latency Profile: {config.transcription.latency_profile}")
-    print(f"Mic Profile:     {config.transcription.mic_profile}")
-    print(f"Hotkey:          {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})")
-    print(f"Audio Capture:   {config.audio.capture_sample_rate}Hz")
+    from .config_resolver import resolve_effective_config
 
-    # Explain Latency Mapping
-    profile = LATENCY_PROFILES.get(
-        config.transcription.latency_profile, LATENCY_PROFILES["balanced"]
-    )
+    eff = resolve_effective_config(config)
+
+    print("\n--- Voice2Text Configuration Report ---")
+    print(f"Active Provider: {eff.provider_type}")
+    print(f"Language:        {eff.language}")
+    print(f"Hotkey:          {eff.hotkey} (hold_mode={eff.hold_mode})")
+    print(f"Audio Capture:   {eff.capture_sample_rate}Hz")
+
     print(f"\n[Profile: {config.transcription.latency_profile}] Resolved Engineering Values:")
 
-    print("  OpenAI:")
-    print(f"    - vad_threshold:      {profile['openai']['vad_threshold']}")
-    print(f"    - silence_duration_ms: {profile['openai']['silence_duration_ms']}")
-
-    print("  AssemblyAI:")
-    print(
-        f"    - confidence_threshold: {profile['assemblyai']['end_of_turn_confidence_threshold']}"
-    )
-    print(
-        f"    - min_silence_ms:       "
-        f"{profile['assemblyai']['min_end_of_turn_silence_when_confident_ms']}"
-    )
-    print(f"    - max_silence_ms:       {profile['assemblyai']['max_turn_silence_ms']}")
+    if eff.provider_type == "openai":
+        print("  OpenAI:")
+        print(f"    - url:                {eff.openai.url}")
+        print(f"    - vad_threshold:      {eff.openai.vad_threshold}")
+        print(f"    - silence_duration_ms: {eff.openai.silence_duration_ms}")
+        print(f"    - noise_reduction:    {eff.openai.noise_reduction_type}")
+    else:
+        print("  AssemblyAI:")
+        print(f"    - url:                  {eff.assemblyai.url}")
+        print(f"    - confidence_threshold: {eff.assemblyai.confidence_threshold}")
+        print(f"    - min_silence_ms:       {eff.assemblyai.min_silence_ms}")
+        print(f"    - max_silence_ms:       {eff.assemblyai.max_silence_ms}")
+        print(f"    - inactivity_timeout:   {eff.assemblyai.inactivity_timeout}")
 
     # Security Check
     print("\n[Credentials Status]")
