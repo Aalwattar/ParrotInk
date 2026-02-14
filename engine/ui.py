@@ -28,6 +28,7 @@ class TrayApp:
         on_set_key: Callable[[str, str], None] | None = None,
         on_toggle_sounds: Callable[[bool], None] | None = None,
         on_hotkey_change: Callable[[str], None] | None = None,
+        on_before_hotkey_change: Callable[[], None] | None = None,
         on_toggle_hud: Callable[[bool], None] | None = None,
         on_toggle_click_through: Callable[[bool], None] | None = None,
         initial_provider: ProviderType = "openai",
@@ -44,6 +45,7 @@ class TrayApp:
         self.on_set_key = on_set_key
         self.on_toggle_sounds = on_toggle_sounds
         self.on_hotkey_change = on_hotkey_change
+        self.on_before_hotkey_change = on_before_hotkey_change
         self.on_toggle_hud = on_toggle_hud
         self.on_toggle_click_through = on_toggle_click_through
         self.availability = availability or {"openai": True, "assemblyai": True}
@@ -104,6 +106,9 @@ class TrayApp:
         from .platform_win.hotkey_dialog import HotkeyRecordingWindow
 
         def record():
+            if self.on_before_hotkey_change:
+                self.on_before_hotkey_change()
+
             recorder_logic = HotkeyRecorder()
 
             def on_captured(hk):

@@ -101,9 +101,24 @@ async def main_gui(cli_args):
         config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
         logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
 
+    loop = asyncio.get_running_loop()
+
+    def on_before_hotkey_change():
+        if coordinator:
+            logger.info("Pausing global inputs for hotkey recording...")
+            # Stop active recording if any
+            asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), loop)
+            # Stop the global pynput listener so it doesn't conflict with the dialog
+            coordinator.input_monitor.stop()
+
     def on_hotkey_change(new_hotkey):
-        # This will trigger update_and_save which notifies the coordinator
+        # Update config
         config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
+
+        # Restart the global listener with the new hotkey active
+        if coordinator:
+            logger.info("Resuming global inputs...")
+            coordinator.input_monitor.start()
 
     # Import TrayApp here to keep gui_main decoupled from other modules until needed
     from engine.ui import TrayApp
@@ -116,6 +131,7 @@ async def main_gui(cli_args):
         on_set_key=on_set_key,
         on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,
+        on_before_hotkey_change=on_before_hotkey_change,
         on_toggle_hud=on_toggle_hud,
         on_toggle_click_through=on_toggle_click_through,
         initial_provider=config.transcription.provider,

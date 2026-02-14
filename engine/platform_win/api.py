@@ -13,7 +13,12 @@ WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_TRANSPARENT = 0x00000020
 WS_POPUP = 0x80000000
 WM_DESTROY = 0x0002
+WM_CLOSE = 0x0010
 WM_NCHITTEST = 0x0084
+WM_KEYDOWN = 0x0100
+WM_KEYUP = 0x0101
+WM_SYSKEYDOWN = 0x0104
+WM_SYSKEYUP = 0x0105
 WM_TIMER = 0x0113
 HTCAPTION = 2
 HTTRANSPARENT = -1
@@ -103,6 +108,16 @@ user32.UpdateLayeredWindow.argtypes = [
 
 user32.DefWindowProcW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
 user32.DefWindowProcW.restype = LRESULT
+
+user32.GetKeyNameTextW.argtypes = [ctypes.c_long, ctypes.c_wchar_p, ctypes.c_int]
+user32.MapVirtualKeyW.argtypes = [ctypes.c_uint, ctypes.c_uint]
+user32.MapVirtualKeyW.restype = ctypes.c_uint
+
+user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+user32.SetForegroundWindow.restype = wintypes.BOOL
+
+user32.SetFocus.argtypes = [wintypes.HWND]
+user32.SetFocus.restype = wintypes.HWND
 
 # GDI+
 gdiplus.GdipCreatePath.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
