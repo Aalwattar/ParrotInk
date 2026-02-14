@@ -53,3 +53,6 @@ Goal: Address bug fixes, UX refinements, and quality gates.
   - [x] Sub-task: Remove any remaining dead code or legacy "bridge" variables.
 - [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). 6596dd1
 - [ ] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 7a021c4
