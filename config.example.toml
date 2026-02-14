@@ -12,39 +12,31 @@ hold_mode = false
 cancel_on_click_outside_anchor = true
 # 'control' for specific input fields, 'window' for any click outside the app window.
 anchor_scope = "control"
+# If true, the app will add itself to the Windows Registry to run on system boot.
+run_at_startup = false
 
 [interaction.sounds]
 # Auditory feedback when recording starts or stops.
 enabled = true
 volume = 0.5
-start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
-stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
+# start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
+# stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
 [ui.floating_indicator]
 # The Win+H style HUD that shows partial transcripts.
 enabled = true
 # Click-through makes the HUD ignore mouse events so it doesn't block your workspace.
 click_through = true
-opacity_idle = 0.3
-opacity_active = 0.8
-y_offset = 60
-max_characters = 180
-refresh_rate_ms = 50
 
 [audio]
-# The sample rate used for microphone capture.
-capture_sample_rate = 16000
-chunk_ms = 100
-# 'warm' keeps the connection ready but idle to reduce latency on first press.
+# 'warm' (recommended) keeps the connection ready but idle to reduce latency on first press.
+# 'on_demand' connects only when the hotkey is pressed (higher latency).
+# 'always_on' never disconnects (highest resource usage).
 connection_mode = "warm"
-warm_idle_timeout_seconds = 300
-connection_timeout_seconds = 10.0
-voice_activity_threshold = 0.005
 
 [transcription]
 # Active provider: "openai" or "assemblyai"
 provider = "openai"
-language = "en"
 # Profiles: "fast" (low latency), "balanced" (standard), "accurate" (longer silence wait)
 latency_profile = "balanced"
 # Mic optimization: "headset" (directional), "laptop" (ambient), "none" (raw)
@@ -52,58 +44,61 @@ mic_profile = "headset"
 # If true, the provider will attempt to add punctuation and capitalization.
 format_text = false
 
-[test]
-# Internal testing mode (for developers only).
-enabled = false
-openai_mock_url = "ws://localhost:8081"
-assemblyai_mock_url = "ws://localhost:8081"
+# --- ADVANCED CONFIGURATION (Optional) ---
+# Do not modify these values unless you have specific hardware or performance requirements.
 
-[logging]
-file_enabled = false
-file_level = 1
+# [audio]
+# capture_sample_rate = 16000
+# chunk_ms = 100
+# warm_idle_timeout_seconds = 300
+# connection_timeout_seconds = 10.0
+# voice_activity_threshold = 0.005
+
+# [ui.floating_indicator]
+# opacity_idle = 0.3
+# opacity_active = 0.8
+# y_offset = 60
+# max_characters = 180
+# refresh_rate_ms = 50
 
 # --- OpenAI Configuration ---
-# NOTE: This application uses OpenAI Realtime in 'transcription' mode only.
-# Responses/Speech-to-Speech features are not supported.
+# NOTE: OpenAI is for Transcription Mode only. Speech-to-Speech is not supported.
 
 [providers.openai.core]
-realtime_ws_url_base = "wss://api.openai.com/v1/realtime"
-realtime_model = "gpt-4o-realtime-preview"
+# Models allowed: "gpt-4o-mini-transcribe", "gpt-4o-transcribe"
 transcription_model = "gpt-4o-mini-transcribe"
+language = "en"
 prompt = ""
-# Must be "audio/pcm" for Realtime transcription sessions.
-input_audio_type = "audio/pcm"
-input_audio_rate = 24000
-session_rotation_seconds = 3300
 
-[providers.openai.advanced]
-# Set override to true to use the raw VAD values below instead of the latency_profile.
-override = false
-noise_reduction = "off"
-turn_detection_type = "server_vad"
-vad_threshold = 0.6
-prefix_padding_ms = 300
-silence_duration_ms = 500
-include_logprobs = false
+# [providers.openai.advanced]
+# override = false
+# noise_reduction = "off"
+# turn_detection_type = "server_vad"
+# vad_threshold = 0.6
+# prefix_padding_ms = 300
+# silence_duration_ms = 500
+# include_logprobs = false
 
 # --- AssemblyAI Configuration ---
 
 [providers.assemblyai.core]
-# region determines the host (us/eu). ws_url is used as an override if modified.
-ws_url = "wss://streaming.assemblyai.com/v3/ws"
+# region determines the host (us/eu).
 region = "us"
-sample_rate = 16000
-vad_threshold = 0.4
-encoding = "pcm_s16le"
 speech_model = "universal-streaming-english"
-keyterms_prompt = []
-# 0 = disabled (omitted on-wire). Valid range: 5-3600 seconds.
-inactivity_timeout_seconds = 0
+# inactivity_timeout_seconds = 0
 
-[providers.assemblyai.advanced]
-# Set override to true to use the raw turn-detection values below.
-override = false
-end_of_turn_confidence_threshold = 0.4
-min_end_of_turn_silence_when_confident_ms = 400
-max_turn_silence_ms = 1000
-language_detection = false
+# [providers.assemblyai.advanced]
+# override = false
+# end_of_turn_confidence_threshold = 0.4
+# min_end_of_turn_silence_when_confident_ms = 400
+# max_turn_silence_ms = 1000
+# language_detection = false
+
+# [test]
+# enabled = false
+# openai_mock_url = "ws://localhost:8081"
+# assemblyai_mock_url = "ws://localhost:8081"
+
+# [logging]
+# file_enabled = false
+# file_level = 1

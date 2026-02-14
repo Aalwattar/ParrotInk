@@ -21,13 +21,13 @@ def test_config_profiles_exist():
 
 def test_config_redundancy_removed():
     """Verify that redundant fields have been removed."""
-    # TranscriptionConfig should no longer have sample_rate
+    # TranscriptionConfig should no longer have language
     with pytest.raises(ValidationError):
-        TranscriptionConfig(sample_rate=16000)
+        TranscriptionConfig(language="en")
 
-    # Provider configs should no longer have language
-    with pytest.raises(ValidationError):
-        OpenAICoreConfig(language="en")
+    # OpenAICoreConfig should HAVE language
+    config = OpenAICoreConfig(language="en")
+    assert config.language == "en"
 
 
 def test_volume_validation():
@@ -60,7 +60,7 @@ def test_aai_inactivity_timeout_validation():
         AssemblyAICoreConfig(inactivity_timeout_seconds=3601)
 
 
-def test_global_language_exists():
-    """Verify that language is now a global transcription setting."""
-    tc = TranscriptionConfig(language="fr")
-    assert tc.language == "fr"
+def test_global_language_removed():
+    """Verify that language is NO LONGER a global transcription setting."""
+    with pytest.raises(ValidationError):
+        TranscriptionConfig(language="fr")

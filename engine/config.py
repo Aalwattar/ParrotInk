@@ -86,18 +86,39 @@ def migrate_config_file(path: Path | str):
                         new_content = re.sub(rf'{legacy_key}\s*=\s*"[^"]+"\s*', "", new_content)
 
         # 4. REMOVE OBSOLETE KEYS (since extra='forbid' is active)
+        # We handle 'language' specially because it moved from [transcription] to provider core.
+        if "[transcription]" in new_content:
+            sections = new_content.split("[")
+            for i, section in enumerate(sections):
+                if section.startswith("transcription]"):
+                    # Remove language only from this section
+                    sections[i] = re.sub(
+                        r"^\s*language\s*=\s*\"[^\"]*\".*$\n?",
+                        "",
+                        section,
+                        flags=re.MULTILINE,
+                    )
+            new_content = "[".join(sections)
+
         obsolete_keys = [
             r"active_provider\s*=\s*\"[^\"]*\"",
             r"default_provider\s*=\s*\"[^\"]*\"",
             r"sample_rate\s*=\s*\d+",
-            r"language\s*=\s*\"[^\"]*\"",
             r"model\s*=\s*\"[^\"]*\"",
             r"utterance_silence_threshold_ms\s*=\s*\d+",
             r"format_turns\s*=\s*(true|false)",
+            r"realtime_model\s*=\s*\"[^\"]*\"",
+            r"input_audio_type\s*=\s*\"[^\"]*\"",
+            r"input_audio_rate\s*=\s*\d+",
+            r"encoding\s*=\s*\"[^\"]*\"",
         ]
 
         for key_pattern in obsolete_keys:
-            new_content = re.sub(rf"\b{key_pattern}\b", "", new_content)
+            # Match the key at the start of a line (possibly with leading whitespace)
+            # and remove the entire line.
+            new_content = re.sub(
+                rf"^\s*{key_pattern}.*$\n?", "", new_content, flags=re.MULTILINE
+            )
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")
@@ -159,7 +180,6 @@ class TranscriptionConfig(BaseModel):
     provider: Literal["openai", "assemblyai"] = Field(
         default="openai", validation_alias=AliasChoices("provider", "active_provider")
     )
-    language: str = "en"
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
     mic_profile: Literal["headset", "laptop", "none"] = "headset"
     format_text: bool = False
@@ -185,12 +205,20 @@ class LoggingConfig(BaseModel):
 class OpenAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
-    realtime_model: str = "gpt-4o-realtime-preview"  # Model for transport URL
     transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
+    language: str = "en"
     prompt: str = ""
-    input_audio_type: str = "audio/pcm"
-    input_audio_rate: int = 24000
     session_rotation_seconds: int = 3300  # 55 minutes
+
+    @field_validator("transcription_model")
+    @classmethod
+    def validate_model(cls, v: str) -> str:
+        if v.startswith("gpt-realtime"):
+            raise ValueError(
+                "Conversational models (gpt-realtime*) are not supported. "
+                "Use transcription models like 'gpt-4o-mini-transcribe'."
+            )
+        return v
 
 
 class OpenAIAdvancedConfig(BaseModel):
@@ -221,9 +249,7 @@ class AssemblyAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     region: Literal["us", "eu"] = "us"
-    sample_rate: int = 16000
     vad_threshold: float = 0.4
-    encoding: str = "pcm_s16le"
     speech_model: str = "universal-streaming-english"
     keyterms_prompt: List[str] = Field(default_factory=list)
     inactivity_timeout_seconds: int = 0
@@ -397,7 +423,6 @@ def explain_config(config: Config, verbose: int = 0):
 
     print("\n--- Voice2Text Configuration Report ---")
     print(f"Active Provider: {eff.provider_type}")
-    print(f"Language:        {eff.language}")
     print(f"Hotkey:          {eff.hotkey} (hold_mode={eff.hold_mode})")
     print(f"Audio Capture:   {eff.capture_sample_rate}Hz")
 
@@ -405,6 +430,7 @@ def explain_config(config: Config, verbose: int = 0):
 
     if eff.provider_type == "openai":
         print("  OpenAI:")
+        print(f"    - language:           {eff.openai.language}")
         print(f"    - url:                {eff.openai.url}")
         print(f"    - vad_threshold:      {eff.openai.vad_threshold}")
         print(f"    - silence_duration_ms: {eff.openai.silence_duration_ms}")

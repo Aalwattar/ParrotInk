@@ -39,9 +39,9 @@ class OpenAIProvider(BaseProvider):
         return self._is_running
 
     def get_audio_spec(self) -> ProviderAudioSpec:
-        # OpenAI Realtime requires PCM16 Mono
+        # OpenAI Realtime requires PCM16 Mono at 24kHz
         return ProviderAudioSpec(
-            sample_rate_hz=self.effective_config.input_audio_rate,
+            sample_rate_hz=24000,
             wire_encoding="pcm16_base64",
         )
 
@@ -77,43 +77,34 @@ class OpenAIProvider(BaseProvider):
             raise
 
     async def _update_session(self):
-        """Send the session.update configuration."""
+        """Send the transcription_session.update configuration (Dialect B)."""
         if not self.ws:
             return
 
         cfg = self.effective_config
 
-        # Build session.update using resolved snapshot
-        session_update = {
-            "type": "session.update",
-            "session": {
-                "type": "transcription",
-                "audio": {
-                    "input": {
-                        "format": {"type": cfg.input_audio_type, "rate": cfg.input_audio_rate},
-                        "noise_reduction": (
-                            {"type": cfg.noise_reduction_type} if cfg.noise_reduction_type else None
-                        ),
-                        "transcription": {
-                            "model": cfg.transcription_model,
-                            "language": cfg.language,
-                        },
-                        "turn_detection": {
-                            "type": "server_vad",
-                            "threshold": cfg.vad_threshold,
-                            "prefix_padding_ms": cfg.prefix_padding_ms,
-                            "silence_duration_ms": cfg.silence_duration_ms,
-                        },
-                    }
-                },
-                "include": ["item.input_audio_transcription.logprobs"]
-                if cfg.include_logprobs
-                else [],
+        # Build transcription_session.update using Dialect B (flat schema)
+        update_event = {
+            "type": "transcription_session.update",
+            "input_audio_format": "pcm16",
+            "input_audio_transcription": {
+                "model": cfg.transcription_model,
+                "language": cfg.language,
+                "prompt": cfg.prompt,
+            },
+            "turn_detection": {
+                "type": "server_vad",
+                "threshold": cfg.vad_threshold,
+                "prefix_padding_ms": cfg.prefix_padding_ms,
+                "silence_duration_ms": cfg.silence_duration_ms,
+            },
+            "input_audio_noise_reduction": {
+                "type": cfg.noise_reduction_type if cfg.noise_reduction_type else "off"
             },
         }
 
-        logger.debug(f"Sending session.update: {json.dumps(session_update)}")
-        await self.ws.send(json.dumps(session_update))
+        logger.debug(f"Sending transcription_session.update: {json.dumps(update_event)}")
+        await self.ws.send(json.dumps(update_event))
 
     async def stop(self):
         """Graceful shutdown."""
@@ -156,13 +147,14 @@ class OpenAIProvider(BaseProvider):
         """Route transcription events."""
         ev_type = event.get("type")
 
-        if ev_type == "conversation.item.input_audio_transcription.delta":
+        if ev_type == "input_audio_transcription.delta":
             delta = event.get("delta")
             if delta:
+                logger.debug(f"OpenAI Delta: len={len(delta)}")
                 self.current_transcript += delta
                 self.on_partial(self.current_transcript)
 
-        elif ev_type == "conversation.item.input_audio_transcription.completed":
+        elif ev_type == "input_audio_transcription.completed":
             transcript = event.get("transcript")
             if transcript:
                 logger.info(f"OpenAI Final Segment: {transcript.strip()}")
@@ -172,5 +164,5 @@ class OpenAIProvider(BaseProvider):
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
 
-        elif ev_type == "session.updated":
-            logger.info("OpenAI: Session configuration updated successfully.")
+        elif ev_type == "transcription_session.updated":
+            logger.info("OpenAI: Transcription session updated successfully.")

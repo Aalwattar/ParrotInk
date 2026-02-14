@@ -38,16 +38,14 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
 
     resolved_openai = EffectiveOpenAIConfig(
         url=openai_url,
-        realtime_model=openai_core.realtime_model,
         transcription_model=openai_core.transcription_model,
-        input_audio_type=openai_core.input_audio_type,
-        input_audio_rate=openai_core.input_audio_rate,
+        prompt=openai_core.prompt,
         vad_threshold=openai_vad,
         silence_duration_ms=openai_silence,
         prefix_padding_ms=openai_adv.prefix_padding_ms,
         noise_reduction_type=noise_reduction,
         include_logprobs=openai_adv.include_logprobs,
-        language=trans.language,
+        language=openai_core.language,
         is_test=config.test.enabled,
     )
 
@@ -74,6 +72,11 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         if aai_core.region == "eu":
             aai_url = "wss://streaming.eu.assemblyai.com/v3/ws"
 
+    # Append mandatory query parameters for V3
+    if "?" not in aai_url:
+        sample_rate = config.audio.capture_sample_rate
+        aai_url = f"{aai_url}?sample_rate={sample_rate}&encoding=pcm_s16le"
+
     if config.test.enabled:
         aai_url = config.test.assemblyai_mock_url
 
@@ -83,8 +86,8 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
 
     resolved_aai = EffectiveAssemblyAIConfig(
         url=aai_url,
-        sample_rate=aai_core.sample_rate,
-        encoding=aai_core.encoding,
+        sample_rate=config.audio.capture_sample_rate,
+        encoding="pcm_s16le",
         speech_model=aai_core.speech_model,
         vad_threshold=aai_core.vad_threshold,
         confidence_threshold=aai_confidence,
@@ -100,7 +103,6 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     # 4. Final Assemblage
     return EffectiveConfig(
         provider_type=trans.provider,
-        language=trans.language,
         capture_sample_rate=config.audio.capture_sample_rate,
         chunk_ms=config.audio.chunk_ms,
         hotkey=config.hotkeys.hotkey,

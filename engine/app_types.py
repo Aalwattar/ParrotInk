@@ -22,10 +22,8 @@ ProviderType = Literal["openai", "assemblyai"]
 @dataclass(frozen=True)
 class EffectiveOpenAIConfig:
     url: str
-    realtime_model: str
     transcription_model: str
-    input_audio_type: str
-    input_audio_rate: int
+    prompt: str
     vad_threshold: float
     silence_duration_ms: int
     prefix_padding_ms: int
@@ -55,7 +53,6 @@ class EffectiveAssemblyAIConfig:
 @dataclass(frozen=True)
 class EffectiveConfig:
     provider_type: ProviderType
-    language: str
     capture_sample_rate: int
     chunk_ms: int
     hotkey: str

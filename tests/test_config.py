@@ -49,6 +49,8 @@ def test_load_config_valid(tmp_path):
     config_file.write_text("""
 [transcription]
 provider = "assemblyai"
+
+[providers.openai.core]
 language = "es"
 
 [hotkeys]
@@ -59,7 +61,7 @@ hold_mode = false
     assert config.transcription.provider == "assemblyai"
     assert config.hotkeys.hotkey == "ctrl+v"
     assert config.hotkeys.hold_mode is False
-    assert config.transcription.language == "es"
+    assert config.providers.openai.core.language == "es"
 
 
 def test_config_advanced_and_test_defaults(tmp_path):
