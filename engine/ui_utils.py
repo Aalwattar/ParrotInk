@@ -3,9 +3,14 @@ from pathlib import Path
 
 
 def get_app_version() -> str:
-    """
-    Reads the application version from pyproject.toml.
-    Returns "unknown" if the file or version key is not found.
+    """Reads the application version from the project's pyproject.toml file.
+
+    This utility locates the pyproject.toml file in the project root relative to 
+    the engine directory and extracts the [project].version field.
+
+    Returns:
+        str: The version string if found (e.g., "0.2.0"), or "unknown" if the file 
+             is missing or malformed.
     """
     # Try to find pyproject.toml in the project root
     # engine/ui_utils.py -> parent is engine -> parent is root

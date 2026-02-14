@@ -3,8 +3,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from engine.app_types import AppState
-from engine.ui import TrayApp
+# Global mock for pystray.Icon to prevent Win32 class registration during imports/tests
+with patch("pystray.Icon"):
+    from engine.app_types import AppState
+    from engine.ui import TrayApp
 
 
 @pytest.fixture
@@ -21,7 +23,7 @@ def test_get_icon_color(mock_config):
         app = TrayApp(config=mock_config)
 
         # Fluent colors
-        assert app._get_icon_color(AppState.LISTENING) == "#0078D4"  # Microsoft Blue (as planned)
+        assert app._get_icon_color(AppState.LISTENING) == "#0078D4"  # Microsoft Blue (Vibrant)
         assert app._get_icon_color(AppState.IDLE) == "#475569"  # Slate-600
         assert app._get_icon_color(AppState.ERROR) == "#EF4444"  # Red-500
 
