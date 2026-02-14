@@ -1,7 +1,9 @@
 import pytest
+
 from engine.config import AudioConfig, Config, HotkeysConfig, TranscriptionConfig
-from main import AppCoordinator
 from engine.ui_bridge import UIBridge
+from main import AppCoordinator
+
 
 def test_coordinator_initialization():
     config = Config(
@@ -11,9 +13,10 @@ def test_coordinator_initialization():
     )
     bridge = UIBridge()
     coordinator = AppCoordinator(config, bridge)
-    
+
     assert coordinator.config.transcription.provider == "openai"
     assert coordinator.config.hotkeys.hotkey == "ctrl+alt+v"
+
 
 @pytest.mark.asyncio
 async def test_coordinator_basic_state():
@@ -21,8 +24,8 @@ async def test_coordinator_basic_state():
     config.audio.capture_sample_rate = 16000
     config.audio.chunk_ms = 100
     config.transcription.provider = "openai"
-    
+
     bridge = UIBridge()
     coordinator = AppCoordinator(config, bridge)
-    
+
     assert coordinator.state.name == "IDLE"

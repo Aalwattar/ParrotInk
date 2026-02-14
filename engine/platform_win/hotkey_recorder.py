@@ -31,25 +31,25 @@ class HotkeyRecorder:
     def is_valid(self, keys: List[str]) -> bool:
         """Checks if a key combination is allowed."""
         key_set = {k.lower() for k in keys}
-        
+
         # 1. Reject empty
         if not key_set:
             return False
-            
+
         # 2. Reject reserved system shortcuts
         for reserved in self.RESERVED_COMBINATIONS:
             if reserved.issubset(key_set):
                 return False
-                
+
         # 3. Must have at least one modifier OR a function key
         modifiers = {"ctrl", "alt", "shift", "cmd"}
         has_modifier = any(m in key_set for m in modifiers)
         has_fkey = any(k.startswith("f") and k[1:].isdigit() for k in key_set)
-        
+
         if not (has_modifier or has_fkey):
             # We don't want 'a' to be a hotkey.
             return False
-            
+
         return True
 
     def _normalize_key(self, key: keyboard.Key | keyboard.KeyCode) -> Optional[str]:
@@ -103,7 +103,7 @@ class HotkeyRecorder:
             # We use a stop event to allow external interruption
             while not self._stop_event.is_set() and self.recorded_hotkey is None:
                 self._stop_event.wait(0.1)
-            
+
         self._listener = None
 
     def stop(self):

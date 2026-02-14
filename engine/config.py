@@ -3,7 +3,15 @@ import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, ValidationError, field_validator, ConfigDict, PrivateAttr
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    PrivateAttr,
+    ValidationError,
+    field_validator,
+)
 
 from .logging import get_logger
 from .platform_win.paths import get_config_path
@@ -87,7 +95,7 @@ def migrate_config_file(path: Path | str):
             r"utterance_silence_threshold_ms\s*=\s*\d+",
             r"format_turns\s*=\s*(true|false)",
         ]
-        
+
         for key_pattern in obsolete_keys:
             new_content = re.sub(rf"\b{key_pattern}\b", "", new_content)
 
@@ -99,13 +107,13 @@ def migrate_config_file(path: Path | str):
 
 
 class HotkeysConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     hotkey: str = "ctrl+alt+v"
     hold_mode: bool = False
 
 
 class SoundsConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     enabled: bool = True
     volume: float = Field(default=0.5, ge=0.0, le=1.0)
     start_sound_path: str = r"C:\Windows\Media\Speech On.wav"
@@ -113,7 +121,7 @@ class SoundsConfig(BaseModel):
 
 
 class FloatingIndicatorConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     enabled: bool = False
     opacity_idle: float = 0.3
     opacity_active: float = 0.8
@@ -123,7 +131,7 @@ class FloatingIndicatorConfig(BaseModel):
 
 
 class InteractionConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     # From cancel_click_away_20260210
     cancel_on_click_outside_anchor: bool = True
     anchor_scope: Literal["control", "window"] = "control"
@@ -133,7 +141,7 @@ class InteractionConfig(BaseModel):
 
 
 class AudioConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     capture_sample_rate: int = 16000
     chunk_ms: int = 100
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
@@ -143,7 +151,7 @@ class AudioConfig(BaseModel):
 
 
 class TranscriptionConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     provider: Literal["openai", "assemblyai"] = Field(
         default="openai", validation_alias=AliasChoices("provider", "active_provider")
     )
@@ -154,14 +162,14 @@ class TranscriptionConfig(BaseModel):
 
 
 class AppTestConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     enabled: bool = False
     openai_mock_url: str = "ws://localhost:8081"
     assemblyai_mock_url: str = "ws://localhost:8081"
 
 
 class LoggingConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     file_enabled: bool = False
     file_path: Optional[str] = None
     file_level: int = 1
@@ -171,7 +179,7 @@ class LoggingConfig(BaseModel):
 
 
 class OpenAICoreConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
     realtime_model: str = "gpt-4o-realtime-preview"  # Model for transport URL
     transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
@@ -182,7 +190,7 @@ class OpenAICoreConfig(BaseModel):
 
 
 class OpenAIAdvancedConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     override: bool = False
     noise_reduction: str = "off"
     turn_detection_type: str = "server_vad"
@@ -193,7 +201,7 @@ class OpenAIAdvancedConfig(BaseModel):
 
 
 class OpenAIConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     core: OpenAICoreConfig = Field(
         default_factory=OpenAICoreConfig, validation_alias=AliasChoices("core", "tier1")
     )
@@ -206,7 +214,7 @@ class OpenAIConfig(BaseModel):
 
 
 class AssemblyAICoreConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     region: Literal["us", "eu"] = "us"
     sample_rate: int = 16000
@@ -225,7 +233,7 @@ class AssemblyAICoreConfig(BaseModel):
 
 
 class AssemblyAIAdvancedConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     override: bool = False
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
@@ -234,7 +242,7 @@ class AssemblyAIAdvancedConfig(BaseModel):
 
 
 class AssemblyAIConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     core: AssemblyAICoreConfig = Field(
         default_factory=AssemblyAICoreConfig, validation_alias=AliasChoices("core", "tier1")
     )
@@ -244,18 +252,18 @@ class AssemblyAIConfig(BaseModel):
 
 
 class ProvidersConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
     assemblyai: AssemblyAIConfig = Field(default_factory=AssemblyAIConfig)
 
 
 class UIConfig(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     floating_indicator: FloatingIndicatorConfig = Field(default_factory=FloatingIndicatorConfig)
 
 
 class Config(BaseModel):
-    model_config = ConfigDict(extra='forbid')
+    model_config = ConfigDict(extra="forbid")
     hotkeys: HotkeysConfig = Field(default_factory=HotkeysConfig)
     interaction: InteractionConfig = Field(default_factory=InteractionConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
@@ -365,6 +373,52 @@ def load_config(path: Optional[str | Path] = None) -> Config:
         return config
 
     return Config.from_file(path)
+
+
+def explain_config(config: Config, verbose: int = 0):
+    """Prints a diagnostic report of the resolved configuration."""
+    import json
+
+    print("\n--- Voice2Text Configuration Report ---")
+    print(f"Active Provider: {config.transcription.provider}")
+    print(f"Language:        {config.transcription.language}")
+    print(f"Latency Profile: {config.transcription.latency_profile}")
+    print(f"Mic Profile:     {config.transcription.mic_profile}")
+    print(f"Hotkey:          {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})")
+    print(f"Audio Capture:   {config.audio.capture_sample_rate}Hz")
+
+    # Explain Latency Mapping
+    profile = LATENCY_PROFILES.get(
+        config.transcription.latency_profile, LATENCY_PROFILES["balanced"]
+    )
+    print(f"\n[Profile: {config.transcription.latency_profile}] Resolved Engineering Values:")
+
+    print("  OpenAI:")
+    print(f"    - vad_threshold:      {profile['openai']['vad_threshold']}")
+    print(f"    - silence_duration_ms: {profile['openai']['silence_duration_ms']}")
+
+    print("  AssemblyAI:")
+    print(
+        f"    - confidence_threshold: {profile['assemblyai']['end_of_turn_confidence_threshold']}"
+    )
+    print(
+        f"    - min_silence_ms:       "
+        f"{profile['assemblyai']['min_end_of_turn_silence_when_confident_ms']}"
+    )
+    print(f"    - max_silence_ms:       {profile['assemblyai']['max_turn_silence_ms']}")
+
+    # Security Check
+    print("\n[Credentials Status]")
+    openai_key = config.get_openai_key()
+    aai_key = config.get_assemblyai_key()
+    print(f"  OpenAI API Key:     {'[SET]' if openai_key else '[MISSING]'}")
+    print(f"  AssemblyAI API Key: {'[SET]' if aai_key else '[MISSING]'}")
+
+    if verbose > 0:
+        print("\n[Full Schema (Redacted)]")
+        # Mask keys in the dump (though they aren't in the Config model itself)
+        data = config.model_dump(exclude_none=True)
+        print(json.dumps(data, indent=2))
 
 
 class ConfigError(Exception):

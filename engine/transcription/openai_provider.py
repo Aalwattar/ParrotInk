@@ -51,10 +51,10 @@ class OpenAIProvider(BaseProvider):
     def _build_url(self) -> str:
         if self.config.test.enabled:
             return self.config.test.openai_mock_url
-        
+
         base = self.config.providers.openai.core.realtime_ws_url_base
-        
-        # According to latest API: You must not provide a model parameter 
+
+        # According to latest API: You must not provide a model parameter
         # for transcription sessions in the URL.
         return f"{base}?intent=transcription"
 
@@ -66,6 +66,7 @@ class OpenAIProvider(BaseProvider):
 
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(self.url)
             logger.info(f"Connecting to OpenAI Realtime Host: {parsed.netloc}")
         except Exception:
@@ -119,7 +120,9 @@ class OpenAIProvider(BaseProvider):
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": core.input_audio_rate},
-                        "noise_reduction": {"type": noise_reduction_type} if noise_reduction_type else None,
+                        "noise_reduction": (
+                            {"type": noise_reduction_type} if noise_reduction_type else None
+                        ),
                         "transcription": {
                             "model": core.transcription_model,
                             "language": trans.language,
@@ -129,7 +132,7 @@ class OpenAIProvider(BaseProvider):
                             "threshold": vad_threshold,
                             "prefix_padding_ms": adv.prefix_padding_ms,
                             "silence_duration_ms": silence_duration_ms,
-                        }
+                        },
                     }
                 },
                 "include": ["item.input_audio_transcription.logprobs"]

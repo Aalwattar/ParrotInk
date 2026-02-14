@@ -2,6 +2,7 @@ import engine.config
 import engine.platform_win.paths
 from engine.config import Config, load_config
 
+
 def test_load_config_default_path(tmp_path, monkeypatch):
     # Mock both locations where get_config_path might be accessed
     fake_config_path = tmp_path / "fake_config.toml"
@@ -14,6 +15,7 @@ def test_load_config_default_path(tmp_path, monkeypatch):
     # load_config() with no args should now use our fake path
     config = load_config()
     assert config.transcription.provider == "assemblyai"
+
 
 def test_config_save_default_path(tmp_path, monkeypatch):
     # Mock both locations where get_config_path might be accessed

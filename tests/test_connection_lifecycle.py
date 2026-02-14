@@ -1,13 +1,11 @@
 import asyncio
-import time
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from engine.app_types import AppState
 from engine.config import Config
 from engine.connection import ConnectionManager
+
 
 @pytest.mark.asyncio
 async def test_ensure_connected_idempotency():
@@ -29,7 +27,7 @@ async def test_ensure_connected_idempotency():
         # Mock successful connection
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
-        
+
         # First connection
         await cm.ensure_connected(is_listening=False)
         provider1 = cm.provider
@@ -41,6 +39,7 @@ async def test_ensure_connected_idempotency():
         assert cm.provider is provider1
 
     await cm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_openai_rotation_guard():
@@ -62,7 +61,7 @@ async def test_openai_rotation_guard():
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
-        
+
         await cm.ensure_connected(is_listening=False)
         provider1 = cm.provider
 
@@ -75,6 +74,7 @@ async def test_openai_rotation_guard():
         assert cm.provider is not None
 
     await cm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_provider_switching():
@@ -95,7 +95,7 @@ async def test_provider_switching():
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
-        
+
         await cm.ensure_connected(is_listening=False)
         assert cm.provider.get_type() == "openai"
 

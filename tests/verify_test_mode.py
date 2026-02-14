@@ -1,26 +1,25 @@
 import asyncio
 import sys
-import os
-import json
-from engine.config import Config, load_config
+
+from engine.config import Config
 from engine.ui_bridge import UIBridge, UIEvent
-from engine.app_types import AppState
 from main import AppCoordinator
+
 
 async def verify_mock_transcription():
     """Verify that mock transcription works end-to-end in test mode."""
     print("Starting Mock Transcription Verification...")
-    
+
     config = Config()
     config.test.enabled = True
     config.transcription.provider = "openai"
-    
+
     bridge = UIBridge()
     coordinator = AppCoordinator(config, bridge)
     coordinator.loop = asyncio.get_running_loop()
-    
+
     final_text = ""
-    
+
     def on_event(event):
         nonlocal final_text
         msg_type, data = event
@@ -30,18 +29,18 @@ async def verify_mock_transcription():
 
     # Patch bridge to intercept events
     bridge.put_event = on_event
-    
+
     print(f"Using provider: {config.transcription.provider}")
-    
+
     # Start listening
     await coordinator.start_listening()
-    
+
     # Wait for a bit to receive mock events
     await asyncio.sleep(2.0)
-    
+
     # Stop listening
     await coordinator.stop_listening()
-    
+
     if final_text:
         print(f"SUCCESS: Received expected mock response for {config.transcription.provider}")
     else:
@@ -52,11 +51,11 @@ async def verify_mock_transcription():
     config.transcription.provider = "assemblyai"
     final_text = ""
     print(f"Using provider: {config.transcription.provider}")
-    
+
     await coordinator.start_listening()
     await asyncio.sleep(2.0)
     await coordinator.stop_listening()
-    
+
     if final_text:
         print(f"SUCCESS: Received expected mock response for {config.transcription.provider}")
     else:
@@ -65,6 +64,7 @@ async def verify_mock_transcription():
 
     await coordinator.shutdown()
     print("Verification Complete.")
+
 
 if __name__ == "__main__":
     asyncio.run(verify_mock_transcription())

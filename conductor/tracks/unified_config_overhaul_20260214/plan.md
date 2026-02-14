@@ -37,7 +37,7 @@ Goal: Implement the "Change Hotkey" flow.
 ## Phase 4: Diagnostics & Final DOD
 Goal: Finalize tools and quality gates.
 
-- [ ] Task: Implement `app config --explain` with secrets redaction.
+- [~] Task: Implement `app config --explain` with secrets redaction.
 - [ ] Task: Verify startup "Fail Fast" UI notification for broken configs.
 - [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
 - [ ] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)

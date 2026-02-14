@@ -1,6 +1,5 @@
 import asyncio
 import json
-import time
 import urllib.parse
 from typing import Callable, Optional, Union
 
@@ -62,15 +61,15 @@ class AssemblyAIProvider(BaseProvider):
 
         # 2. Resolve Latency Settings
         if adv.override:
-            confidence = adv.end_of_turn_confidence_threshold
-            min_silence = adv.min_end_of_turn_silence_when_confident_ms
-            max_silence = adv.max_turn_silence_ms
+            confidence: float = adv.end_of_turn_confidence_threshold
+            min_silence: int = adv.min_end_of_turn_silence_when_confident_ms
+            max_silence: int = adv.max_turn_silence_ms
         else:
             profile = LATENCY_PROFILES.get(trans.latency_profile, LATENCY_PROFILES["balanced"])
             aai_params = profile["assemblyai"]
-            confidence = aai_params["end_of_turn_confidence_threshold"]
-            min_silence = aai_params["min_end_of_turn_silence_when_confident_ms"]
-            max_silence = aai_params["max_turn_silence_ms"]
+            confidence = float(aai_params["end_of_turn_confidence_threshold"])
+            min_silence = int(aai_params["min_end_of_turn_silence_when_confident_ms"])
+            max_silence = int(aai_params["max_turn_silence_ms"])
 
         # 3. Build Query Parameters
         params = {

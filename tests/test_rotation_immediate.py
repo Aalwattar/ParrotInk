@@ -1,10 +1,11 @@
 import asyncio
-import time
 from unittest.mock import AsyncMock, patch
+
 import pytest
+
 from engine.config import Config
 from engine.connection import ConnectionManager
-from engine.app_types import AppState
+
 
 @pytest.mark.asyncio
 async def test_immediate_rotation_after_stop():
@@ -44,10 +45,10 @@ async def test_immediate_rotation_after_stop():
 
         # 4. Stop listening should trigger immediate rotation
         cm.start_idle_timer()
-        
+
         # Give it a moment to run the async task
         await asyncio.sleep(0.5)
-        
+
         # Verify provider was rotated
         assert cm.provider is not provider1
         assert cm.provider is not None

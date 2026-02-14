@@ -505,6 +505,12 @@ def handle_cli():
         help="The transcription provider (openai or assemblyai)",
     )
 
+    # Command: config
+    config_parser = subparsers.add_parser("config", help="Configuration utilities")
+    config_parser.add_argument(
+        "--explain", action="store_true", help="Print detailed mapping of resolved profiles"
+    )
+
     args = parser.parse_args()
 
     # Default command is 'run'
@@ -515,12 +521,29 @@ def handle_cli():
 
 
 if __name__ == "__main__":
-    from engine.config import get_config_path, migrate_config_file
+    import ctypes
+
+    from engine.config import ConfigError, get_config_path, load_config, migrate_config_file
     from engine.platform_win.instance import SingleInstance
 
+    # Try to migrate but don't fail hard yet
     migrate_config_file(get_config_path())
 
     cli_args = handle_cli()
+
+    # Fail Fast for GUI mode
+    if cli_args.command == "run":
+        try:
+            load_config()
+        except ConfigError as e:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                f"The application could not start because the configuration is invalid:\n\n{e}\n\n"
+                "Please fix your config.toml or delete it to reset to defaults.",
+                "Configuration Error",
+                0x10,  # MB_ICONERROR
+            )
+            sys.exit(1)
 
     # Single Instance Protection
     from engine.platform_win.paths import APP_NAME
@@ -546,6 +569,14 @@ if __name__ == "__main__":
             print(f"Successfully saved API key for {provider_name}.")
         else:
             print("Operation cancelled.")
+        sys.exit(0)
+
+    elif cli_args.command == "config":
+        from engine.config import explain_config, load_config
+
+        config = load_config()
+        if cli_args.explain:
+            explain_config(config, verbose=cli_args.verbose)
         sys.exit(0)
 
     elif cli_args.command == "eval":

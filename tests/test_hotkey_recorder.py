@@ -1,9 +1,10 @@
-import pytest
 from engine.platform_win.hotkey_recorder import HotkeyRecorder
+
 
 def test_hotkey_recorder_initialization():
     recorder = HotkeyRecorder()
     assert recorder is not None
+
 
 def test_hotkey_validation():
     recorder = HotkeyRecorder()
