@@ -46,4 +46,6 @@ Goal: Refactor configuration template and diagnostics.
     - [ ] Task: Implement Basic vs. Advanced separation.
     - [ ] Task: Comment out advanced keys and add warnings.
 - [ ] Task: Final DOD Gate (Ruff, Mypy, Pytest).
-- [ ] Task: Conductor - User Manual Verification 'Final Polishing & DOD' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions [7fafcb2]
