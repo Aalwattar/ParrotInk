@@ -8,7 +8,7 @@
 - [x] Task: Update logging initialization in `engine/logging.py` to use path helpers for default log file location. (f38c09e)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Foundation & Path Resolution' (Protocol in workflow.md)
 
-## Phase 2: Build Configuration & Dependencies
+## Phase 2: Build Configuration & Dependencies [checkpoint: ee58106]
 - [x] Task: Add `pyinstaller` to development dependencies. (1a29dd8)
     - [x] Run `uv add --dev pyinstaller`.
 - [x] Task: Create PyInstaller spec file at `build/pyinstaller/voice2text_onefile.spec`. (df11ec6)
@@ -16,7 +16,7 @@
     - [x] Include hidden imports for `pynput`, `pystray`, `PIL`, `websockets`, `keyring`.
     - [x] Include binaries for `sounddevice` (PortAudio).
     - [x] Include `assets/` directory.
-- [~] Task: Conductor - User Manual Verification 'Phase 2: Build Configuration & Dependencies' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Build Configuration & Dependencies' (Protocol in workflow.md)
 
 ## Phase 3: Build Scripts & Distribution
 - [ ] Task: Create manual build script `scripts/build_onefile.ps1`.
