@@ -9,8 +9,8 @@ Goal: Implement the core Windows Registry manipulation logic in a dedicated modu
     - [x] Task: Ensure the executable path is correctly resolved for both script and EXE modes.
 - [x] Task: Update `engine/config.py` to include the new setting. [0b6c0f7]
     - [x] Task: Add `run_at_startup: bool = False` to `InteractionConfig`.
-- [ ] Task: Write unit tests for the startup logic.
-    - [ ] Task: Create `tests/test_startup_win.py` to verify registry value manipulation (using mocks).
+- [x] Task: Write unit tests for the startup logic. [7302392]
+    - [x] Task: Create `tests/test_startup_win.py` to verify registry value manipulation (using mocks).
 - [ ] Task: Conductor - User Manual Verification 'Foundation & Registry Logic' (Protocol in workflow.md)
 
 ## Phase 2: Integration & UI
