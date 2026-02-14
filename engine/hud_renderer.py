@@ -24,12 +24,14 @@ except ImportError:
 WS_EX_LAYERED = 0x00080000
 WS_EX_TOPMOST = 0x00000008
 WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_TRANSPARENT = 0x00000020
 WS_POPUP = 0x80000000
 ULW_ALPHA = 0x00000002
 AC_SRC_ALPHA = 0x01
 AC_SRC_OVER = 0x00
 WM_NCHITTEST = 0x0084
 HTCAPTION = 2
+HTTRANSPARENT = -1
 WM_TIMER = 0x0113
 
 
@@ -181,7 +183,7 @@ class HudOverlay:
             win32gui.PostQuitMessage(0)
             return 0
         if msg == WM_NCHITTEST:
-            return HTCAPTION
+            return HTTRANSPARENT
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
     def run(self):
@@ -214,7 +216,10 @@ class HudOverlay:
         y_pos = screen_h - self.win_height - y_offset
 
         self._hwnd = win32gui.CreateWindowEx(
-            win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW,
+            win32con.WS_EX_LAYERED
+            | win32con.WS_EX_TOPMOST
+            | win32con.WS_EX_TOOLWINDOW
+            | WS_EX_TRANSPARENT,
             class_name,
             "V2T HUD",
             win32con.WS_POPUP,

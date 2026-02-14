@@ -22,10 +22,12 @@ logger = get_logger("IndicatorUI")
 WS_EX_LAYERED = 0x00080000
 WS_EX_TOPMOST = 0x00000008
 WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_TRANSPARENT = 0x00000020
 WS_POPUP = 0x80000000
 WM_DESTROY = 0x0002
 WM_NCHITTEST = 0x0084
 HTCAPTION = 2
+HTTRANSPARENT = -1
 ULW_ALPHA = 0x00000002
 AC_SRC_ALPHA = 0x01
 AC_SRC_OVER = 0x00
@@ -182,7 +184,7 @@ class GdiFallbackWindow:
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == WM_NCHITTEST:
-            return HTCAPTION
+            return HTTRANSPARENT
         if msg == WM_DESTROY:
             return 0
         return _user32.DefWindowProcW(hwnd, msg, wparam, lparam)
@@ -356,7 +358,7 @@ class GdiFallbackWindow:
         y_pos = work_bottom - 10 - self._height
 
         self._hwnd = _user32.CreateWindowExW(
-            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+            WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT,
             self._class_name,
             "V2T Fallback",
             WS_POPUP,

@@ -572,11 +572,15 @@ if __name__ == "__main__":
         sys.exit(0)
 
     elif cli_args.command == "config":
-        from engine.config import explain_config, load_config
+        from engine.config import ConfigError, explain_config, load_config
 
-        config = load_config()
-        if cli_args.explain:
-            explain_config(config, verbose=cli_args.verbose)
+        try:
+            config = load_config()
+            if cli_args.explain:
+                explain_config(config, verbose=cli_args.verbose)
+        except ConfigError as e:
+            print(f"\n[CONFIGURATION ERROR] {e}", file=sys.stderr)
+            sys.exit(1)
         sys.exit(0)
 
     elif cli_args.command == "eval":

@@ -41,13 +41,12 @@ class HotkeyRecorder:
             if reserved.issubset(key_set):
                 return False
 
-        # 3. Must have at least one modifier OR a function key
+        # 3. DISASTER PREVENTION: Must NOT be only modifiers
+        # We allow single common keys (F1, Backtick, etc.) but NOT just 'Ctrl'
         modifiers = {"ctrl", "alt", "shift", "cmd"}
-        has_modifier = any(m in key_set for m in modifiers)
-        has_fkey = any(k.startswith("f") and k[1:].isdigit() for k in key_set)
+        is_only_modifiers = key_set.issubset(modifiers)
 
-        if not (has_modifier or has_fkey):
-            # We don't want 'a' to be a hotkey.
+        if is_only_modifiers:
             return False
 
         return True

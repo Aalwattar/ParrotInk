@@ -1,4 +1,3 @@
-import ctypes
 import os
 import threading
 from pathlib import Path
@@ -90,38 +89,20 @@ class TrayApp:
             self.on_toggle_sounds(self.sounds_enabled)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
-        def record():
-            # Show instruction message box
-            ctypes.windll.user32.MessageBoxW(
-                0,
-                "The application will now record your next key combination.\n\n"
-                "1. Press and HOLD the keys (e.g. Ctrl + Shift + Space)\n"
-                "2. Release them to finish.\n\n"
-                "Click OK then press your keys.",
-                "Record New Hotkey",
-                0x40,  # MB_ICONINFORMATION
-            )
+        from .platform_win.hotkey_dialog import HotkeyRecordingWindow
 
-            recorder = HotkeyRecorder()
-            captured = None
+        def record():
+            recorder_logic = HotkeyRecorder()
 
             def on_captured(hk):
-                nonlocal captured
-                captured = hk
-
-            # recorder.start() is blocking until captured or stopped
-            recorder.start(on_captured)
-
-            if captured:
-                logger.info(f"New hotkey captured: {captured}")
+                logger.info(f"New hotkey captured: {hk}")
                 if self.on_hotkey_change:
-                    self.on_hotkey_change(captured)
+                    self.on_hotkey_change(hk)
 
-                ctypes.windll.user32.MessageBoxW(
-                    0, f"Hotkey changed to: {captured}", "Hotkey Updated", 0x40
-                )
-            else:
-                logger.info("Hotkey recording cancelled or failed.")
+            dialog = HotkeyRecordingWindow(
+                on_captured=on_captured, is_valid_cb=recorder_logic.is_valid
+            )
+            dialog.show()
 
         threading.Thread(target=record, daemon=True).start()
 
