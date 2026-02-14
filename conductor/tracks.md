@@ -155,4 +155,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Single Instance Protection**
-*Link: [./tracks/single_instance_protection_20260214/](./tracks/single_instance_protection_20260214/)*
+*Link: [./archive/single_instance_protection_20260214/](./archive/single_instance_protection_20260214/)*
