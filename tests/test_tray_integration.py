@@ -37,3 +37,14 @@ def test_version_header_content(mock_config):
         app = TrayApp(config=mock_config)
         menu_items = list(app.icon.menu)
         assert menu_items[0].text == "Voice2Text v1.2.3"
+
+
+def test_on_provider_change_callback(mock_config):
+    mock_cb = MagicMock()
+    app = TrayApp(config=mock_config, on_provider_change=mock_cb)
+
+    # Simulate selecting AssemblyAI
+    app._on_provider_selection(None, "assemblyai")
+
+    mock_cb.assert_called_once_with("assemblyai")
+    assert app.current_provider == "assemblyai"

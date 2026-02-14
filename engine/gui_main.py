@@ -67,7 +67,7 @@ async def main_gui(cli_args):
             asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
             coordinator.provider = None
 
-        config.transcription.provider = provider_name
+        config.update_and_save({"transcription": {"provider": provider_name}})
         logger.info(f"Provider changed to: {provider_name}")
 
     def on_set_key(account_id, key):
@@ -80,7 +80,7 @@ async def main_gui(cli_args):
         )
 
     def on_toggle_sounds(enabled):
-        config.interaction.sounds.enabled = enabled
+        config.update_and_save({"interaction": {"sounds": {"enabled": enabled}}})
         logger.info(f"Audio feedback {'enabled' if enabled else 'disabled'}")
 
     def on_toggle_hud(enabled):
