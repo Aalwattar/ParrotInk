@@ -465,6 +465,9 @@ def handle_cli():
     )
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
     parser.add_argument("--log-file", type=str, help="Override default log file path")
+    parser.add_argument(
+        "--background", action="store_true", help="Start without showing 'already running' warning"
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -504,10 +507,18 @@ def handle_cli():
 
 if __name__ == "__main__":
     from engine.config import get_config_path, migrate_config_file
+    from engine.platform_win.instance import SingleInstance
 
     migrate_config_file(get_config_path())
 
     cli_args = handle_cli()
+
+    # Single Instance Protection
+    instance = SingleInstance("Global\\Voice2Text_Mutex_2026")
+    if instance.already_running:
+        if not cli_args.background:
+            instance.show_warning()
+        sys.exit(0)
 
     if cli_args.command == "set-key":
         account_map = {
