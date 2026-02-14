@@ -159,7 +159,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Run at Startup Feature**
+- [x] **Track: Run at Startup Feature**
 *Link: [./tracks/run_at_startup_20260214/](./tracks/run_at_startup_20260214/)*
 
 ---
