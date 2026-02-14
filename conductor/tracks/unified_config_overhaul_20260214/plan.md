@@ -34,10 +34,10 @@ Goal: Implement the "Change Hotkey" flow.
 - [ ] Task: Update `InteractionMonitor` to reload the listener on config change.
 - [ ] Task: Conductor - User Manual Verification 'Interactive Hotkey UI' (Protocol in workflow.md)
 
-## Phase 4: Diagnostics & Final DOD
+## Phase 4: Diagnostics & Final DOD [checkpoint: d4faabb]
 Goal: Finalize tools and quality gates.
 
-- [~] Task: Implement `app config --explain` with secrets redaction.
-- [ ] Task: Verify startup "Fail Fast" UI notification for broken configs.
-- [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
+- [x] Task: Implement `app config --explain` with secrets redaction. d4faabb
+- [x] Task: Verify startup "Fail Fast" UI notification for broken configs. d4faabb
+- [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest). d4faabb
 - [ ] Task: Conductor - User Manual Verification 'Diagnostics & Final DOD' (Protocol in workflow.md)
