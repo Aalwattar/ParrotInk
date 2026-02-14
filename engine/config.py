@@ -116,9 +116,7 @@ def migrate_config_file(path: Path | str):
         for key_pattern in obsolete_keys:
             # Match the key at the start of a line (possibly with leading whitespace)
             # and remove the entire line.
-            new_content = re.sub(
-                rf"^\s*{key_pattern}.*$\n?", "", new_content, flags=re.MULTILINE
-            )
+            new_content = re.sub(rf"^\s*{key_pattern}.*$\n?", "", new_content, flags=re.MULTILINE)
 
         if new_content != content:
             path.write_text(new_content, encoding="utf-8")

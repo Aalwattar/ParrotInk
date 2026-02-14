@@ -30,7 +30,7 @@ def test_on_toggle_hold_mode_callback(mock_config):
 
 
 def test_version_header_content(mock_config):
-    with patch("engine.ui.get_app_version", return_value="1.2.3") as mock_v:
+    with patch("engine.ui.get_app_version", return_value="1.2.3"):
         # Re-import or ensure we are patching where it's USED
         from engine.ui import TrayApp
 

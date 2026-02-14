@@ -77,33 +77,44 @@ class OpenAIProvider(BaseProvider):
             raise
 
     async def _update_session(self):
-        """Send the transcription_session.update configuration (Dialect B)."""
+        """Send the session.update configuration for a transcription session."""
         if not self.ws:
             return
 
         cfg = self.effective_config
 
-        # Build transcription_session.update using Dialect B (flat schema)
+        # Build session.update using the nested Transcription Session Object shape
+        # session.type is REQUIRED for transcription-only sessions via session.update
         update_event = {
-            "type": "transcription_session.update",
-            "input_audio_format": "pcm16",
-            "input_audio_transcription": {
-                "model": cfg.transcription_model,
-                "language": cfg.language,
-                "prompt": cfg.prompt,
-            },
-            "turn_detection": {
-                "type": "server_vad",
-                "threshold": cfg.vad_threshold,
-                "prefix_padding_ms": cfg.prefix_padding_ms,
-                "silence_duration_ms": cfg.silence_duration_ms,
-            },
-            "input_audio_noise_reduction": {
-                "type": cfg.noise_reduction_type if cfg.noise_reduction_type else "off"
+            "type": "session.update",
+            "session": {
+                "type": "transcription",
+                "audio": {
+                    "input": {
+                        "format": {"type": "audio/pcm", "rate": 24000},
+                        "transcription": {
+                            "model": cfg.transcription_model,
+                            "language": cfg.language,
+                            "prompt": cfg.prompt,
+                        },
+                        "turn_detection": {
+                            "type": "server_vad",
+                            "threshold": cfg.vad_threshold,
+                            "prefix_padding_ms": cfg.prefix_padding_ms,
+                            "silence_duration_ms": cfg.silence_duration_ms,
+                        },
+                    }
+                },
             },
         }
 
-        logger.debug(f"Sending transcription_session.update: {json.dumps(update_event)}")
+        # Handle noise reduction in the nested structure
+        if cfg.noise_reduction_type and cfg.noise_reduction_type != "off":
+            update_event["session"]["audio"]["input"]["noise_reduction"] = {
+                "type": cfg.noise_reduction_type
+            }
+
+        logger.debug(f"Sending session.update: {json.dumps(update_event)}")
         await self.ws.send(json.dumps(update_event))
 
     async def stop(self):
@@ -147,14 +158,21 @@ class OpenAIProvider(BaseProvider):
         """Route transcription events."""
         ev_type = event.get("type")
 
-        if ev_type == "input_audio_transcription.delta":
+        # Support both prefixed and non-prefixed transcription events
+        if ev_type in (
+            "conversation.item.input_audio_transcription.delta",
+            "input_audio_transcription.delta",
+        ):
             delta = event.get("delta")
             if delta:
                 logger.debug(f"OpenAI Delta: len={len(delta)}")
                 self.current_transcript += delta
                 self.on_partial(self.current_transcript)
 
-        elif ev_type == "input_audio_transcription.completed":
+        elif ev_type in (
+            "conversation.item.input_audio_transcription.completed",
+            "input_audio_transcription.completed",
+        ):
             transcript = event.get("transcript")
             if transcript:
                 logger.info(f"OpenAI Final Segment: {transcript.strip()}")
@@ -164,5 +182,5 @@ class OpenAIProvider(BaseProvider):
         elif ev_type == "error":
             logger.error(f"OpenAI API Error: {event.get('error')}")
 
-        elif ev_type == "transcription_session.updated":
+        elif ev_type == "session.updated":
             logger.info("OpenAI: Transcription session updated successfully.")

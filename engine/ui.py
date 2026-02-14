@@ -140,12 +140,19 @@ class TrayApp:
         threading.Thread(target=prompt, daemon=True).start()
 
     def _open_config(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
-        # Check current dir first
-        config_path = Path("config.toml").absolute()
+        from .platform_win.paths import get_config_path
+
+        config_path = Path(get_config_path())
         if config_path.exists():
             os.startfile(config_path)
         else:
-            print(f"Config file not found at: {config_path}")
+            logger.warning(f"Config file not found at: {config_path}")
+            # Fallback to current directory for development convenience if APPDATA is missing
+            local_path = Path("config.toml").absolute()
+            if local_path.exists():
+                os.startfile(local_path)
+            else:
+                self.notify("Configuration file not found.", "Error")
 
     def _create_icon(self) -> pystray.Icon:
         version = get_app_version()

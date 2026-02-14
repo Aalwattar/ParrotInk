@@ -32,17 +32,20 @@ async def test_openai_dialect_b_payload():
         assert mock_ws.send.called
         sent_payload = json.loads(mock_ws.send.call_args_list[0][0][0])
 
-        # Validate Dialect B Schema (Flat)
-        assert sent_payload["type"] == "transcription_session.update"
-        assert "session" not in sent_payload  # No wrapper
-        assert sent_payload["input_audio_format"] == "pcm16"
-        assert sent_payload["input_audio_transcription"]["model"] == "gpt-4o-mini-transcribe"
-        assert "turn_detection" in sent_payload
-        assert sent_payload["input_audio_noise_reduction"]["type"] in [
-            "near_field",
-            "far_field",
-            "off",
-        ]
+        # Validate Corrected Nested Transcription Schema
+        assert sent_payload["type"] == "session.update"
+        assert "session" in sent_payload
+        session = sent_payload["session"]
+        assert session["type"] == "transcription"
+        assert "audio" in session
+        audio_input = session["audio"]["input"]
+        assert audio_input["format"]["type"] == "audio/pcm"
+        assert audio_input["format"]["rate"] == 24000
+        assert audio_input["transcription"]["model"] == "gpt-4o-mini-transcribe"
+        assert "turn_detection" in audio_input
+        # Noise reduction is optional in the implementation if "off"
+        if "noise_reduction" in audio_input:
+            assert audio_input["noise_reduction"]["type"] in ["near_field", "far_field"]
 
 
 @pytest.mark.asyncio
@@ -58,12 +61,15 @@ async def test_openai_dialect_b_events():
         api_key="test_key", on_partial=on_partial, on_final=on_final, effective_config=eff.openai
     )
 
-    # Test Delta Event
-    delta_event = {"type": "input_audio_transcription.delta", "delta": "hello"}
+    # Test Delta Event (Prefixed)
+    delta_event = {"type": "conversation.item.input_audio_transcription.delta", "delta": "hello"}
     await provider._handle_event(delta_event)
     on_partial.assert_called_with("hello")
 
-    # Test Completed Event
-    completed_event = {"type": "input_audio_transcription.completed", "transcript": "hello world"}
+    # Test Completed Event (Prefixed)
+    completed_event = {
+        "type": "conversation.item.input_audio_transcription.completed",
+        "transcript": "hello world",
+    }
     await provider._handle_event(completed_event)
     on_final.assert_called_with("hello world")
