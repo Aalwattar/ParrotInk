@@ -1,0 +1,8 @@
+{
+  "track_id": "unified_config_openai_dialect_20260214",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-14T16:11:00Z",
+  "updated_at": "2026-02-14T16:11:00Z",
+  "description": "Comprehensive configuration overhaul and OpenAI Dialect B alignment to lock the app into transcription-only mode and purge legacy parameters."
+}
