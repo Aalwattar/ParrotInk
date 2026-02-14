@@ -164,10 +164,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Configuration Refactor & API Alignment**
-*Link: [./tracks/config_refactor_api_align_20260214/](./tracks/config_refactor_api_align_20260214/)*
-
----
-
-- [ ] **Track: Configuration Layer Refactor (EffectiveConfig & Validation)**
-*Link: [./tracks/config_layer_refactor_20260214/](./tracks/config_layer_refactor_20260214/)*
+- [ ] **Track: Configuration System Overhaul**
+*Link: [./tracks/config_system_overhaul_20260214/](./tracks/config_system_overhaul_20260214/)*
