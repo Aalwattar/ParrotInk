@@ -69,21 +69,23 @@ class TrayApp:
 
     def _create_image(self, color: str) -> Image.Image:
         width, height = 64, 64
-        image = Image.new("RGB", (width, height), "white")
+        # Use RGBA for transparency support (rounded corners)
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
-        dc.ellipse((8, 8, 56, 56), fill=color)
+        # Modern rounded square design
+        dc.rounded_rectangle((4, 4, 60, 60), radius=14, fill=color)
         return image
 
     def _get_icon_color(self, state: AppState) -> str:
         if state == AppState.LISTENING:
-            return "red"
+            return "#0078D4"  # Microsoft Blue (Vibrant)
         if state == AppState.CONNECTING:
-            return "yellow"
+            return "#FACC15"  # Yellow-400
         if state == AppState.ERROR:
-            return "orange"
+            return "#EF4444"  # Red-500
         if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
-            return "gray"
-        return "black"
+            return "#94A3B8"  # Slate-400
+        return "#334155"      # Slate-700 (Neutral/Idle)
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
         self.current_provider = provider
