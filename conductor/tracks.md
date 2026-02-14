@@ -161,3 +161,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Interactive Hotkey Configuration & Generalized Config Sync**
 *Link: [./tracks/hotkey_config_sync_20260214/](./tracks/hotkey_config_sync_20260214/)*
+
+---
+
+- [ ] **Track: Configuration Refactor & API Alignment**
+*Link: [./tracks/config_refactor_api_align_20260214/](./tracks/config_refactor_api_align_20260214/)*
