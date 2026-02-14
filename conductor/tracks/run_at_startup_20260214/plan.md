@@ -21,7 +21,7 @@ Goal: Connect the registry logic to the configuration system and the tray UI.
 - [x] Task: Update `engine/ui.py` to add the tray menu toggle. [ec0a631]
     - [x] Task: Add "Run at Startup" to the Settings menu.
     - [x] Task: Implement click handler: `config.update_and_save(...)` -> then call `set_run_at_startup(...)` immediately.
-- [ ] Task: Verify end-to-end flow.
-    - [ ] Task: Toggle the setting via UI and check `config.toml` and Registry.
-    - [ ] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
+- [x] Task: Verify end-to-end flow. [2c03da4]
+    - [x] Task: Toggle the setting via UI and check `config.toml` and Registry.
+    - [x] Task: Pass DOD Gate (Ruff, Mypy, Pytest).
 - [ ] Task: Conductor - User Manual Verification 'Integration & UI' (Protocol in workflow.md)
