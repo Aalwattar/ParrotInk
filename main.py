@@ -534,7 +534,11 @@ if __name__ == "__main__":
     # Fail Fast for GUI mode
     if cli_args.command == "run":
         try:
-            load_config()
+            config = load_config()
+            # Perform Startup Sync
+            if config.interaction.run_at_startup:
+                from engine.platform_win.startup import set_run_at_startup
+                set_run_at_startup(True)
         except ConfigError as e:
             msg = (
                 f"The application could not start because the configuration is invalid:\n\n{e}\n\n "
