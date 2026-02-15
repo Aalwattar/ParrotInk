@@ -1,9 +1,0 @@
-{
-  "track_id": "fix_stale_hotkey_20260215",
-  "type": "bugfix",
-  "status": "in_progress",
-  "created_at": "2026-02-15T14:30:00Z",
-  "updated_at": "2026-02-15T14:30:00Z",
-  "description": "Fix hotkey deadlocks caused by stuck keys (missed release events) by implementing proactive stale key eviction."
-}
-\ No newline at end of file

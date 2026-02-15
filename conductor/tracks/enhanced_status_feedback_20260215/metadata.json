@@ -1,8 +1,0 @@
-{
-  "track_id": "enhanced_status_feedback_20260215",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-15T14:00:00Z",
-  "updated_at": "2026-02-15T14:00:00Z",
-  "description": "Implement enhanced status feedback for connection and switching operations, including HUD messages and tray tooltips."
-}

@@ -1,8 +1,0 @@
-{
-  "track_id": "fix_provider_switch_delay_20260215",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-02-15T08:43:00Z",
-  "updated_at": "2026-02-15T08:43:00Z",
-  "description": "we have a bug in switching between providers , for example from openai to assemblyai and vice versa in the tray , bug is as follow 1. teh hud does not dissapear, it should be simpel when we click dictation end just like when we press any key the connection dropped then switch provider then the user press the hotkey again and that will automatically initiate teh new provider, now this is not happeneing , the hud does not dissapear, I hear some stutter sound sometimes. then the hotkey does not work when I press it again"
-}
