@@ -467,7 +467,7 @@ class AppCoordinator:
     def on_release(self, key):
         name = self._get_canonical_name(key)
         if name in self.current_keys:
-            self.current_keys.remove(name)
+            self.current_keys.pop(name, None)
 
         if name in self.target_hotkey:
             if self.hotkey_pressed:
