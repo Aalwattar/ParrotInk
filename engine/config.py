@@ -163,7 +163,6 @@ class OpenAIAdvancedConfig(BaseModel):
     vad_threshold: float = 0.6
     prefix_padding_ms: int = 300
     silence_duration_ms: int = 500
-    include_logprobs: bool = False
 
 
 class OpenAIConfig(BaseModel):

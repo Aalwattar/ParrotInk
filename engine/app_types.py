@@ -29,7 +29,6 @@ class EffectiveOpenAIConfig:
     silence_duration_ms: int
     prefix_padding_ms: int
     noise_reduction_type: Optional[str]
-    include_logprobs: bool
     language: str
     is_test: bool
 

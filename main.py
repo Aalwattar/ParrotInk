@@ -104,6 +104,9 @@ class AppCoordinator:
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
+        # Reset input state on config change to prevent stuck keys
+        self.current_keys.clear()
+        self.hotkey_pressed = False
         logger.debug(f"Target hotkey updated to: {self.target_hotkey}")
 
     @property
@@ -375,6 +378,10 @@ class AppCoordinator:
 
         # 4. Clean up injection state
         self.injection_controller.injector.reset()
+
+        # 5. Reset hotkey state to prevent stuck keys from external stops
+        self.current_keys.clear()
+        self.hotkey_pressed = False
 
         self.set_state(AppState.IDLE)
 

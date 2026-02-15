@@ -125,9 +125,6 @@
 # How much silence to wait for before finalizing a segment (in milliseconds).
 # silence_duration_ms = 500
 
-# If true, the server returns detailed probability data for each token (for debugging).
-# include_logprobs = false
-
 # --- AssemblyAI Configuration ---
 
 [providers.assemblyai.core]

@@ -45,7 +45,6 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         silence_duration_ms=openai_silence,
         prefix_padding_ms=openai_adv.prefix_padding_ms,
         noise_reduction_type=noise_reduction,
-        include_logprobs=openai_adv.include_logprobs,
         language=openai_core.language,
         is_test=config.test.enabled,
     )

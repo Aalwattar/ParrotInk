@@ -96,7 +96,6 @@ class OpenAIProvider(BaseProvider):
                             "model": cfg.transcription_model,
                             "language": cfg.language,
                             "prompt": cfg.prompt,
-                            "include_logprobs": cfg.include_logprobs,
                         },
                         "turn_detection": {
                             "type": cfg.turn_detection_type,
