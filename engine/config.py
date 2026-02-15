@@ -1,4 +1,3 @@
-import re
 import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
@@ -20,6 +19,14 @@ from .security import SecurityManager
 logger = get_logger("Config")
 
 # --- Profile Mappings ---
+
+# CRITICAL: Do NOT change the default models or session schemas without extreme approval.
+# The application uses specialized 'transcribe' models and nested transcription-only
+# session objects that are distinct from standard Realtime API flows.
+CORE_MODEL_INVARIANTS = {
+    "openai": "gpt-4o-mini-transcribe",
+    "assemblyai": "universal-streaming-english"
+}
 
 LATENCY_PROFILES = {
     "fast": {
@@ -53,76 +60,6 @@ MIC_PROFILES = {
     "laptop": "far_field",
     "none": None,
 }
-
-
-def migrate_config_file(path: Path | str):
-    """
-    Automatically migrates config file values to current best practices.
-    """
-    path = Path(path)
-    if not path.exists():
-        return
-
-    try:
-        content = path.read_text(encoding="utf-8")
-        new_content = content
-
-        # 1. capture_sample_rate -> 16000 (standard efficiency)
-        new_content = re.sub(r"(\bcapture_sample_rate\s*=\s*)24000\b", r"\g<1>16000", new_content)
-
-        # 2. providers.openai.core.input_audio_rate -> 24000 (OpenAI Realtime requirement)
-        new_content = re.sub(r"(\binput_audio_rate\s*=\s*)16000\b", r"\g<1>24000", new_content)
-
-        # 3. Handle default_provider/active_provider migration if not in transcription
-        for legacy_key in ["default_provider", "active_provider"]:
-            if legacy_key in new_content and "[transcription]" in new_content:
-                if "provider =" not in new_content.split("[transcription]")[1].split("[")[0]:
-                    match = re.search(rf'{legacy_key}\s*=\s*"([^"]+)"', new_content)
-                    if match:
-                        provider = match.group(1)
-                        new_content = new_content.replace(
-                            "[transcription]", f'[transcription]\nprovider = "{provider}"'
-                        )
-                        new_content = re.sub(rf'{legacy_key}\s*=\s*"[^"]+"\s*', "", new_content)
-
-        # 4. REMOVE OBSOLETE KEYS (since extra='forbid' is active)
-        # We handle 'language' specially because it moved from [transcription] to provider core.
-        if "[transcription]" in new_content:
-            sections = new_content.split("[")
-            for i, section in enumerate(sections):
-                if section.startswith("transcription]"):
-                    # Remove language only from this section
-                    sections[i] = re.sub(
-                        r"^\s*language\s*=\s*\"[^\"]*\".*$\n?",
-                        "",
-                        section,
-                        flags=re.MULTILINE,
-                    )
-            new_content = "[".join(sections)
-
-        obsolete_keys = [
-            r"active_provider\s*=\s*\"[^\"]*\"",
-            r"default_provider\s*=\s*\"[^\"]*\"",
-            r"sample_rate\s*=\s*\d+",
-            r"model\s*=\s*\"[^\"]*\"",
-            r"utterance_silence_threshold_ms\s*=\s*\d+",
-            r"format_turns\s*=\s*(true|false)",
-            r"realtime_model\s*=\s*\"[^\"]*\"",
-            r"input_audio_type\s*=\s*\"[^\"]*\"",
-            r"input_audio_rate\s*=\s*\d+",
-            r"encoding\s*=\s*\"[^\"]*\"",
-        ]
-
-        for key_pattern in obsolete_keys:
-            # Match the key at the start of a line (possibly with leading whitespace)
-            # and remove the entire line.
-            new_content = re.sub(rf"^\s*{key_pattern}.*$\n?", "", new_content, flags=re.MULTILINE)
-
-        if new_content != content:
-            path.write_text(new_content, encoding="utf-8")
-            logger.info(f"Migrated {path} to new configuration schema (removed obsolete keys).")
-    except Exception as e:
-        logger.warning(f"Failed to migrate config file {path}: {e}")
 
 
 class HotkeysConfig(BaseModel):
@@ -205,7 +142,6 @@ class OpenAICoreConfig(BaseModel):
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
     transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
     language: str = "en"
-    prompt: str = ""
     session_rotation_seconds: int = 3300  # 55 minutes
 
     @field_validator("transcription_model")
@@ -222,6 +158,7 @@ class OpenAICoreConfig(BaseModel):
 class OpenAIAdvancedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     override: bool = False
+    prompt: str = ""
     noise_reduction: str = "off"
     turn_detection_type: str = "server_vad"
     vad_threshold: float = 0.6
@@ -247,9 +184,9 @@ class AssemblyAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     region: Literal["us", "eu"] = "us"
+    language_code: str = "en"
     vad_threshold: float = 0.4
     speech_model: str = "universal-streaming-english"
-    keyterms_prompt: List[str] = Field(default_factory=list)
     inactivity_timeout_seconds: int = 0
 
     @field_validator("inactivity_timeout_seconds")
@@ -263,10 +200,22 @@ class AssemblyAICoreConfig(BaseModel):
 class AssemblyAIAdvancedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     override: bool = False
+    keyterms_prompt: List[str] = Field(default_factory=list)
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
     max_turn_silence_ms: int = 1000  # Default 1280
     language_detection: bool = False
+
+    @field_validator("keyterms_prompt")
+    @classmethod
+    def validate_keyterms(cls, v: List[str]) -> List[str]:
+        cleaned = [term.strip() for term in v if term.strip()]
+        if len(cleaned) > 100:
+            raise ValueError("keyterms_prompt cannot exceed 100 terms")
+        for term in cleaned:
+            if len(term) > 50:
+                raise ValueError(f"Keyterm too long (>50 chars): {term[:10]}...")
+        return cleaned
 
 
 class AssemblyAIConfig(BaseModel):
@@ -399,7 +348,6 @@ def load_config(path: Optional[str | Path] = None) -> Config:
     """Helper function to load the configuration from a file."""
     if path is None:
         path = get_config_path()
-    migrate_config_file(path)
 
     config_path = Path(path)
     if not config_path.exists():
@@ -433,6 +381,12 @@ def explain_config(config: Config, verbose: int = 0):
         print(f"    - vad_threshold:      {eff.openai.vad_threshold}")
         print(f"    - silence_duration_ms: {eff.openai.silence_duration_ms}")
         print(f"    - noise_reduction:    {eff.openai.noise_reduction_type}")
+        prompt_preview = (
+            f'"{eff.openai.prompt[:20]}..."'
+            if len(eff.openai.prompt) > 20
+            else f'"{eff.openai.prompt}"'
+        )
+        print(f"    - prompt:             {prompt_preview} (len={len(eff.openai.prompt)})")
     else:
         print("  AssemblyAI:")
         print(f"    - url:                  {eff.assemblyai.url}")
@@ -440,6 +394,9 @@ def explain_config(config: Config, verbose: int = 0):
         print(f"    - min_silence_ms:       {eff.assemblyai.min_silence_ms}")
         print(f"    - max_silence_ms:       {eff.assemblyai.max_silence_ms}")
         print(f"    - inactivity_timeout:   {eff.assemblyai.inactivity_timeout}")
+        kt = eff.assemblyai.word_boost
+        kt_preview = f"{kt[:2]}..." if kt and len(kt) > 2 else f"{kt}"
+        print(f"    - keyterms_prompt:      {kt_preview} (count={len(kt) if kt else 0})")
 
     # Security Check
     print("\n[Credentials Status]")
@@ -452,6 +409,12 @@ def explain_config(config: Config, verbose: int = 0):
         print("\n[Full Schema (Redacted)]")
         # Mask keys in the dump (though they aren't in the Config model itself)
         data = config.model_dump(exclude_none=True)
+        # Redact potentially sensitive prompt info even in verbose dump
+        if "providers" in data:
+            if "openai" in data["providers"]:
+                data["providers"]["openai"]["advanced"]["prompt"] = "[REDACTED]"
+            if "assemblyai" in data["providers"]:
+                data["providers"]["assemblyai"]["advanced"]["keyterms_prompt"] = ["[REDACTED]"]
         print(json.dumps(data, indent=2))
 
 

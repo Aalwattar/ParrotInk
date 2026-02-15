@@ -103,11 +103,3 @@ def test_config_key_resolution(mocker):
 
     assert config.get_openai_key() == "secret-key"
     assert config.get_assemblyai_key() is None
-
-
-def test_config_backward_compatibility(tmp_path):
-    """Should still load if using legacy 'active_provider' name because of migration."""
-    config_file = tmp_path / "legacy.toml"
-    config_file.write_text('active_provider = "assemblyai"\n[transcription]\n')
-    config = load_config(config_file)
-    assert config.transcription.provider == "assemblyai"

@@ -39,6 +39,7 @@ class EffectiveAssemblyAIConfig:
     sample_rate: int
     encoding: str
     speech_model: str
+    language_code: str
     vad_threshold: float
     confidence_threshold: float
     min_silence_ms: int

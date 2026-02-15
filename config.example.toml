@@ -62,43 +62,50 @@ format_text = false
 # refresh_rate_ms = 50
 
 # --- OpenAI Configuration ---
-# NOTE: OpenAI is for Transcription Mode only. Speech-to-Speech is not supported.
+# NOTE: OpenAI is for Transcription Mode only.
 
 [providers.openai.core]
 # Models allowed: "gpt-4o-mini-transcribe", "gpt-4o-transcribe"
 transcription_model = "gpt-4o-mini-transcribe"
 language = "en"
+
+[providers.openai.advanced]
+# override = false
+
+# --- PROMPT (OpenAI) ---
+# Contextual instructions to improve ASR accuracy. 
+# Use this to provide the model with technical terms, acronyms, or specific formatting rules.
+# Examples:
+# prompt = "The user is discussing Python programming. Use terms like 'decorator', 'generator', and 'dunder method'."
+# prompt = "Act as a medical scribe. Transcribe medical terminology accurately."
 prompt = ""
 
-# [providers.openai.advanced]
-# override = false
 # noise_reduction = "off"
 # turn_detection_type = "server_vad"
-# vad_threshold = 0.6
-# prefix_padding_ms = 300
-# silence_duration_ms = 500
-# include_logprobs = false
 
 # --- AssemblyAI Configuration ---
 
 [providers.assemblyai.core]
 # region determines the host (us/eu).
 region = "us"
+# language_code for multilingual streaming (e.g., "es", "fr"). Defaults to "en".
+language_code = "en"
+# Use "universal-streaming-english" for English (default)
+# Use "universal-streaming-multilingual" for other languages.
 speech_model = "universal-streaming-english"
 # inactivity_timeout_seconds = 0
 
-# [providers.assemblyai.advanced]
+[providers.assemblyai.advanced]
 # override = false
+
+# --- WORD BOOSTING (AssemblyAI) ---
+# A list of up to 100 terms to boost the recognition of. 
+# Best for rare names, unique product brands, or jargon.
+# Example:
+# keyterms_prompt = ["Voice2Text", "Gemini", "AssemblyAI"]
+keyterms_prompt = []
+
 # end_of_turn_confidence_threshold = 0.4
 # min_end_of_turn_silence_when_confident_ms = 400
 # max_turn_silence_ms = 1000
 # language_detection = false
-
-# [test]
-# enabled = false
-# openai_mock_url = "ws://localhost:8081"
-# assemblyai_mock_url = "ws://localhost:8081"
-
-# [logging]
-# file_enabled = false
-# file_level = 1

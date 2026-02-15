@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from .app_types import EffectiveAssemblyAIConfig, EffectiveConfig, EffectiveOpenAIConfig
 from .config import LATENCY_PROFILES, MIC_PROFILES, Config
@@ -31,7 +31,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         openai_silence = int(profile["openai"]["silence_duration_ms"])
         noise_reduction = MIC_PROFILES.get(trans.mic_profile, "near_field")
 
-    # Invariant: Intent must be transcription in the URL
+    # Invariant: Must use the transcription intent in the URL
     openai_url = f"{openai_core.realtime_ws_url_base}?intent=transcription"
     if config.test.enabled:
         openai_url = config.test.openai_mock_url
@@ -39,7 +39,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     resolved_openai = EffectiveOpenAIConfig(
         url=openai_url,
         transcription_model=openai_core.transcription_model,
-        prompt=openai_core.prompt,
+        prompt=openai_adv.prompt,
         vad_threshold=openai_vad,
         silence_duration_ms=openai_silence,
         prefix_padding_ms=openai_adv.prefix_padding_ms,
@@ -73,9 +73,26 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
             aai_url = "wss://streaming.eu.assemblyai.com/v3/ws"
 
     # Append mandatory query parameters for V3
+    from urllib.parse import urlencode
+
+    params: dict[str, Any] = {}
     if "?" not in aai_url:
-        sample_rate = config.audio.capture_sample_rate
-        aai_url = f"{aai_url}?sample_rate={sample_rate}&encoding=pcm_s16le"
+        params["sample_rate"] = config.audio.capture_sample_rate
+        params["encoding"] = "pcm_s16le"
+
+    params["speech_model"] = aai_core.speech_model
+
+    if aai_adv.keyterms_prompt:
+        import json
+
+        params["keyterms_prompt"] = json.dumps(aai_adv.keyterms_prompt)
+
+    if aai_core.language_code != "en":
+        params["language_code"] = aai_core.language_code
+
+    if params:
+        separator = "&" if "?" in aai_url else "?"
+        aai_url = f"{aai_url}{separator}{urlencode(params)}"
 
     if config.test.enabled:
         aai_url = config.test.assemblyai_mock_url
@@ -89,12 +106,13 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         sample_rate=config.audio.capture_sample_rate,
         encoding="pcm_s16le",
         speech_model=aai_core.speech_model,
+        language_code=aai_core.language_code,
         vad_threshold=aai_core.vad_threshold,
         confidence_threshold=aai_confidence,
         min_silence_ms=aai_min_silence,
         max_silence_ms=aai_max_silence,
         inactivity_timeout=resolved_timeout,
-        word_boost=aai_core.keyterms_prompt if aai_core.keyterms_prompt else None,
+        word_boost=aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None,
         format_text=trans.format_text,
         language_detection=aai_adv.language_detection,
         is_test=config.test.enabled,

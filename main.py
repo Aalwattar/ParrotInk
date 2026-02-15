@@ -523,11 +523,8 @@ def handle_cli():
 if __name__ == "__main__":
     import ctypes
 
-    from engine.config import ConfigError, get_config_path, load_config, migrate_config_file
+    from engine.config import ConfigError, get_config_path, load_config
     from engine.platform_win.instance import SingleInstance
-
-    # Try to migrate but don't fail hard yet
-    migrate_config_file(get_config_path())
 
     cli_args = handle_cli()
 
