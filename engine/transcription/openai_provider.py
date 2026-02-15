@@ -128,8 +128,15 @@ class OpenAIProvider(BaseProvider):
                 pass
 
         if self.ws:
-            await self.ws.close()
-            self.ws = None
+            try:
+                async with asyncio.timeout(2.0):
+                    await self.ws.close()
+            except TimeoutError:
+                logger.warning("OpenAI websocket close timed out.")
+            except Exception as e:
+                logger.error(f"Error closing OpenAI websocket: {e}")
+            finally:
+                self.ws = None
         logger.info("Disconnected from OpenAI.")
 
     async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):

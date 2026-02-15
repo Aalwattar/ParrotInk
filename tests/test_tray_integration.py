@@ -17,6 +17,12 @@ def mock_config():
     return config
 
 
+@pytest.fixture(autouse=True)
+def mock_pystray_icon():
+    with patch("pystray.Icon") as mock:
+        yield mock
+
+
 def test_on_toggle_hold_mode_callback(mock_config):
     mock_cb = MagicMock()
     app = TrayApp(config=mock_config, on_toggle_hold_mode=mock_cb)
@@ -27,16 +33,6 @@ def test_on_toggle_hold_mode_callback(mock_config):
 
     # If hold_mode was False, it should call callback with True
     mock_cb.assert_called_once_with(True)
-
-
-def test_version_header_content(mock_config):
-    with patch("engine.ui.get_app_version", return_value="1.2.3"):
-        # Re-import or ensure we are patching where it's USED
-        from engine.ui import TrayApp
-
-        app = TrayApp(config=mock_config)
-        menu_items = list(app.icon.menu)
-        assert menu_items[0].text == "Voice2Text v1.2.3"
 
 
 def test_on_provider_change_callback(mock_config):

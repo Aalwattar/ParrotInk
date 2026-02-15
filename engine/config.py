@@ -25,7 +25,7 @@ logger = get_logger("Config")
 # session objects that are distinct from standard Realtime API flows.
 CORE_MODEL_INVARIANTS = {
     "openai": "gpt-4o-mini-transcribe",
-    "assemblyai": "universal-streaming-english"
+    "assemblyai": "universal-streaming-english",
 }
 
 LATENCY_PROFILES = {

@@ -104,9 +104,6 @@ class AppCoordinator:
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
-        # Reset input state on config change to prevent stuck keys
-        self.current_keys.clear()
-        self.hotkey_pressed = False
         logger.debug(f"Target hotkey updated to: {self.target_hotkey}")
 
     @property
@@ -352,7 +349,7 @@ class AppCoordinator:
                 msg = f"Invalid API Key for {provider_title}. Please check your credentials."
                 self.ui_bridge.notify(msg, "Authentication Failed")
 
-    async def stop_listening(self):
+    async def stop_listening(self, silent: bool = False):
         if self.state not in (AppState.LISTENING, AppState.CONNECTING):
             return
 
@@ -374,14 +371,11 @@ class AppCoordinator:
                 self.connection_manager.start_idle_timer()
 
         # Play stop sound after everything is closed
-        self._play_feedback_sound("stop")
+        if not silent:
+            self._play_feedback_sound("stop")
 
         # 4. Clean up injection state
         self.injection_controller.injector.reset()
-
-        # 5. Reset hotkey state to prevent stuck keys from external stops
-        self.current_keys.clear()
-        self.hotkey_pressed = False
 
         self.set_state(AppState.IDLE)
 
@@ -530,7 +524,7 @@ def handle_cli():
 if __name__ == "__main__":
     import ctypes
 
-    from engine.config import ConfigError, get_config_path, load_config
+    from engine.config import ConfigError, load_config
     from engine.platform_win.instance import SingleInstance
 
     cli_args = handle_cli()

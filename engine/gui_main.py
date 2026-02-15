@@ -58,9 +58,16 @@ async def main_gui(cli_args):
     signal.signal(signal.SIGINT, on_sigint)
 
     def on_provider_change(provider_name):
+        # Force HUD hide immediately to improve perceived responsiveness
+        if hasattr(app, "indicator") and app.indicator:
+            app.indicator.update_status(False)
+            app.indicator.hide()
+
         if coordinator.is_listening or coordinator.is_connecting:
             logger.info(f"Stopping active session before changing provider to {provider_name}")
-            asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
+            asyncio.run_coroutine_threadsafe(
+                coordinator.stop_listening(silent=True), coordinator.loop
+            )
         elif coordinator.provider:
             # If we have an idle (WARM) provider, stop it so the next connect uses the new one
             logger.info(f"Stopping idle provider before changing to {provider_name}")
