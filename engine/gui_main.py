@@ -64,8 +64,7 @@ async def main_gui(cli_args):
 
         if hasattr(app, "indicator") and app.indicator:
             app.indicator.update_status(True)
-            if hasattr(app.indicator.impl, "update_status_icon"):
-                app.indicator.impl.update_status_icon(msg)
+            app.indicator.update_status_icon(msg)
             app.indicator.show()
 
         if coordinator.is_listening or coordinator.is_connecting:

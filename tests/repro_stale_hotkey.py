@@ -1,6 +1,7 @@
 import time
 from typing import Dict, Set
 
+
 def parse_hotkey(hotkey_str: str) -> Set[str]:
     parts = hotkey_str.lower().split("+")
     norm_map = {
@@ -13,6 +14,7 @@ def parse_hotkey(hotkey_str: str) -> Set[str]:
     }
     return {norm_map.get(p.strip(), p.strip()) for p in parts if p.strip()}
 
+
 class MockCoordinator:
     def __init__(self, hotkey_str: str):
         self.target_hotkey = parse_hotkey(hotkey_str)
@@ -22,7 +24,7 @@ class MockCoordinator:
 
     def on_press(self, name: str):
         now = time.time()
-        
+
         # 1. First, evict REALLY stale keys and reset hotkey_pressed if needed
         # We do this BEFORE updating the current key's timestamp
         stale_keys = [k for k, ts in self.current_keys.items() if now - ts > 3.0]
@@ -55,11 +57,12 @@ class MockCoordinator:
     def on_release(self, name: str):
         if name in self.current_keys:
             self.current_keys.pop(name, None)
-        
+
         if name in self.target_hotkey:
             if self.hotkey_pressed:
                 self.hotkey_pressed = False
                 print("Hotkey state reset (released)")
+
 
 # Test Case 4: Missed Release of Hotkey
 print("\n--- Test 4: Missed Release Recovery ---")
