@@ -247,6 +247,11 @@ class TrayApp:
                 logger.debug("TrayApp: Showing indicator (LISTENING)")
                 self.indicator.update_status(True)
                 self.indicator.show()
+            elif state == AppState.CONNECTING:
+                self.indicator.update_status(True)
+                if hasattr(self.indicator.impl, "update_status_icon"):
+                    self.indicator.impl.update_status_icon("CONNECTING")
+                self.indicator.show()
             elif state == AppState.IDLE:
                 logger.debug("TrayApp: Updating status to idle (IDLE)")
                 self.indicator.update_status(False)

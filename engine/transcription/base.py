@@ -40,9 +40,27 @@ class BaseProvider(ABC):
         """Start the transcription session."""
         pass
 
-    @abstractmethod
     async def stop(self):
-        """Stop the transcription session."""
+        """
+        Stop the transcription session with a mandatory timeout.
+        """
+        import asyncio
+
+        from engine.logging import get_logger
+
+        logger = get_logger("Provider")
+        try:
+            # Hardcoded 2.0s safety timeout for all providers
+            async with asyncio.timeout(2.0):
+                await self._do_stop()
+        except TimeoutError:
+            logger.warning(f"{self.get_type()} provider stop timed out (force killed).")
+        except Exception as e:
+            logger.error(f"Error stopping {self.get_type()} provider: {e}")
+
+    @abstractmethod
+    async def _do_stop(self):
+        """Internal implementation of stop logic."""
         pass
 
     @abstractmethod

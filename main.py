@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import sys
 import time
-from typing import Literal, Optional, Set
+from typing import Dict, Literal, Optional, Set
 
 from pynput import keyboard
 
@@ -46,7 +46,7 @@ class AppCoordinator:
         # Hotkey state
         self.hotkey_pressed = False
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
-        self.current_keys: Set[str] = set()
+        self.current_keys: Dict[str, float] = {}
 
         # Interaction monitoring
         self.input_monitor = InputMonitor(on_press=self.on_press, on_release=self.on_release)
@@ -434,9 +434,24 @@ class AppCoordinator:
         if not name:
             return
 
-        self.current_keys.add(name)
+        self.current_keys[name] = time.time()
 
-        if self.target_hotkey.issubset(self.current_keys):
+        pressed_set = set(self.current_keys.keys())
+        if pressed_set == self.target_hotkey:
+            # Staleness check: If any key in the combination hasn't been updated
+            # in > 3 seconds, assume it's stuck and don't trigger.
+            # (Note: Held keys usually auto-repeat, updating the timestamp)
+            now = time.time()
+            is_stale = False
+            for k in self.target_hotkey:
+                ts = self.current_keys.get(k, 0)
+                if now - ts > 3.0:
+                    is_stale = True
+                    break
+
+            if is_stale:
+                return
+
             if self.config.hotkeys.hold_mode:
                 if not self.hotkey_pressed:
                     self.hotkey_pressed = True

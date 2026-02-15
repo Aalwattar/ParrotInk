@@ -60,7 +60,7 @@ class AssemblyAIProvider(BaseProvider):
             logger.error(f"Failed to connect to AssemblyAI: {e}")
             raise
 
-    async def stop(self):
+    async def _do_stop(self):
         """Close connection and stop tasks."""
         is_active = self._is_running
         self._is_running = False
@@ -85,8 +85,10 @@ class AssemblyAIProvider(BaseProvider):
                 pass
 
         if self.ws:
-            await self.ws.close()
-            self.ws = None
+            try:
+                await self.ws.close()
+            finally:
+                self.ws = None
         logger.info("Disconnected from AssemblyAI.")
 
     async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):

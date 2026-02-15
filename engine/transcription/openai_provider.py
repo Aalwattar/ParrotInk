@@ -117,7 +117,7 @@ class OpenAIProvider(BaseProvider):
         logger.debug(f"Sending session.update: {json.dumps(update_event)}")
         await self.ws.send(json.dumps(update_event))
 
-    async def stop(self):
+    async def _do_stop(self):
         """Graceful shutdown."""
         self._is_running = False
         if self._receive_task:
@@ -129,12 +129,7 @@ class OpenAIProvider(BaseProvider):
 
         if self.ws:
             try:
-                async with asyncio.timeout(2.0):
-                    await self.ws.close()
-            except TimeoutError:
-                logger.warning("OpenAI websocket close timed out.")
-            except Exception as e:
-                logger.error(f"Error closing OpenAI websocket: {e}")
+                await self.ws.close()
             finally:
                 self.ws = None
         logger.info("Disconnected from OpenAI.")

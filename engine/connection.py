@@ -114,27 +114,52 @@ class ConnectionManager:
 
         logger.info(f"Connecting to {self.config.transcription.provider}...")
         self.set_state(AppState.CONNECTING)
-        try:
-            logger.debug(f"Starting provider {self.config.transcription.provider}...")
-            async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
-                await self.provider.start()
-            logger.debug("Provider started.")
-            self._session_start_time = time.time()
-            self._rotation_pending = False
-            self._backoff_delay = 1.0
-            logger.info("Connected successfully.")
 
-            # If we are NOT in the middle of a listening command, transition to IDLE
-            if not is_listening:
-                self.set_state(AppState.IDLE)
-        except Exception as e:
-            self._last_fail_time = time.time()
-            self._backoff_delay = min(self._backoff_delay * 2, 60.0)
-            logger.error(f"Failed to connect (backoff updated to {self._backoff_delay}s): {e}")
-            self.provider = None
-            self.audio_adapter = None
-            self.set_state(AppState.ERROR)
-            raise
+        retry_count = 3
+        current_attempt = 0
+
+        while current_attempt < retry_count:
+            current_attempt += 1
+            try:
+                logger.debug(
+                    f"Starting provider {self.config.transcription.provider} "
+                    f"(Attempt {current_attempt}/{retry_count})..."
+                )
+                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
+                    await self.provider.start()
+                logger.debug("Provider started.")
+                self._session_start_time = time.time()
+                self._rotation_pending = False
+                self._backoff_delay = 1.0
+                logger.info("Connected successfully.")
+
+                # If we are NOT in the middle of a listening command, transition to IDLE
+                if not is_listening:
+                    self.set_state(AppState.IDLE)
+
+                # Success - break loop
+                return
+
+            except (TimeoutError, asyncio.CancelledError, Exception) as e:
+                is_last_attempt = current_attempt >= retry_count
+                error_msg = f"Connection attempt {current_attempt} failed: {type(e).__name__} - {e}"
+
+                if isinstance(e, asyncio.CancelledError) and not is_last_attempt:
+                     logger.warning(f"{error_msg}. Retrying...")
+                elif is_last_attempt:
+                    logger.error(f"{error_msg}. Giving up.")
+                else:
+                    logger.warning(f"{error_msg}. Retrying in 1s...")
+
+                if is_last_attempt:
+                    self._last_fail_time = time.time()
+                    self._backoff_delay = min(self._backoff_delay * 2, 60.0)
+                    self.provider = None
+                    self.audio_adapter = None
+                    self.set_state(AppState.ERROR)
+                    raise
+
+                await asyncio.sleep(1.0)
 
     async def stop_provider(self):
         """Stops the current provider and cleans up adapters."""

@@ -106,7 +106,7 @@ class AudioConfig(BaseModel):
     chunk_ms: int = 100
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
     warm_idle_timeout_seconds: int = Field(default=300, ge=30, le=1800)
-    connection_timeout_seconds: float = 10.0
+    connection_timeout_seconds: float = 20.0
     voice_activity_threshold: float = 0.005
 
 
