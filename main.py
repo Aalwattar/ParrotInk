@@ -438,24 +438,36 @@ class AppCoordinator:
         if not name:
             return
 
-        self.current_keys[name] = time.time()
+        now = time.time()
+
+        # 1. Proactive Staleness Cleanup: Evict keys older than 3 seconds
+        # We do this BEFORE updating the current key's timestamp to ensure
+        # that if we are re-pressing a "stuck" key, we don't accidentally
+        # treat the rest of the target hotkey as fresh if it's actually stale.
+        stale_keys = [k for k, ts in self.current_keys.items() if now - ts > 3.0]
+        for k in stale_keys:
+            logger.debug(f"Evicting stale key from internal state: {k}")
+            self.current_keys.pop(k, None)
+
+        # 2. Reset hotkey_pressed if all target hotkey keys are stale
+        # This prevents the coordinator from being stuck in a "hotkey is down"
+        # state if a release event was missed during system lag.
+        if self.hotkey_pressed:
+            all_stale = True
+            for k in self.target_hotkey:
+                ts = self.current_keys.get(k, 0)
+                if now - ts <= 3.0:
+                    all_stale = False
+                    break
+            if all_stale:
+                logger.warning("Hotkey state reset due to staleness (missed release event).")
+                self.hotkey_pressed = False
+
+        # 3. Update or add the key with fresh timestamp
+        self.current_keys[name] = now
 
         pressed_set = set(self.current_keys.keys())
         if pressed_set == self.target_hotkey:
-            # Staleness check: If any key in the combination hasn't been updated
-            # in > 3 seconds, assume it's stuck and don't trigger.
-            # (Note: Held keys usually auto-repeat, updating the timestamp)
-            now = time.time()
-            is_stale = False
-            for k in self.target_hotkey:
-                ts = self.current_keys.get(k, 0)
-                if now - ts > 3.0:
-                    is_stale = True
-                    break
-
-            if is_stale:
-                return
-
             if self.config.hotkeys.hold_mode:
                 if not self.hotkey_pressed:
                     self.hotkey_pressed = True

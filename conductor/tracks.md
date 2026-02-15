@@ -186,3 +186,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Enhanced status feedback**
 *Link: [./archive/enhanced_status_feedback_20260215/](./archive/enhanced_status_feedback_20260215/)*
+
+---
+
+- [ ] **Track: Proactive Stale Hotkey Eviction**
+*Link: [./tracks/fix_stale_hotkey_20260215/](./tracks/fix_stale_hotkey_20260215/)*
