@@ -241,6 +241,17 @@ class TrayApp:
         self.state = state
         self.icon.icon = self._create_image(self._get_icon_color(state))
 
+        # Update Tooltip
+        state_map = {
+            AppState.IDLE: "Idle",
+            AppState.LISTENING: "Listening",
+            AppState.CONNECTING: "Connecting...",
+            AppState.ERROR: "Error",
+            AppState.STOPPING: "Stopping...",
+            AppState.SHUTTING_DOWN: "Shutting down...",
+        }
+        self.icon.title = f"Voice2Text: {state_map.get(state, 'Unknown')}"
+
         # Sync indicator visibility and status
         if self.indicator:
             if state == AppState.LISTENING:
@@ -299,6 +310,12 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
                 if self.indicator:
                     self.indicator.on_final(data)
+            elif msg_type == UIEvent.UPDATE_STATUS_MESSAGE:
+                # Update Tray Tooltip
+                self.icon.title = f"Voice2Text: {data}"
+                # Forward to HUD
+                if self.indicator:
+                    self.indicator.update_status_icon(data)
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()

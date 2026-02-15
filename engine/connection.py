@@ -24,11 +24,13 @@ class ConnectionManager:
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         set_state_cb: Callable[[AppState], None],
+        on_status_cb: Optional[Callable[[str], None]] = None,
     ):
         self.config = config
         self.on_partial = on_partial
         self.on_final = on_final
         self.set_state = set_state_cb
+        self.on_status = on_status_cb
 
         self.provider: Optional[BaseProvider] = None
         self.audio_adapter: Optional[AudioAdapter] = None
@@ -114,6 +116,8 @@ class ConnectionManager:
 
         logger.info(f"Connecting to {self.config.transcription.provider}...")
         self.set_state(AppState.CONNECTING)
+        if self.on_status:
+            self.on_status(f"Connecting to {self.config.transcription.provider}...")
 
         retry_count = 3
         current_attempt = 0
@@ -145,11 +149,17 @@ class ConnectionManager:
                 error_msg = f"Connection attempt {current_attempt} failed: {type(e).__name__} - {e}"
 
                 if isinstance(e, asyncio.CancelledError) and not is_last_attempt:
-                     logger.warning(f"{error_msg}. Retrying...")
+                    logger.warning(f"{error_msg}. Retrying...")
+                    if self.on_status:
+                        self.on_status(f"Retrying ({current_attempt}/{retry_count})...")
                 elif is_last_attempt:
                     logger.error(f"{error_msg}. Giving up.")
+                    if self.on_status:
+                        self.on_status("Connection Failed.")
                 else:
                     logger.warning(f"{error_msg}. Retrying in 1s...")
+                    if self.on_status:
+                        self.on_status(f"Retry {current_attempt}/{retry_count}...")
 
                 if is_last_attempt:
                     self._last_fail_time = time.time()

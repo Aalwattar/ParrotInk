@@ -15,6 +15,7 @@ class UIEvent:
     UPDATE_PARTIAL_TEXT = "update_partial_text"
     UPDATE_FINAL_TEXT = "update_final_text"
     UPDATE_VOICE_ACTIVITY = "update_voice_activity"
+    UPDATE_STATUS_MESSAGE = "update_status_message"
     QUIT = "quit"
 
 
@@ -46,6 +47,9 @@ class UIBridge:
 
     def update_availability(self, availability: Dict[str, bool]):
         self.queue.put((UIEvent.UPDATE_AVAILABILITY, availability))
+
+    def update_status_message(self, message: str):
+        self.queue.put((UIEvent.UPDATE_STATUS_MESSAGE, message))
 
     def stop(self):
         """Signal the UI to stop."""

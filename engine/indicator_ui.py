@@ -338,6 +338,7 @@ class IndicatorWindow:
         self._current_partial_text = ""
         self._committed_text = ""
         self._last_final_segment = ""
+        self._last_status_msg = ""
         self._max_preview_chars = getattr(self.config.ui.floating_indicator, "max_characters", 180)
         click_through = getattr(self.config.ui.floating_indicator, "click_through", True)
 
@@ -393,6 +394,7 @@ class IndicatorWindow:
             self._current_partial_text = ""
             self._committed_text = ""
             self._last_final_segment = ""
+            self._last_status_msg = ""
 
         if hasattr(self.impl, "update_status"):
             self.impl.update_status(is_recording)
@@ -402,6 +404,12 @@ class IndicatorWindow:
 
         if not is_recording:
             self._start_linger_timer()
+
+    def update_status_icon(self, status: str):
+        self._last_status_msg = status
+        if hasattr(self.impl, "update_status_icon"):
+            self.impl.update_status_icon(status)
+        self._render_preview()
 
     def _start_linger_timer(self, duration: float = 2.5):
         def _hide_after():
@@ -434,7 +442,13 @@ class IndicatorWindow:
             full_text += self._current_partial_text
 
         if not full_text:
-            display_text = ""
+            if self._last_status_msg and self._last_status_msg.lower() not in (
+                "listening",
+                "finalized",
+            ):
+                display_text = self._last_status_msg
+            else:
+                display_text = ""
         elif len(full_text) > self._max_preview_chars:
             display_text = "…" + full_text[-(self._max_preview_chars - 1) :]
         else:

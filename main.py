@@ -37,7 +37,11 @@ class AppCoordinator:
 
         self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
         self.connection_manager = ConnectionManager(
-            config, self.on_partial, self.on_final, self.set_state
+            config,
+            self.on_partial,
+            self.on_final,
+            self.set_state,
+            on_status_cb=self.ui_bridge.update_status_message,
         )
         self.pipeline = AudioPipeline(self.streamer)
         self.state = AppState.IDLE

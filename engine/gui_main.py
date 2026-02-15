@@ -58,10 +58,15 @@ async def main_gui(cli_args):
     signal.signal(signal.SIGINT, on_sigint)
 
     def on_provider_change(provider_name):
-        # Force HUD hide immediately to improve perceived responsiveness
+        # Notify UI of switching immediately
+        msg = f"Switching to {provider_name}..."
+        ui_bridge.update_status_message(msg)
+
         if hasattr(app, "indicator") and app.indicator:
-            app.indicator.update_status(False)
-            app.indicator.hide()
+            app.indicator.update_status(True)
+            if hasattr(app.indicator.impl, "update_status_icon"):
+                app.indicator.impl.update_status_icon(msg)
+            app.indicator.show()
 
         if coordinator.is_listening or coordinator.is_connecting:
             logger.info(f"Stopping active session before changing provider to {provider_name}")
