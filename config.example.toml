@@ -1,111 +1,193 @@
 # Voice2Text Configuration Template
-# This file defines the behavior of the transcription engine and UI.
+# All values shown below are the factory defaults.
+# To customize a setting, uncomment the line (remove the '#') and change the value.
 
 [hotkeys]
 # The key combination used to trigger dictation.
-hotkey = "ctrl+alt+v"
+# hotkey = "ctrl+alt+v"
+
 # If true, you must hold the key to talk. If false, it's a toggle (click to start, click to stop).
-hold_mode = false
+# hold_mode = false
 
 [interaction]
-# Automatically cancel and discard transcription if you click away from the active window.
-cancel_on_click_outside_anchor = true
-# 'control' for specific input fields, 'window' for any click outside the app window.
-anchor_scope = "control"
-# If true, the app will add itself to the Windows Registry to run on system boot.
-run_at_startup = false
+# Automatically cancel and discard transcription if you click away from the active input field.
+# cancel_on_click_outside_anchor = true
+
+# 'control' triggers cancellation only when clicking a different UI element. 
+# 'window' triggers cancellation when clicking anywhere outside the active application window.
+# Options: "control", "window"
+# anchor_scope = "control"
+
+# If true, the app will automatically start when Windows boots up.
+# run_at_startup = false
 
 [interaction.sounds]
-# Auditory feedback when recording starts or stops.
-enabled = true
-volume = 0.5
+# Enable auditory feedback (beeps) when recording starts or stops.
+# enabled = true
+
+# Volume of the feedback sounds. Range: 0.0 (silent) to 1.0 (max).
+# volume = 0.5
+
+# Paths to custom WAV files for start/stop sounds.
 # start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
 # stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
 [ui.floating_indicator]
-# The Win+H style HUD that shows partial transcripts.
-enabled = true
-# Click-through makes the HUD ignore mouse events so it doesn't block your workspace.
-click_through = true
+# Enable the floating Acrylic HUD that shows real-time transcription progress.
+# enabled = true
 
-[audio]
-# 'warm' (recommended) keeps the connection ready but idle to reduce latency on first press.
-# 'on_demand' connects only when the hotkey is pressed (higher latency).
-# 'always_on' never disconnects (highest resource usage).
-connection_mode = "warm"
+# If true, the HUD will ignore mouse clicks and let them pass through to windows behind it.
+# click_through = true
 
-[transcription]
-# Active provider: "openai" or "assemblyai"
-provider = "openai"
-# Profiles: "fast" (low latency), "balanced" (standard), "accurate" (longer silence wait)
-latency_profile = "balanced"
-# Mic optimization: "headset" (directional), "laptop" (ambient), "none" (raw)
-mic_profile = "headset"
-# If true, the provider will attempt to add punctuation and capitalization.
-format_text = false
-
-# --- ADVANCED CONFIGURATION (Optional) ---
-# Do not modify these values unless you have specific hardware or performance requirements.
-
-# [audio]
-# capture_sample_rate = 16000
-# chunk_ms = 100
-# warm_idle_timeout_seconds = 300
-# connection_timeout_seconds = 10.0
-# voice_activity_threshold = 0.005
-
-# [ui.floating_indicator]
+# Opacity of the HUD background when the app is idle. Range: 0.0 to 1.0.
 # opacity_idle = 0.3
+
+# Opacity of the HUD background when actively recording speech. Range: 0.0 to 1.0.
 # opacity_active = 0.8
+
+# Distance in pixels from the bottom of the screen to position the HUD.
 # y_offset = 60
+
+# Maximum number of characters to display in the HUD preview before truncating.
 # max_characters = 180
+
+# How often the HUD UI redraws itself in milliseconds. Range: 5 to 500.
 # refresh_rate_ms = 50
 
+[audio]
+# Internal sample rate for microphone capture. 16000 is recommended for most ASR models.
+# capture_sample_rate = 16000
+
+# Duration of each audio buffer chunk in milliseconds. Low values reduce latency but increase CPU.
+# Range: 50 to 500.
+# chunk_ms = 100
+
+# Connection management strategy:
+# 'warm' (recommended): Keeps connection ready but idle to eliminate handshake lag on first press.
+# 'on_demand': Connects only when hotkey is pressed (saves bandwidth, higher initial lag).
+# 'always_on': Connection never closes (highest resource usage).
+# connection_mode = "warm"
+
+# How long to keep a 'warm' connection alive without activity before closing it (in seconds).
+# Range: 30 to 1800.
+# warm_idle_timeout_seconds = 300
+
+# Timeout for the initial WebSocket handshake in seconds.
+# connection_timeout_seconds = 10.0
+
+# Sensitivity for local voice activity detection. Lower is more sensitive.
+# Range: 0.001 to 0.05.
+# voice_activity_threshold = 0.005
+
+[transcription]
+# The active transcription service provider.
+# Options: "openai", "assemblyai"
+# provider = "openai"
+
+# High-level performance profile. 'Fast' prioritizes speed, 'Accurate' waits longer for silence.
+# Options: "fast", "balanced", "accurate"
+# latency_profile = "balanced"
+
+# Microphone environment optimization.
+# Options: "headset" (close-mic), "laptop" (room ambient), "none" (raw)
+# mic_profile = "headset"
+
 # --- OpenAI Configuration ---
-# NOTE: OpenAI is for Transcription Mode only.
 
 [providers.openai.core]
 # Models allowed: "gpt-4o-mini-transcribe", "gpt-4o-transcribe"
-transcription_model = "gpt-4o-mini-transcribe"
-language = "en"
+# transcription_model = "gpt-4o-mini-transcribe"
 
+# BCP-47 language code (e.g., "en", "es", "fr", "ja").
+# language = "en"
+
+# --- OpenAI Advanced ---
 [providers.openai.advanced]
+# If true, all profile-based timings below will be ignored in favor of these manual values.
 # override = false
 
-# --- PROMPT (OpenAI) ---
-# Contextual instructions to improve ASR accuracy. 
+# Contextual instructions to improve ASR accuracy.
 # Use this to provide the model with technical terms, acronyms, or specific formatting rules.
 # Examples:
-# prompt = "The user is discussing Python programming. Use terms like 'decorator', 'generator', and 'dunder method'."
+# prompt = "The user is discussing Python programming. Use terms like 'decorator' and 'dunder method'."
 # prompt = "Act as a medical scribe. Transcribe medical terminology accurately."
-prompt = ""
+# prompt = ""
 
+# Noise reduction filter applied by the server. Options: "near_field", "far_field", "off".
 # noise_reduction = "off"
-# turn_detection_type = "server_vad"
+
+# Threshold for server-side Voice Activity Detection. Range: 0.0 to 1.0.
+# vad_threshold = 0.6
+
+# Amount of audio to include BEFORE speech was detected (in milliseconds).
+# prefix_padding_ms = 300
+
+# How much silence to wait for before finalizing a segment (in milliseconds).
+# silence_duration_ms = 500
+
+# If true, the server returns detailed probability data for each token (for debugging).
+# include_logprobs = false
 
 # --- AssemblyAI Configuration ---
 
 [providers.assemblyai.core]
-# region determines the host (us/eu).
-region = "us"
-# language_code for multilingual streaming (e.g., "es", "fr"). Defaults to "en".
-language_code = "en"
-# Use "universal-streaming-english" for English (default)
+# Region host for AssemblyAI. Options: "us", "eu".
+# region = "us"
+
+# Language code for multilingual streaming (e.g., "es", "fr"). Defaults to "en".
+# language_code = "en"
+
+# The transcription model to use.
+# Use "universal-streaming-english" for English.
 # Use "universal-streaming-multilingual" for other languages.
-speech_model = "universal-streaming-english"
+# speech_model = "universal-streaming-english"
+
+# Server-side VAD sensitivity. Range: 0.0 to 1.0.
+# vad_threshold = 0.4
+
+# Time in seconds of inactivity before the session is auto-terminated. 0 means disabled.
+# Range: 0 or 5 to 3600.
 # inactivity_timeout_seconds = 0
 
+# --- AssemblyAI Advanced ---
 [providers.assemblyai.advanced]
+# If true, profile-based turn detection values below will be used instead of the profile defaults.
 # override = false
 
-# --- WORD BOOSTING (AssemblyAI) ---
-# A list of up to 100 terms to boost the recognition of. 
-# Best for rare names, unique product brands, or jargon.
-# Example:
-# keyterms_prompt = ["Voice2Text", "Gemini", "AssemblyAI"]
-keyterms_prompt = []
+# If true, the provider will attempt to add punctuation and capitalization to final text.
+# format_text = false
 
+# A list of up to 100 terms to boost the recognition of. Max 50 characters per term.
+# Best for rare names, unique product brands, or specific jargon.
+# Example: keyterms_prompt = ["Voice2Text", "Gemini", "AssemblyAI"]
+# keyterms_prompt = []
+
+# Confidence threshold for detecting the end of a sentence. Range: 0.0 to 1.0.
 # end_of_turn_confidence_threshold = 0.4
+
+# Minimum silence needed to finalize a turn when the model is confident. (in milliseconds).
 # min_end_of_turn_silence_when_confident_ms = 400
+
+# Maximum silence allowed before a turn is forced to finalize (in milliseconds).
 # max_turn_silence_ms = 1000
+
+# If true, detects the spoken language and returns metadata. (Requires multilingual model).
 # language_detection = false
+
+# --- Debugging & Testing ---
+
+[test]
+# Enable test mode to use local mock servers instead of real API endpoints.
+# enabled = false
+# openai_mock_url = "ws://localhost:8081"
+# assemblyai_mock_url = "ws://localhost:8081"
+
+[logging]
+# Enable logging to a local file.
+# file_enabled = false
+
+# Override the default log file path. If empty, uses %APPDATA%\Voice2Text\voice2text.log.
+# file_path = ""
+
+# Logging detail level. 1 = INFO (Normal), 2 = DEBUG (Verbose).
+# file_level = 1

@@ -124,6 +124,15 @@ class HudOverlay:
                     self.voice_active = latest_voice  # Store it
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
+                # Dynamic Opacity
+                opacity = 1.0
+                if self.config:
+                    opacity = (
+                        self.config.ui.floating_indicator.opacity_active
+                        if self.is_recording
+                        else self.config.ui.floating_indicator.opacity_idle
+                    )
+
                 self.style.draw(
                     self._canvas,
                     self.win_width,
@@ -132,6 +141,7 @@ class HudOverlay:
                     self.is_recording,
                     getattr(self, "last_status", None),
                     getattr(self, "voice_active", False),
+                    opacity=opacity,
                 )
                 self._update_window()
             return 0

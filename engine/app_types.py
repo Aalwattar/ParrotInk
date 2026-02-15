@@ -24,6 +24,7 @@ class EffectiveOpenAIConfig:
     url: str
     transcription_model: str
     prompt: str
+    turn_detection_type: str
     vad_threshold: float
     silence_duration_ms: int
     prefix_padding_ms: int

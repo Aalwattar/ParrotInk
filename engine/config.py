@@ -117,7 +117,6 @@ class TranscriptionConfig(BaseModel):
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
     mic_profile: Literal["headset", "laptop", "none"] = "headset"
-    format_text: bool = False
 
 
 class AppTestConfig(BaseModel):
@@ -200,6 +199,7 @@ class AssemblyAICoreConfig(BaseModel):
 class AssemblyAIAdvancedConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     override: bool = False
+    format_text: bool = False
     keyterms_prompt: List[str] = Field(default_factory=list)
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400

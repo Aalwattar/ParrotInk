@@ -40,6 +40,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         url=openai_url,
         transcription_model=openai_core.transcription_model,
         prompt=openai_adv.prompt,
+        turn_detection_type=openai_adv.turn_detection_type,
         vad_threshold=openai_vad,
         silence_duration_ms=openai_silence,
         prefix_padding_ms=openai_adv.prefix_padding_ms,
@@ -90,6 +91,22 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     if aai_core.language_code != "en":
         params["language_code"] = aai_core.language_code
 
+    if aai_adv.format_text:
+        params["format_turns"] = "true"
+
+    if aai_adv.language_detection:
+        params["language_detection"] = "true"
+
+    params["vad_threshold"] = str(aai_core.vad_threshold)
+
+    if aai_core.inactivity_timeout_seconds > 0:
+        params["inactivity_timeout"] = str(aai_core.inactivity_timeout_seconds)
+
+    # Turn detection overrides or profile values
+    params["end_of_turn_confidence_threshold"] = str(aai_confidence)
+    params["min_end_of_turn_silence_when_confident"] = str(aai_min_silence)
+    params["max_turn_silence"] = str(aai_max_silence)
+
     if params:
         separator = "&" if "?" in aai_url else "?"
         aai_url = f"{aai_url}{separator}{urlencode(params)}"
@@ -113,7 +130,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         max_silence_ms=aai_max_silence,
         inactivity_timeout=resolved_timeout,
         word_boost=aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None,
-        format_text=trans.format_text,
+        format_text=aai_adv.format_text,
         language_detection=aai_adv.language_detection,
         is_test=config.test.enabled,
     )

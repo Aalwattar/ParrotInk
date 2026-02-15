@@ -14,6 +14,7 @@ class HudStyle(ABC):
         is_recording: bool,
         status_override: str | None = None,
         voice_active: bool = False,
+        opacity: float = 1.0,
     ):
         pass
 
@@ -34,6 +35,7 @@ class GlassStyle(HudStyle):
         is_recording: bool,
         status_override: str | None = None,
         voice_active: bool = False,
+        opacity: float = 1.0,
     ):
         canvas.clear(skia.ColorTRANSPARENT)
 
@@ -58,9 +60,13 @@ class GlassStyle(HudStyle):
 
         # Use slightly more transparent paint for placeholder
         if is_listening_placeholder:
-            text_paint = skia.Paint(Color=skia.ColorSetARGB(180, 255, 255, 255), AntiAlias=True)
+            text_paint = skia.Paint(
+                Color=skia.ColorSetARGB(int(180 * opacity), 255, 255, 255), AntiAlias=True
+            )
         else:
-            text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
+            text_paint = skia.Paint(
+                Color=skia.ColorSetARGB(int(255 * opacity), 255, 255, 255), AntiAlias=True
+            )
 
         content_blob = skia.TextBlob.MakeFromString(display_text, font_text)
         text_width = font_text.measureText(display_text)
@@ -79,13 +85,16 @@ class GlassStyle(HudStyle):
 
         # 4. Paint Background & Shadow
         shadow_paint = skia.Paint(
-            Color=skia.ColorSetARGB(150, 0, 0, 0),
+            Color=skia.ColorSetARGB(int(150 * opacity), 0, 0, 0),
             AntiAlias=True,
             ImageFilter=skia.ImageFilters.Blur(8, 8),
         )
         canvas.drawRRect(rrect, shadow_paint)
 
-        colors = [skia.ColorSetARGB(220, 25, 25, 25), skia.ColorSetARGB(200, 15, 15, 15)]
+        colors = [
+            skia.ColorSetARGB(int(220 * opacity), 25, 25, 25),
+            skia.ColorSetARGB(int(200 * opacity), 15, 15, 15),
+        ]
         pts = [skia.Point(rect.fLeft, rect.fTop), skia.Point(rect.fLeft, rect.fBottom)]
         glass_paint = skia.Paint(AntiAlias=True, Shader=skia.GradientShader.MakeLinear(pts, colors))
         canvas.drawRRect(rrect, glass_paint)
@@ -101,11 +110,11 @@ class GlassStyle(HudStyle):
         base_radius = 3.0
         if voice_active:
             dot_radius = base_radius + 1.0  # Subtle grow
-            glow_alpha = 180
+            glow_alpha = int(180 * opacity)
             blur_sigma = 3.0
         else:
             dot_radius = base_radius
-            glow_alpha = 100
+            glow_alpha = int(100 * opacity)
             blur_sigma = 1.5
 
         # Determine Color
@@ -128,7 +137,12 @@ class GlassStyle(HudStyle):
             )
             canvas.drawCircle(dot_x, dot_y, dot_radius + 1.5, glow_paint)
 
-        canvas.drawCircle(dot_x, dot_y, dot_radius, skia.Paint(Color=dot_color, AntiAlias=True))
+        canvas.drawCircle(
+            dot_x,
+            dot_y,
+            dot_radius,
+            skia.Paint(Color=dot_color, Alpha=int(255 * opacity), AntiAlias=True),
+        )
 
         # Transcription Text
         canvas.drawTextBlob(content_blob, dot_x + 14.0, baseline_y - 1.0, text_paint)

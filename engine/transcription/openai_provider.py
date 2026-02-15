@@ -96,9 +96,10 @@ class OpenAIProvider(BaseProvider):
                             "model": cfg.transcription_model,
                             "language": cfg.language,
                             "prompt": cfg.prompt,
+                            "include_logprobs": cfg.include_logprobs,
                         },
                         "turn_detection": {
-                            "type": "server_vad",
+                            "type": cfg.turn_detection_type,
                             "threshold": cfg.vad_threshold,
                             "prefix_padding_ms": cfg.prefix_padding_ms,
                             "silence_duration_ms": cfg.silence_duration_ms,
