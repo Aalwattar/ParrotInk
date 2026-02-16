@@ -209,7 +209,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Short Path Hotkey Migration**
+- [x] **Track: Short Path Hotkey Migration** [checkpoint: 53a31d1]
 *Link: [./tracks/short_path_hotkey_20260216/](./tracks/short_path_hotkey_20260216/)*
 
 ---
