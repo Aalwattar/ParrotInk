@@ -1,8 +1,0 @@
-{
-  "track_id": "hotkey_suppression_20260216",
-  "type": "bug",
-  "status": "new",
-  "created_at": "2026-02-16T10:48:00Z",
-  "updated_at": "2026-02-16T10:48:00Z",
-  "description": "issue in hot key especially with hold when I press the hot key example ctr+space it keep fire to windows"
-}

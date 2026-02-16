@@ -190,7 +190,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Boringly Simple Stability** [checkpoint: 9f22a50]
-*Link: [./tracks/stability_and_simple_hotkey_20260216/](./tracks/stability_and_simple_hotkey_20260216/)*
+*Link: [./archive/stability_and_simple_hotkey_20260216/](./archive/stability_and_simple_hotkey_20260216/)*
 
 ---
 
@@ -201,11 +201,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Proactive Stale Hotkey Eviction**
 *Link: [./archive/fix_stale_hotkey_20260215/](./archive/fix_stale_hotkey_20260215/)*
-
----
-
-- [ ] **Track: Hotkey Input Suppression (Anti-Leak)** (Superseded by Short Path Migration)
-*Link: [./tracks/hotkey_suppression_20260216/](./tracks/hotkey_suppression_20260216/)*
 
 ---
 
