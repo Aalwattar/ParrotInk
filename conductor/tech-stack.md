@@ -17,9 +17,9 @@
 - **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.
 - **platformdirs:** Resolves platform-specific user directories for log files and configuration.
 - **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
-- **pynput:** Powering the `InteractionMonitor` and `HotkeyRecorder`, used to detect global keyboard events and record user-defined shortcuts.
-- **signal:** Implements immediate, double-confirmation Ctrl+C shutdown logic for improved CLI responsiveness.
-- **Pillow (PIL):** Used for dynamic, procedural generation of high-DPI tray icons at runtime.
+- **keyboard:** The primary engine for global hotkey suppression and 'any-key' cancellation, providing low-level, zero-leakage input management.
+- **pynput:** Powering the `HotkeyRecorder` and `MouseMonitor`, used to capture specific mouse and keyboard events during configuration.
+- **soxr (python-soxr):** High-quality, stateful audio resampling library used to convert microphone capture rates to provider-specific requirements (e.g., 24kHz for OpenAI).
 - **skia-python:** Powers the high-performance, hardware-accelerated HUD rendering with anti-aliased typography.
 - **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
 - **tomli-w:** Used for writing configuration files in TOML format.
