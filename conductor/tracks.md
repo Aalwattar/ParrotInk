@@ -204,8 +204,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Hotkey Input Suppression (Anti-Leak)**
+- [ ] **Track: Hotkey Input Suppression (Anti-Leak)** (Superseded by Short Path Migration)
 *Link: [./tracks/hotkey_suppression_20260216/](./tracks/hotkey_suppression_20260216/)*
+
+---
+
+- [ ] **Track: Short Path Hotkey Migration**
+*Link: [./tracks/short_path_hotkey_20260216/](./tracks/short_path_hotkey_20260216/)*
 
 ---
 

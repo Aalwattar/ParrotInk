@@ -1,0 +1,7 @@
+{
+  "id": "short_path_hotkey_20260216",
+  "name": "Short Path Hotkey Migration",
+  "description": "Migrate global hotkey capture from pynput to the keyboard library to enable native C-level suppression and architectural simplification.",
+  "created_at": "2026-02-16T14:47:00Z",
+  "status": "planned"
+}
