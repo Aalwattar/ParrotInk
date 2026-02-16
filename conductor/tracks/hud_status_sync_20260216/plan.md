@@ -1,4 +1,4 @@
-# Implementation Plan: HUD & Status Synchronization
+# Implementation Plan: HUD & Status Synchronization [checkpoint: 95650fa]
 
 ## Phase 1: Investigative Trace & State Audit [checkpoint: 6750e96]
 - [x] Audit `engine/app_coordinator.py` (or `main.py`) and `engine/connection.py` for all state transition triggers. 6750e96
