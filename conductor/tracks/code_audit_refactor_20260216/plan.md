@@ -29,4 +29,5 @@ This track follows a module-by-module audit and refactor workflow.
 ## Phase 5: Final Global Sweep & DoD Gate [checkpoint: f0d72e1]
 - [x] Task: Run full "Definition of Done Gate" across the entire project. [f0d72e1]
 - [x] Task: Fix reported Hotkey Toggle Crash and refine Anchor detection. [f0d72e1]
+- [x] Task: Final cleanup of redundant imports and legacy security logic. [6c68f6e]
 - [x] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
