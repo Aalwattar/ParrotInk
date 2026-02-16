@@ -211,3 +211,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Tray Menu Hotkey Label Sync**
 *Link: [./tracks/tray_menu_sync_20260216/](./tracks/tray_menu_sync_20260216/)*
+
+---
+
+- [ ] **Track: Code Audit & Refactoring**
+*Link: [./tracks/code_audit_refactor_20260216/](./tracks/code_audit_refactor_20260216/)*
