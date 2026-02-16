@@ -109,10 +109,13 @@ class OpenAIProvider(BaseProvider):
         }
 
         # Handle noise reduction in the nested structure
+        # Explicitly set to None (null in JSON) if disabled
         if cfg.noise_reduction_type and cfg.noise_reduction_type != "off":
             update_event["session"]["audio"]["input"]["noise_reduction"] = {
                 "type": cfg.noise_reduction_type
             }
+        else:
+            update_event["session"]["audio"]["input"]["noise_reduction"] = None
 
         logger.debug(f"Sending session.update: {json.dumps(update_event)}")
         await self.ws.send(json.dumps(update_event))

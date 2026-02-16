@@ -44,7 +44,7 @@ async def test_openai_dialect_b_payload():
         assert audio_input["transcription"]["model"] == "gpt-4o-mini-transcribe"
         assert "turn_detection" in audio_input
         # Noise reduction is optional in the implementation if "off"
-        if "noise_reduction" in audio_input:
+        if "noise_reduction" in audio_input and audio_input["noise_reduction"] is not None:
             assert audio_input["noise_reduction"]["type"] in ["near_field", "far_field"]
 
 

@@ -111,7 +111,7 @@ class TranscriptionConfig(BaseModel):
         default="openai", validation_alias=AliasChoices("provider", "active_provider")
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
-    mic_profile: Literal["headset", "laptop", "none"] = "headset"
+    mic_profile: Literal["headset", "laptop", "none"] = "none"
 
 
 class AppTestConfig(BaseModel):

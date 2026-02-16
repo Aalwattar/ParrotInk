@@ -41,7 +41,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - API provider selection, API keys, and **Test Mode** toggle.
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
     - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
-    - **User-Friendly Profiles:** High-level `latency_profile` (fast, balanced, accurate) and `mic_profile` (headset, laptop) simplify complex engineering parameters.
+    - **User-Friendly Profiles:** High-level `latency_profile` (fast, balanced, accurate) and `mic_profile` (headset, laptop, none) simplify complex engineering parameters. `none` is the default for maximum compatibility.
     - **Granular Advanced Settings:** Power users can still override profiles to fine-tune VAD thresholds, models, and silence durations.
     - **Configuration Fidelity:** All engine parameters, including session rotation, connection timeouts, and voice activity thresholds, are exposed and respected, ensuring the config file is the single source of truth.
     - **AssemblyAI V3 Integration:** Leverages the latest AssemblyAI Streaming V3 API for improved performance and more detailed session control.

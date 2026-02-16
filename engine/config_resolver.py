@@ -29,7 +29,8 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     else:
         openai_vad = float(profile["openai"]["vad_threshold"])
         openai_silence = int(profile["openai"]["silence_duration_ms"])
-        noise_reduction = MIC_PROFILES.get(trans.mic_profile, "near_field")
+        # Use the profile mapping, defaulting to None (off) if somehow missing
+        noise_reduction = MIC_PROFILES.get(trans.mic_profile)
 
     # Invariant: Must use the transcription intent in the URL
     openai_url = f"{openai_core.realtime_ws_url_base}?intent=transcription"

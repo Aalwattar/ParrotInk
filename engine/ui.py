@@ -33,6 +33,7 @@ class TrayApp:
         on_toggle_click_through: Callable[[bool], None] | None = None,
         on_toggle_startup: Callable[[bool], None] | None = None,
         on_toggle_hold_mode: Callable[[bool], None] | None = None,
+        on_mic_profile_change: Callable[[str], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -52,6 +53,7 @@ class TrayApp:
         self.on_toggle_click_through = on_toggle_click_through
         self.on_toggle_startup = on_toggle_startup
         self.on_toggle_hold_mode = on_toggle_hold_mode
+        self.on_mic_profile_change = on_mic_profile_change
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         self.icon = self._create_icon()
@@ -115,6 +117,10 @@ class TrayApp:
     def _on_toggle_hold_mode_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_toggle_hold_mode:
             self.on_toggle_hold_mode(not self.config.hotkeys.hold_mode)
+
+    def _on_mic_profile_selection(self, icon: pystray.Icon, profile: str) -> None:
+        if self.on_mic_profile_change:
+            self.on_mic_profile_change(profile)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_before_hotkey_change:
@@ -224,6 +230,37 @@ class TrayApp:
                         self._on_toggle_click_through_clicked,
                         checked=lambda item: self.config.ui.floating_indicator.click_through,
                         enabled=lambda item: self.config.ui.floating_indicator.enabled,
+                    ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Microphone Profile",
+                        pystray.Menu(
+                            pystray.MenuItem(
+                                "Headset (Noise Reduction On)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "headset"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "headset"
+                                ),
+                                radio=True,
+                            ),
+                            pystray.MenuItem(
+                                "Laptop/Room (Far Field)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "laptop"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "laptop"
+                                ),
+                                radio=True,
+                            ),
+                            pystray.MenuItem(
+                                "None (Raw Audio - Recommended)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "none"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "none"
+                                ),
+                                radio=True,
+                            ),
+                        ),
+                        enabled=lambda item: self.current_provider == "openai",
                     ),
                 ),
             ),

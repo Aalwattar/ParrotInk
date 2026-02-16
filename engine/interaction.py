@@ -88,9 +88,14 @@ class InputMonitor:
 
     def stop(self):
         """Stops the pynput listener and signals worker to stop."""
+        self._stop_event.set()
         if self._listener:
             self._listener.stop()
             self._listener = None
+
+        if self._worker_thread:
+            # We don't join to avoid blocking if the loop is slow
+            self._worker_thread = None
 
         # Drain queue if needed
         while not self._event_queue.empty():

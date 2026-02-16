@@ -140,6 +140,14 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
+    def on_mic_profile_change(profile):
+        def apply():
+            config.update_and_save({"transcription": {"mic_profile": profile}})
+            logger.info(f"Microphone Profile changed to: {profile}")
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
     def on_before_hotkey_change():
         logger.info("Pausing hooks for hotkey recording...")
         # 1. Stop dictation immediately
@@ -172,6 +180,7 @@ async def main_gui(cli_args):
         on_toggle_click_through=on_toggle_click_through,
         on_toggle_startup=on_toggle_startup,
         on_toggle_hold_mode=on_toggle_hold_mode,
+        on_mic_profile_change=on_mic_profile_change,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
