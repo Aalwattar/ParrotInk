@@ -11,7 +11,7 @@
 - [x] Move any complex logic (logging, state checks) out of the hook callback.
 - **Verification**: All 138 tests passed. Restored CLI functionality (`eval`, `set-key`) while maintaining lean hooks. responsive under CPU load confirmed by worker thread architecture.
 
-## Phase 3: Isolated Hotkey Recorder
-- [ ] Create a simple Win32/Tkinter window that uses local message handling (`WM_KEYDOWN`) to capture keys.
-- [ ] Implement the hand-off: Window closes -> Asyncio thread receives string -> Rebinds hotkey.
-- **Verification**: Test hotkey recording; ensure it never blocks the system tray or dictation.
+## Phase 3: Isolated Hotkey Recorder [checkpoint: functional-hotkey-ui]
+- [x] Create a simple Win32/Tkinter window that uses local message handling (`WM_KEYDOWN`) to capture keys.
+- [x] Implement the hand-off: Window closes -> Asyncio thread receives string -> Rebinds hotkey.
+- **Verification**: Manually verified hotkey capture; confirmed it pauses global hooks and correctly updates `config.toml`. Automated tests passed.

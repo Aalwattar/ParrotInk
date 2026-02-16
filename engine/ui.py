@@ -117,17 +117,16 @@ class TrayApp:
             self.on_toggle_hold_mode(not self.config.hotkeys.hold_mode)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
-        logger.info("Hotkey Change requested (Feature Under Development)")
-        if self.indicator:
-            # Show the message on the HUD
-            self.indicator.show()
-            self.indicator.on_final("Hotkey Configuration: Under Development")
-        else:
-            # Fallback to notification if HUD is disabled
-            self.notify(
-                "Hotkey UI is under development. Please edit config.toml manually.",
-                "Under Development",
-            )
+        if self.on_before_hotkey_change:
+            self.on_before_hotkey_change()
+
+        def record():
+            from .hotkey_ui import HotkeyRecorder
+
+            recorder = HotkeyRecorder(on_captured=self.on_hotkey_change)
+            recorder.run()
+
+        threading.Thread(target=record, daemon=True).start()
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
         # We launch this in a thread because showing a dialog (console or GUI)

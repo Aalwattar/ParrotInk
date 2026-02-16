@@ -139,12 +139,18 @@ async def main_gui(cli_args):
             coordinator.loop.call_soon_threadsafe(apply)
 
     def on_before_hotkey_change():
-        logger.info("Hotkey change requested.")
+        logger.info("Pausing hooks for hotkey recording...")
+        # 1. Stop dictation immediately
+        asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
+        # 2. Stop the global pynput listener
+        coordinator.input_monitor.stop()
 
     def on_hotkey_change(new_hotkey):
         def apply():
             logger.info(f"Applying new hotkey: {new_hotkey}")
             config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
+            # Restart the global listener
+            coordinator.input_monitor.start()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
