@@ -4,10 +4,10 @@ This track simplifies the hotkey architecture and implements selective suppressi
 
 ## Phase 1: Infrastructure & Cleanup
 - [x] Task: Add `keyboard` library to dependencies. [checkpoint: d18c394]
-- [ ] Task: Strip `engine/interaction.py`.
-    - Remove `queue.Queue`.
-    - Remove `_worker_loop` and `WorkerThread`.
-    - Refactor `InputMonitor` to use `keyboard` hooks instead of `pynput.Listener`.
+- [x] Task: Strip `engine/interaction.py`. [checkpoint: 38024ab]
+    - [x] Remove `queue.Queue`.
+    - [x] Remove `_worker_loop` and `WorkerThread`.
+    - [x] Refactor `InputMonitor` to use `keyboard` hooks instead of `pynput.Listener`.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Architectural Integration
