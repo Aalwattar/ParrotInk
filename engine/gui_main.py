@@ -193,7 +193,7 @@ async def main_gui(cli_args):
     ui_thread = threading.Thread(target=app.run, daemon=True)
     ui_thread.start()
 
-    # The monitor is configured during coordinator init, but we start it here 
+    # The monitor is configured during coordinator init, but we start it here
     # to begin capturing global events before the main loop blocks.
     coordinator.input_monitor.start()
     logger.info(
