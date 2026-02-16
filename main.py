@@ -54,7 +54,6 @@ class AppCoordinator:
 
         # Interaction monitoring
         self.input_monitor = InputMonitor(on_press=self.on_press, on_release=self.on_release)
-        self.input_monitor.set_target_hotkey(config.hotkeys.hotkey)
         self.input_monitor.set_any_key_callback(self._on_manual_stop)
 
         # Register for config changes
@@ -109,7 +108,6 @@ class AppCoordinator:
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
-        self.input_monitor.set_target_hotkey(config.hotkeys.hotkey)
         logger.debug(f"Target hotkey updated to: {self.target_hotkey}")
 
     @property
