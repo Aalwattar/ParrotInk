@@ -30,12 +30,14 @@ This track follows a module-by-module audit and refactor workflow.
     - [x] Cleanup redundant state tracking in `IndicatorWindow`.
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
-## Phase 4: Audit & Refactor - Platform & Utilities (`engine/platform_win/`, `engine/injection.py`, etc.)
-- [~] Task: **Audit**: Platform & Utilities.
-    - [ ] Check Windows API constants and injection timings.
-- [ ] Task: **Report**: Present findings for Platform & Utilities to user for approval.
-- [ ] Task: **Refactor**: Platform & Utilities (Only after approval).
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+## Phase 4: Audit & Refactor - Platform & Utilities (`engine/platform_win/`, `engine/injection.py`, etc.) [checkpoint: c40dbca]
+- [x] Task: **Audit**: Platform & Utilities. [c40dbca]
+- [x] Task: **Report**: Present findings for Platform & Utilities to user for approval. [c40dbca]
+- [x] Task: **Refactor**: Platform & Utilities (Only after approval). [c40dbca]
+    - [x] Global Rename: Voice2Text -> ParrotInk.
+    - [x] Consolidate constants (APP_NAME, Mutex, Backspaces).
+    - [x] Implement API Key migration logic.
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
 ## Phase 5: Final Global Sweep & DoD Gate
 - [ ] Task: Run full "Definition of Done Gate" across the entire project.
