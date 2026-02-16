@@ -318,6 +318,13 @@ class TrayApp:
         """Show a system tray notification."""
         self.icon.notify(message, title)
 
+    def _refresh_menu(self):
+        """Rebuilds and refreshes the tray menu."""
+        logger.debug("TrayApp: Refreshing tray menu...")
+        # On some platforms/versions of pystray, we need to re-create the menu
+        # to ensure dynamic labels (lambdas) are re-evaluated or updated.
+        self.icon.menu = self._create_icon().menu
+
     def _poll_bridge(self):
         """Polls the UI bridge for events and updates the icon."""
         if not self.bridge:
@@ -361,6 +368,7 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_SETTINGS:
                 if self.indicator:
                     self.indicator.update_settings(data)
+                self._refresh_menu()
             elif msg_type == UIEvent.REFRESH_HUD:
                 if self.indicator:
                     self.indicator.refresh_settings()
