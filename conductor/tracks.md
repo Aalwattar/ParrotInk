@@ -194,7 +194,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: HUD & Status Synchronization**
+- [x] **Track: HUD & Status Synchronization** [checkpoint: 6750e96]
 *Link: [./tracks/hud_status_sync_20260216/](./tracks/hud_status_sync_20260216/)*
 
 ---
