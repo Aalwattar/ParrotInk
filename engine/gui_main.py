@@ -75,6 +75,8 @@ async def main_gui(cli_args):
 
             config.update_and_save({"transcription": {"provider": provider_name}})
             logger.info(f"Provider changed to: {provider_name}")
+            ui_bridge.update_provider(provider_name)
+            ui_bridge.refresh_hud()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)

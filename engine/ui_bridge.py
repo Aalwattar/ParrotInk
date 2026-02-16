@@ -1,6 +1,6 @@
 import queue
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from engine.app_types import AppState
 from engine.logging import get_logger
@@ -16,7 +16,10 @@ class UIEvent:
     UPDATE_FINAL_TEXT = "update_final_text"
     UPDATE_VOICE_ACTIVITY = "update_voice_activity"
     UPDATE_STATUS_MESSAGE = "update_status_message"
+    UPDATE_PROVIDER = "update_provider"
+    UPDATE_SETTINGS = "update_settings"
     REFRESH_HUD = "refresh_hud"
+    CLEAR_HUD = "clear_hud"
     QUIT = "quit"
 
 
@@ -52,9 +55,19 @@ class UIBridge:
     def update_status_message(self, message: str):
         self.queue.put((UIEvent.UPDATE_STATUS_MESSAGE, message))
 
+    def update_provider(self, provider_name: str):
+        self.queue.put((UIEvent.UPDATE_PROVIDER, provider_name))
+
+    def update_settings(self, settings: Dict[str, Any]):
+        self.queue.put((UIEvent.UPDATE_SETTINGS, settings))
+
     def refresh_hud(self):
         """Signal the HUD to refresh its settings."""
         self.queue.put((UIEvent.REFRESH_HUD, None))
+
+    def clear_hud(self):
+        """Signal the HUD to clear its state."""
+        self.queue.put((UIEvent.CLEAR_HUD, None))
 
     def stop(self):
         """Signal the UI to stop."""

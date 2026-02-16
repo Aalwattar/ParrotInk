@@ -46,6 +46,7 @@ class HudOverlay:
         self.text_queue: queue.Queue[str | tuple[str, Any]] = queue.Queue()
         self.last_text = ""
         self.last_status = None
+        self.last_provider = config.transcription.provider if config else None
         self.voice_active = False
         self.is_recording = False
         self.visible = False
@@ -98,6 +99,7 @@ class HudOverlay:
                 latest_text = None
                 latest_status = None
                 latest_voice = None
+                latest_provider = None
 
                 while True:
                     try:
@@ -111,6 +113,8 @@ class HudOverlay:
                                 latest_status = payload
                             elif kind == "VOICE":
                                 latest_voice = payload
+                            elif kind == "PROVIDER":
+                                latest_provider = payload
                         else:
                             latest_text = item
                     except queue.Empty:
@@ -122,6 +126,8 @@ class HudOverlay:
                     self.last_status = latest_status  # Store it
                 if latest_voice is not None:
                     self.voice_active = latest_voice  # Store it
+                if latest_provider is not None:
+                    self.last_provider = latest_provider
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(
@@ -132,6 +138,7 @@ class HudOverlay:
                     self.is_recording,
                     getattr(self, "last_status", None),
                     getattr(self, "voice_active", False),
+                    getattr(self, "last_provider", None),
                 )
                 self._update_window()
             return 0
@@ -254,6 +261,10 @@ class HudOverlay:
         """Supported status: 'finalized', 'listening', 'connecting'"""
         if HUD_AVAILABLE:
             self.text_queue.put(("STATUS", status))
+
+    def update_provider(self, provider: str):
+        if HUD_AVAILABLE:
+            self.text_queue.put(("PROVIDER", provider))
 
     def update_text(self, text: str):
         if HUD_AVAILABLE:

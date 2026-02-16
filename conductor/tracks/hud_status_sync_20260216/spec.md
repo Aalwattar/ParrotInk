@@ -13,3 +13,7 @@ Ensure that the floating HUD and the system tray status are perfectly synchroniz
 - [ ] Tray tooltip and HUD status labels always match.
 - [ ] HUD correctly clears/resets state when a new dictation session starts.
 - [ ] No race conditions in the `UIBridge` queue causing out-of-order status updates.
+
+## Safety Constraints (CRITICAL)
+- **NO UI OBSERVERS**: Under no circumstances should `IndicatorWindow` or `TrayApp` be registered as a `Config` observer. All visual updates MUST flow through the `UIBridge` queue to prevent deadlocks.
+- **Thread Ownership**: All Win32/GDI+ calls must remain isolated within the UI polling thread.

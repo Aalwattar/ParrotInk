@@ -1,7 +1,7 @@
 # Implementation Plan: HUD & Status Synchronization
 
 ## Phase 1: Investigative Trace & State Audit
-- [ ] Audit `engine/app_coordinator.py` (or `main.py`) and `engine/connection.py` for all state transition triggers.
+- [~] Audit `engine/app_coordinator.py` (or `main.py`) and `engine/connection.py` for all state transition triggers.
 - [ ] Verify that every `set_state` call correctly propagates to both `TrayApp` and `IndicatorWindow`.
 - [ ] Identify missing "Refresh" signals in the `UIBridge`.
 

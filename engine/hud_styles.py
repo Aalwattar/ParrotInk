@@ -14,6 +14,7 @@ class HudStyle(ABC):
         is_recording: bool,
         status_override: str | None = None,
         voice_active: bool = False,
+        provider: str | None = None,
     ):
         pass
 
@@ -34,6 +35,7 @@ class GlassStyle(HudStyle):
         is_recording: bool,
         status_override: str | None = None,
         voice_active: bool = False,
+        provider: str | None = None,
     ):
         canvas.clear(skia.ColorTRANSPARENT)
 
@@ -47,11 +49,17 @@ class GlassStyle(HudStyle):
 
         # 2. Content Preparation
         is_listening_placeholder = False
-        if not text and is_recording:
-            display_text = "Listening..."
+        content_text = text if text else ""
+
+        # Build display text
+        provider_prefix = f"{provider.title()}: " if provider else ""
+        if not content_text and is_recording:
+            display_text = f"{provider_prefix}Listening..."
             is_listening_placeholder = True
+        elif not content_text:
+            display_text = f"{provider_prefix}..."
         else:
-            display_text = text if text else "..."
+            display_text = f"{provider_prefix}{content_text}"
 
         if len(display_text) > 100:
             display_text = "…" + display_text[-97:]

@@ -194,7 +194,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: HUD & Status Synchronization**
+- [~] **Track: HUD & Status Synchronization**
 *Link: [./tracks/hud_status_sync_20260216/](./tracks/hud_status_sync_20260216/)*
 
 ---

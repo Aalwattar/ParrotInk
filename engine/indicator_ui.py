@@ -69,6 +69,7 @@ class IndicatorWindow:
         self._current_partial_text = ""
         self._committed_text = ""
         self._last_status_msg = ""
+        self._current_provider: str = config.transcription.provider if config else ""
         self._shown_at = 0.0
         self._last_redraw_at = 0.0
         self._visible = False
@@ -146,6 +147,21 @@ class IndicatorWindow:
         self._last_status_msg = status
         if hasattr(self.impl, "update_status_icon"):
             self.impl.update_status_icon(status)
+        self._render_preview()
+
+    def update_provider(self, provider: str):
+        self._current_provider = provider
+        if hasattr(self.impl, "update_provider"):
+            self.impl.update_provider(provider)
+        self._render_preview()
+
+    def clear(self):
+        """Force clears all text and resets state."""
+        self._committed_text = ""
+        self._current_partial_text = ""
+        self._last_status_msg = ""
+        if hasattr(self.impl, "update_text"):
+            self.impl.update_text("")
         self._render_preview()
 
     def _start_linger_timer(self, duration: float = 2.5):

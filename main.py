@@ -300,6 +300,7 @@ class AppCoordinator:
             return
 
         logger.info(f"Starting listening with {self.config.transcription.provider}...")
+        self.ui_bridge.clear_hud()
         self.session_cancelled = False
         self.start_time = time.time()
         self.last_injected_text = ""

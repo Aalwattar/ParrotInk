@@ -249,7 +249,8 @@ class TrayApp:
             AppState.STOPPING: "Stopping...",
             AppState.SHUTTING_DOWN: "Shutting down...",
         }
-        self.icon.title = f"Voice2Text: {state_map.get(state, 'Unknown')}"
+        provider_info = f" ({self.config.transcription.provider.title()})"
+        self.icon.title = f"Voice2Text: {state_map.get(state, 'Unknown')}{provider_info}"
 
         # Sync indicator visibility and status
         if self.indicator:
@@ -315,9 +316,21 @@ class TrayApp:
                 # Forward to HUD
                 if self.indicator:
                     self.indicator.update_status_icon(data)
+            elif msg_type == UIEvent.UPDATE_PROVIDER:
+                if self.indicator:
+                    self.indicator.update_provider(data)
+                # Refresh tooltip with new provider
+                self.set_state(self.state)
+            elif msg_type == UIEvent.UPDATE_SETTINGS:
+                if self.indicator:
+                    # Generic settings update if needed
+                    pass
             elif msg_type == UIEvent.REFRESH_HUD:
                 if self.indicator:
                     self.indicator.refresh_settings()
+            elif msg_type == UIEvent.CLEAR_HUD:
+                if self.indicator:
+                    self.indicator.clear()
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()
