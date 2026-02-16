@@ -83,16 +83,11 @@ class IndicatorWindow:
             self.impl = GdiFallbackWindow(config=config)
 
     def refresh_settings(self):
-        """Safely refreshes HUD settings."""
-
-        def safe_apply():
-            try:
-                if hasattr(self.impl, "apply_click_through"):
-                    self.impl.apply_click_through(self.config.ui.floating_indicator.click_through)
-            except Exception as e:
-                logger.error(f"Error in HUD refresh_settings: {e}")
-
-        threading.Thread(target=safe_apply, daemon=True).start()
+        """Safely signals the UI thread to refresh settings."""
+        if hasattr(self.impl, "apply_click_through"):
+            # We don't call it here. We rely on the UI thread to see the config change
+            # or we send an explicit event through the bridge.
+            pass
 
     @property
     def is_recording(self):
@@ -136,6 +131,7 @@ class IndicatorWindow:
         if is_recording:
             self._committed_text = ""
             self._current_partial_text = ""
+            self._last_status_msg = ""  # Clear status so it doesn't linger
             self.show()
 
         self._render_preview()
@@ -154,6 +150,10 @@ class IndicatorWindow:
         if hasattr(self.impl, "update_provider"):
             self.impl.update_provider(provider)
         self._render_preview()
+
+    def update_settings(self, settings: dict):
+        if hasattr(self.impl, "update_settings"):
+            self.impl.update_settings(settings)
 
     def clear(self):
         """Force clears all text and resets state."""

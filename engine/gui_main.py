@@ -116,7 +116,7 @@ async def main_gui(cli_args):
         def apply():
             config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
             logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
-            ui_bridge.refresh_hud()
+            ui_bridge.update_settings({"click_through": enabled})
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)

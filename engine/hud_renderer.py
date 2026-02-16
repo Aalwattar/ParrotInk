@@ -100,6 +100,7 @@ class HudOverlay:
                 latest_status = None
                 latest_voice = None
                 latest_provider = None
+                latest_settings = None
 
                 while True:
                     try:
@@ -115,6 +116,8 @@ class HudOverlay:
                                 latest_voice = payload
                             elif kind == "PROVIDER":
                                 latest_provider = payload
+                            elif kind == "SETTINGS":
+                                latest_settings = payload
                         else:
                             latest_text = item
                     except queue.Empty:
@@ -123,11 +126,14 @@ class HudOverlay:
                 if latest_text is not None:
                     self.last_text = latest_text
                 if latest_status is not None:
-                    self.last_status = latest_status  # Store it
+                    self.last_status = latest_status
                 if latest_voice is not None:
-                    self.voice_active = latest_voice  # Store it
+                    self.voice_active = latest_voice
                 if latest_provider is not None:
                     self.last_provider = latest_provider
+                if latest_settings is not None:
+                    if "click_through" in latest_settings:
+                        self.apply_click_through(latest_settings["click_through"])
 
             if (changed or self.visible) and hasattr(self, "_canvas"):
                 self.style.draw(
@@ -265,6 +271,10 @@ class HudOverlay:
     def update_provider(self, provider: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("PROVIDER", provider))
+
+    def update_settings(self, settings: dict):
+        if HUD_AVAILABLE:
+            self.text_queue.put(("SETTINGS", settings))
 
     def update_text(self, text: str):
         if HUD_AVAILABLE:

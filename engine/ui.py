@@ -323,8 +323,7 @@ class TrayApp:
                 self.set_state(self.state)
             elif msg_type == UIEvent.UPDATE_SETTINGS:
                 if self.indicator:
-                    # Generic settings update if needed
-                    pass
+                    self.indicator.update_settings(data)
             elif msg_type == UIEvent.REFRESH_HUD:
                 if self.indicator:
                     self.indicator.refresh_settings()
