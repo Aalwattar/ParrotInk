@@ -29,7 +29,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
 - **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
 - A context menu on the tray icon will allow the user to:
-    - **Version Header:** Displays the current application version (e.g., "Voice2Text v0.2.0") at the top.
+    - **Version Header:** Displays the current application version and active provider (e.g., "Voice2Text v0.2.0 (OpenAI)") at the top.
     - Enable or disable transcription.
     - Select the active transcription provider.
     - Open the settings/configuration file.
@@ -74,6 +74,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Acrylic HUD:** A floating, minimalist "Acrylic" indicator appears during recording to show live transcription progress.
 - **Modern Typography:** The HUD uses the Windows system font (**Segoe UI**) at a high-readability size (16pt) for a professional, integrated look.
 - **Dynamic Status:** The HUD indicator pulses or changes color based on voice activity and finalization state.
+- **Integrated Branding:** The active provider name (e.g., "OpenAI", "AssemblyAI") is displayed directly on the HUD for immediate context.
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline
