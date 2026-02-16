@@ -10,26 +10,27 @@ def test_input_monitor_any_key_callback():
     """Verify that any key press triggers the registered callback when enabled."""
     on_press = MagicMock()
     on_release = MagicMock()
-    monitor = InputMonitor(on_press=on_press, on_release=on_release)
+    with patch("pynput.keyboard.Listener"):
+        monitor = InputMonitor(on_press=on_press, on_release=on_release)
 
-    callback = MagicMock()
-    monitor.set_any_key_callback(callback)
-    monitor.start()
+        callback = MagicMock()
+        monitor.set_any_key_callback(callback)
+        monitor.start()
 
-    # 1. Test Disabled state
-    monitor._on_press_hook(keyboard.Key.space)
-    time.sleep(0.2)  # Wait for worker thread
-    callback.assert_not_called()
-    on_press.assert_called_with(keyboard.Key.space)
+        # 1. Test Disabled state
+        monitor._on_press_hook(keyboard.Key.space)
+        time.sleep(0.2)  # Wait for worker thread
+        callback.assert_not_called()
+        on_press.assert_called_with(keyboard.Key.space)
 
-    # 2. Test Enabled state
-    monitor.enable_any_key_monitoring(True)
-    monitor._on_press_hook(keyboard.Key.enter)
-    time.sleep(0.2)  # Wait for worker thread
-    callback.assert_called_once_with(keyboard.Key.enter)
-    on_press.assert_called_with(keyboard.Key.enter)
+        # 2. Test Enabled state
+        monitor.enable_any_key_monitoring(True)
+        monitor._on_press_hook(keyboard.Key.enter)
+        time.sleep(0.2)  # Wait for worker thread
+        callback.assert_called_once_with(keyboard.Key.enter)
+        on_press.assert_called_with(keyboard.Key.enter)
 
-    monitor.stop()
+        monitor.stop()
 
 
 def test_input_monitor_start_stop():
