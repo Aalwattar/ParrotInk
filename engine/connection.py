@@ -37,14 +37,10 @@ class ConnectionManager:
 
         self._session_start_time = 0.0
         self._rotation_pending = False
-        self._backoff_delay = 1.0
+        self._backoff_delay = self.config.audio.initial_backoff_seconds
         self._last_fail_time = 0.0
         self._last_activity_time = 0.0
         self._idle_timer_task: Optional[asyncio.Task] = None
-
-    @property
-    def is_running(self) -> bool:
-        return self.provider is not None and self.provider.is_running
 
     async def ensure_connected(self, is_listening: bool):
         """
@@ -119,7 +115,7 @@ class ConnectionManager:
         if self.on_status:
             self.on_status(f"Connecting to {self.config.transcription.provider}...")
 
-        retry_count = 3
+        retry_count = self.config.audio.max_retries
         current_attempt = 0
 
         while current_attempt < retry_count:
@@ -134,7 +130,7 @@ class ConnectionManager:
                 logger.debug("Provider started.")
                 self._session_start_time = time.time()
                 self._rotation_pending = False
-                self._backoff_delay = 1.0
+                self._backoff_delay = self.config.audio.initial_backoff_seconds
                 logger.info("Connected successfully.")
 
                 # If we are NOT in the middle of a listening command, transition to IDLE
@@ -157,19 +153,22 @@ class ConnectionManager:
                     if self.on_status:
                         self.on_status("Connection Failed.")
                 else:
-                    logger.warning(f"{error_msg}. Retrying in 1s...")
+                    wait_s = self.config.audio.initial_backoff_seconds
+                    logger.warning(f"{error_msg}. Retrying in {wait_s}s...")
                     if self.on_status:
                         self.on_status(f"Retry {current_attempt}/{retry_count}...")
 
                 if is_last_attempt:
                     self._last_fail_time = time.time()
-                    self._backoff_delay = min(self._backoff_delay * 2, 60.0)
+                    self._backoff_delay = min(
+                        self._backoff_delay * 2, self.config.audio.max_backoff_seconds
+                    )
                     self.provider = None
                     self.audio_adapter = None
                     self.set_state(AppState.ERROR)
                     raise
 
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(self.config.audio.initial_backoff_seconds)
 
     async def stop_provider(self):
         """Stops the current provider and cleans up adapters."""

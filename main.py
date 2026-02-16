@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import ctypes
 import sys
 import time
 from typing import Literal, Optional
@@ -9,15 +10,24 @@ from engine.app_types import AppState
 from engine.audio.pipeline import AudioPipeline
 from engine.audio.streamer import AudioStreamer
 from engine.audio_feedback import play_sound
-from engine.config import Config
+from engine.config import Config, ConfigError, load_config
 from engine.connection import ConnectionManager
+from engine.credential_ui import ask_key
 from engine.injection import InjectionController
 from engine.interaction import InputMonitor
 from engine.logging import configure_logging, get_logger
 from engine.mouse import MouseMonitor
+from engine.platform_win.instance import SingleInstance
+from engine.platform_win.paths import APP_NAME
+from engine.security import SecurityManager
 from engine.ui_bridge import UIBridge
 
 logger = get_logger("App")
+
+# Constants
+MUTEX_NAME_TEMPLATE = "Global\\{APP_NAME}_Mutex_2026"
+COOLDOWN_MANUAL_STOP = 0.5
+COOLDOWN_INJECTION = 0.5
 
 
 class AppCoordinator:
@@ -168,12 +178,12 @@ class AppCoordinator:
 
         now = time.time()
         # Cooldown to avoid catching the release of the hotkey itself
-        if now - self.start_time < 0.5:
+        if now - self.start_time < COOLDOWN_MANUAL_STOP:
             return
 
         # Ignore keyboard events if they are coming from our own injection
         if self.injection_controller.is_injecting or (
-            now - self.injection_controller.last_injection_time < 0.5
+            now - self.injection_controller.last_injection_time < COOLDOWN_INJECTION
         ):
             return
 
@@ -321,7 +331,8 @@ class AppCoordinator:
 
             try:
                 # We wrap the cleanup in a timeout to prevent hanging the system on exit
-                async with asyncio.timeout(10.0):
+                timeout = self.config.audio.shutdown_timeout_seconds
+                async with asyncio.timeout(timeout):
                     # 1. Stop interactions
                     self.input_monitor.stop()
                     self.mouse_monitor.stop()
@@ -343,19 +354,6 @@ class AppCoordinator:
                 import os
 
                 os._exit(1)
-
-    def run(self):
-        """Main entry point for the application coordinator."""
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-        # Start input monitor
-        self.input_monitor.start()
-
-        try:
-            self.loop.run_forever()
-        finally:
-            self.loop.close()
 
 
 def handle_cli():
@@ -396,12 +394,6 @@ def handle_cli():
 
 
 if __name__ == "__main__":
-    import ctypes
-
-    from engine.config import ConfigError, load_config
-    from engine.platform_win.instance import SingleInstance
-    from engine.security import SecurityManager
-
     cli_args = handle_cli()
 
     # Fail Fast for GUI mode
@@ -418,9 +410,7 @@ if __name__ == "__main__":
             ctypes.windll.user32.MessageBoxW(0, msg, "Configuration Error", 0x10)
             sys.exit(1)
 
-    from engine.platform_win.paths import APP_NAME
-
-    instance = SingleInstance(f"Global\\{APP_NAME}_Mutex_2026")
+    instance = SingleInstance(MUTEX_NAME_TEMPLATE.format(APP_NAME=APP_NAME))
     if instance.already_running:
         if not cli_args.background:
             instance.show_warning()
@@ -432,8 +422,6 @@ if __name__ == "__main__":
             "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
         }
         account_id, provider_name = account_map[cli_args.provider]
-        from engine.credential_ui import ask_key
-
         key = ask_key(provider_name)
         if key:
             SecurityManager.set_key(account_id, key)

@@ -102,7 +102,11 @@ class AudioConfig(BaseModel):
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"
     warm_idle_timeout_seconds: int = Field(default=300, ge=30, le=1800)
     connection_timeout_seconds: float = 20.0
+    shutdown_timeout_seconds: float = 10.0
     voice_activity_threshold: float = 0.005
+    max_retries: int = 3
+    initial_backoff_seconds: float = 1.0
+    max_backoff_seconds: float = 60.0
 
 
 class TranscriptionConfig(BaseModel):
