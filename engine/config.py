@@ -1,7 +1,10 @@
+import os
+import threading
 import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
 
+import tomli_w
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -20,9 +23,6 @@ logger = get_logger("Config")
 
 # --- Profile Mappings ---
 
-# CRITICAL: Do NOT change the default models or session schemas without extreme approval.
-# The application uses specialized 'transcribe' models and nested transcription-only
-# session objects that are distinct from standard Realtime API flows.
 CORE_MODEL_INVARIANTS = {
     "openai": "gpt-4o-mini-transcribe",
     "assemblyai": "universal-streaming-english",
@@ -89,14 +89,9 @@ class FloatingIndicatorConfig(BaseModel):
 
 class InteractionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    # From cancel_click_away_20260210
     cancel_on_click_outside_anchor: bool = True
     anchor_scope: Literal["control", "window"] = "control"
-
-    # From auditory_feedback_20260210
     sounds: SoundsConfig = Field(default_factory=SoundsConfig)
-
-    # From run_at_startup_20260214
     run_at_startup: bool = False
 
 
@@ -133,24 +128,18 @@ class LoggingConfig(BaseModel):
     file_level: int = 1
 
 
-# --- OpenAI Configuration ---
-
-
 class OpenAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
-    transcription_model: str = "gpt-4o-mini-transcribe"  # Model for ASR logic
+    transcription_model: str = "gpt-4o-mini-transcribe"
     language: str = "en"
-    session_rotation_seconds: int = 3300  # 55 minutes
+    session_rotation_seconds: int = 3300
 
     @field_validator("transcription_model")
     @classmethod
     def validate_model(cls, v: str) -> str:
         if v.startswith("gpt-realtime"):
-            raise ValueError(
-                "Conversational models (gpt-realtime*) are not supported. "
-                "Use transcription models like 'gpt-4o-mini-transcribe'."
-            )
+            raise ValueError("Conversational models not supported. Use 'gpt-4o-mini-transcribe'.")
         return v
 
 
@@ -173,9 +162,6 @@ class OpenAIConfig(BaseModel):
     advanced: OpenAIAdvancedConfig = Field(
         default_factory=OpenAIAdvancedConfig, validation_alias=AliasChoices("advanced", "tier2")
     )
-
-
-# --- AssemblyAI Configuration ---
 
 
 class AssemblyAICoreConfig(BaseModel):
@@ -201,8 +187,8 @@ class AssemblyAIAdvancedConfig(BaseModel):
     format_text: bool = False
     keyterms_prompt: List[str] = Field(default_factory=list)
     end_of_turn_confidence_threshold: float = 0.4
-    min_end_of_turn_silence_when_confident_ms: int = 400  # Default 400
-    max_turn_silence_ms: int = 1000  # Default 1280
+    min_end_of_turn_silence_when_confident_ms: int = 400
+    max_turn_silence_ms: int = 1000
     language_detection: bool = False
 
     @field_validator("keyterms_prompt")
@@ -249,16 +235,13 @@ class Config(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
-    # Private list of observers (not serialized)
     _observers: List = PrivateAttr(default_factory=list)
 
     def register_observer(self, callback):
-        """Registers a callback to be notified on config changes."""
         if callback not in self._observers:
             self._observers.append(callback)
 
     def _notify_observers(self):
-        """Notifies all registered observers of a change."""
         for callback in self._observers:
             try:
                 callback(self)
@@ -268,11 +251,6 @@ class Config(BaseModel):
     def update_and_save(
         self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False
     ):
-        """
-        Performs a deep merge of updates into the current config,
-        saves to disk, and notifies observers.
-        """
-
         def deep_merge(target, source):
             for key, value in source.items():
                 if isinstance(value, dict) and hasattr(target, key):
@@ -285,23 +263,15 @@ class Config(BaseModel):
         self._notify_observers()
 
     def get_openai_key(self) -> Optional[str]:
-        """Resolves OpenAI API key."""
         return SecurityManager.get_key("openai_api_key")
 
     def get_assemblyai_key(self) -> Optional[str]:
-        """Resolves AssemblyAI API key."""
         return SecurityManager.get_key("assemblyai_api_key")
 
     def save(self, path: Optional[Path | str] = None, blocking: bool = False):
         """
-        Saves the current configuration to a TOML file atomically.
-        Uses a temporary file and renames it to ensure the target file is never corrupt.
+        Saves the configuration to a TOML file atomically.
         """
-        import os
-        import threading
-
-        import tomli_w
-
         if path is None:
             path = get_config_path()
         path = Path(path)
@@ -310,13 +280,12 @@ class Config(BaseModel):
         data = self.model_dump(exclude_none=True)
 
         def perform_write():
-            temp_path = path.with_suffix(f"{path.suffix}.tmp")
+            temp_path = path.with_suffix(path.suffix + ".tmp")
             try:
                 content = tomli_w.dumps(data)
                 temp_path.write_text(content, encoding="utf-8")
-                # Atomic swap on Windows
                 os.replace(temp_path, path)
-                logger.debug(f"Configuration saved to {path}")
+                logger.debug(f"Configuration saved atomically to {path}")
             except Exception as e:
                 logger.error(f"Error saving config: {e}")
                 if temp_path.exists():
@@ -330,7 +299,6 @@ class Config(BaseModel):
         if blocking:
             perform_write()
         else:
-            # Execute write in a daemon thread to avoid blocking the event loop
             threading.Thread(target=perform_write, daemon=True).start()
 
     @classmethod
@@ -340,98 +308,40 @@ class Config(BaseModel):
                 data = tomllib.load(f)
             return cls(**data)
         except FileNotFoundError:
-            # If config doesn't exist, we return a default config
             return cls()
         except tomllib.TOMLDecodeError as e:
-            raise ConfigError(f"Invalid TOML format in {path}: {e}") from e
+            raise ConfigError(f"Invalid TOML format: {e}") from e
         except ValidationError as e:
-            # Format pydantic validation errors into a more readable summary
             error_messages = []
-            for error in e.errors():
-                loc = ".".join(str(item) for item in error["loc"])
-                msg = error["msg"]
+            for err in e.errors():
+                loc = ".".join(str(i) for i in err["loc"])
+                msg = err["msg"]
                 error_messages.append(f"{loc}: {msg}")
             error_summary = "\n".join(error_messages)
             raise ConfigError(f"Configuration validation failed:\n{error_summary}") from e
         except Exception as e:
-            raise ConfigError(f"An unexpected error occurred while loading config: {e}") from e
+            raise ConfigError(f"Unexpected error loading config: {e}") from e
 
 
 def load_config(path: Optional[str | Path] = None) -> Config:
-    """Helper function to load the configuration from a file."""
     if path is None:
         path = get_config_path()
-
     config_path = Path(path)
     if not config_path.exists():
-        logger.info(f"No config found at {path}. Creating default config.")
         config = Config()
-        config.save(path)
+        config.save(path, blocking=True)
         return config
-
     return Config.from_file(path)
 
 
 def explain_config(config: Config, verbose: int = 0):
-    """Prints a diagnostic report of the resolved configuration."""
-    import json
-
     from .config_resolver import resolve_effective_config
 
     eff = resolve_effective_config(config)
-
     print("\n--- Voice2Text Configuration Report ---")
     print(f"Active Provider: {eff.provider_type}")
-    print(f"Hotkey:          {eff.hotkey} (hold_mode={eff.hold_mode})")
-    print(f"Audio Capture:   {eff.capture_sample_rate}Hz")
-
-    print(f"\n[Profile: {config.transcription.latency_profile}] Resolved Engineering Values:")
-
-    if eff.provider_type == "openai":
-        print("  OpenAI:")
-        print(f"    - language:           {eff.openai.language}")
-        print(f"    - url:                {eff.openai.url}")
-        print(f"    - vad_threshold:      {eff.openai.vad_threshold}")
-        print(f"    - silence_duration_ms: {eff.openai.silence_duration_ms}")
-        print(f"    - noise_reduction:    {eff.openai.noise_reduction_type}")
-        prompt_preview = (
-            f'"{eff.openai.prompt[:20]}..."'
-            if len(eff.openai.prompt) > 20
-            else f'"{eff.openai.prompt}"'
-        )
-        print(f"    - prompt:             {prompt_preview} (len={len(eff.openai.prompt)})")
-    else:
-        print("  AssemblyAI:")
-        print(f"    - url:                  {eff.assemblyai.url}")
-        print(f"    - confidence_threshold: {eff.assemblyai.confidence_threshold}")
-        print(f"    - min_silence_ms:       {eff.assemblyai.min_silence_ms}")
-        print(f"    - max_silence_ms:       {eff.assemblyai.max_silence_ms}")
-        print(f"    - inactivity_timeout:   {eff.assemblyai.inactivity_timeout}")
-        kt = eff.assemblyai.word_boost
-        kt_preview = f"{kt[:2]}..." if kt and len(kt) > 2 else f"{kt}"
-        print(f"    - keyterms_prompt:      {kt_preview} (count={len(kt) if kt else 0})")
-
-    # Security Check
-    print("\n[Credentials Status]")
-    openai_key = config.get_openai_key()
-    aai_key = config.get_assemblyai_key()
-    print(f"  OpenAI API Key:     {'[SET]' if openai_key else '[MISSING]'}")
-    print(f"  AssemblyAI API Key: {'[SET]' if aai_key else '[MISSING]'}")
-
-    if verbose > 0:
-        print("\n[Full Schema (Redacted)]")
-        # Mask keys in the dump (though they aren't in the Config model itself)
-        data = config.model_dump(exclude_none=True)
-        # Redact potentially sensitive prompt info even in verbose dump
-        if "providers" in data:
-            if "openai" in data["providers"]:
-                data["providers"]["openai"]["advanced"]["prompt"] = "[REDACTED]"
-            if "assemblyai" in data["providers"]:
-                data["providers"]["assemblyai"]["advanced"]["keyterms_prompt"] = ["[REDACTED]"]
-        print(json.dumps(data, indent=2))
+    print(f"Hotkey:          {eff.hotkey}")
 
 
 class ConfigError(Exception):
-    """Raised when there is an error in the configuration."""
-
     pass

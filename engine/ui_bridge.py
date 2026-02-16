@@ -16,6 +16,7 @@ class UIEvent:
     UPDATE_FINAL_TEXT = "update_final_text"
     UPDATE_VOICE_ACTIVITY = "update_voice_activity"
     UPDATE_STATUS_MESSAGE = "update_status_message"
+    REFRESH_HUD = "refresh_hud"
     QUIT = "quit"
 
 
@@ -50,6 +51,10 @@ class UIBridge:
 
     def update_status_message(self, message: str):
         self.queue.put((UIEvent.UPDATE_STATUS_MESSAGE, message))
+
+    def refresh_hud(self):
+        """Signal the HUD to refresh its settings."""
+        self.queue.put((UIEvent.REFRESH_HUD, None))
 
     def stop(self):
         """Signal the UI to stop."""

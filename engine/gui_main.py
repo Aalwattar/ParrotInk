@@ -63,18 +63,12 @@ async def main_gui(cli_args):
             msg = f"Switching to {provider_name}..."
             ui_bridge.update_status_message(msg)
 
-            if hasattr(app, "indicator") and app.indicator:
-                app.indicator.update_status(True)
-                app.indicator.update_status_icon(msg)
-                app.indicator.show()
-
             if coordinator.is_listening or coordinator.is_connecting:
                 logger.info(f"Stopping active session before changing provider to {provider_name}")
                 asyncio.run_coroutine_threadsafe(
                     coordinator.stop_listening(silent=True), coordinator.loop
                 )
             elif coordinator.provider:
-                # If we have an idle (WARM) provider, stop it so the next connect uses the new one
                 logger.info(f"Stopping idle provider before changing to {provider_name}")
                 asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
                 coordinator.provider = None
@@ -111,16 +105,7 @@ async def main_gui(cli_args):
         def apply():
             config.update_and_save({"ui": {"floating_indicator": {"enabled": enabled}}})
             logger.info(f"HUD {'enabled' if enabled else 'disabled'}")
-            # Initialize indicator if enabling for the first time
-            if enabled and not app.indicator:
-                logger.info("Lazy-initializing HUD Indicator...")
-                try:
-                    from .indicator_ui import IndicatorWindow
-
-                    app.indicator = IndicatorWindow(config=config)
-                    app.indicator.start()
-                except Exception as e:
-                    logger.error(f"Failed to initialize HUD: {e}")
+            ui_bridge.refresh_hud()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
@@ -129,6 +114,7 @@ async def main_gui(cli_args):
         def apply():
             config.update_and_save({"ui": {"floating_indicator": {"click_through": enabled}}})
             logger.info(f"HUD click-through {'enabled' if enabled else 'disabled'}")
+            ui_bridge.refresh_hud()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
@@ -153,12 +139,9 @@ async def main_gui(cli_args):
             coordinator.loop.call_soon_threadsafe(apply)
 
     def on_before_hotkey_change():
-        """Placeholder for when hotkey change is requested."""
         logger.info("Hotkey change requested.")
 
     def on_hotkey_change(new_hotkey):
-        """Placeholder for applying a new hotkey."""
-
         def apply():
             logger.info(f"Applying new hotkey: {new_hotkey}")
             config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
@@ -166,7 +149,6 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
-    # Import TrayApp here to keep gui_main decoupled from other modules until needed
     from engine.ui import TrayApp
 
     app = TrayApp(
@@ -202,6 +184,5 @@ async def main_gui(cli_args):
     except asyncio.CancelledError:
         pass
     finally:
-        # Ensure shutdown is called if we exited wait() for some other reason
-        coordinator.input_monitor.stop()  # Stop listener first to prevent new events
+        coordinator.input_monitor.stop()
         await coordinator.shutdown("Finalizing")
