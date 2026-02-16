@@ -279,14 +279,16 @@ class AppCoordinator:
             self.ui_bridge.clear_hud()
 
             # 2. Initiate connection (Ensure we have provider and adapter ready)
-            await self.connection_manager.ensure_connected(is_listening=True)
+            # Use a timeout for the overall start operation
+            async with asyncio.timeout(self.config.audio.connection_timeout_seconds + 10.0):
+                await self.connection_manager.ensure_connected(is_listening=True)
 
-            # 3. Start pipeline with the resolved connection components
-            await self.pipeline.start(
-                adapter=self.connection_manager.audio_adapter,
-                provider=self.connection_manager.provider,
-                loop=self.loop,
-            )
+                # 3. Start pipeline with the resolved connection components
+                await self.pipeline.start(
+                    adapter=self.connection_manager.audio_adapter,
+                    provider=self.connection_manager.provider,
+                    loop=self.loop,
+                )
             self._play_feedback_sound("start")
 
             # 4. Start mouse monitoring
@@ -299,7 +301,11 @@ class AppCoordinator:
         except Exception as e:
             logger.error(f"Error starting session: {e}")
             self.set_state(AppState.ERROR)
-            await self.stop_listening()
+            # Force cleanup
+            if self.loop:
+                self.loop.create_task(self.stop_listening())
+            else:
+                await self.stop_listening()
 
     async def stop_listening(self):
         """Stops the current transcription session."""
@@ -308,6 +314,7 @@ class AppCoordinator:
 
         logger.debug("Stopping transcription session...")
         self.input_monitor.enable_any_key_monitoring(False)
+        self.input_monitor.reset_state()
         self.mouse_monitor.stop()
         self.anchor = None
 

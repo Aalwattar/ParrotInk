@@ -166,6 +166,9 @@ class ConnectionManager:
                     self.provider = None
                     self.audio_adapter = None
                     self.set_state(AppState.ERROR)
+                    # Force a cleanup of the provider if it exists
+                    if self.provider:
+                        asyncio.create_task(self.stop_provider())
                     raise
 
                 await asyncio.sleep(self.config.audio.initial_backoff_seconds)

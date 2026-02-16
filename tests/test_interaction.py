@@ -50,4 +50,4 @@ def test_input_monitor_start_stop():
 
         monitor.stop()
         assert monitor._is_running is False
-        mock_keyboard.unhook_all.assert_called_once()
+        assert mock_keyboard.unhook.called
