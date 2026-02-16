@@ -189,8 +189,13 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Boringly Simple Stability**
+- [x] **Track: Boringly Simple Stability** [checkpoint: 9f22a50]
 *Link: [./tracks/stability_and_simple_hotkey_20260216/](./tracks/stability_and_simple_hotkey_20260216/)*
+
+---
+
+- [ ] **Track: HUD & Status Synchronization**
+*Link: [./tracks/hud_status_sync_20260216/](./tracks/hud_status_sync_20260216/)*
 
 ---
 
