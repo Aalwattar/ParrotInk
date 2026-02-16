@@ -293,7 +293,11 @@ class Config(BaseModel):
         return SecurityManager.get_key("assemblyai_api_key")
 
     def save(self, path: Optional[Path | str] = None, blocking: bool = False):
-        """Saves the current configuration to a TOML file."""
+        """
+        Saves the current configuration to a TOML file atomically.
+        Uses a temporary file and renames it to ensure the target file is never corrupt.
+        """
+        import os
         import threading
 
         import tomli_w
@@ -306,12 +310,22 @@ class Config(BaseModel):
         data = self.model_dump(exclude_none=True)
 
         def perform_write():
+            temp_path = path.with_suffix(f"{path.suffix}.tmp")
             try:
                 content = tomli_w.dumps(data)
-                path.write_text(content, encoding="utf-8")
+                temp_path.write_text(content, encoding="utf-8")
+                # Atomic swap on Windows
+                os.replace(temp_path, path)
                 logger.debug(f"Configuration saved to {path}")
             except Exception as e:
                 logger.error(f"Error saving config: {e}")
+                if temp_path.exists():
+                    try:
+                        temp_path.unlink()
+                    except Exception:
+                        pass
+                if blocking:
+                    raise
 
         if blocking:
             perform_write()
