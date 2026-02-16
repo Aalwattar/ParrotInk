@@ -36,6 +36,20 @@ def get_ancestor(hwnd: int, flags: int) -> int:
     return int(user32.GetAncestor(hwnd, flags))
 
 
+class GUITHREADINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("hwndActive", wintypes.HWND),
+        ("hwndFocus", wintypes.HWND),
+        ("hwndCapture", wintypes.HWND),
+        ("hwndMenuOwner", wintypes.HWND),
+        ("hwndMoveSize", wintypes.HWND),
+        ("hwndCaret", wintypes.HWND),
+        ("rcCaret", wintypes.RECT),
+    ]
+
+
 class Anchor:
     """
     Represents the 'target' context where dictation started.
@@ -70,7 +84,14 @@ class Anchor:
     @staticmethod
     def _get_focused_control(foreground_hwnd: int) -> int:
         """Attempts to find the specifically focused child control."""
-        # For simplicity and robustness, we can start with the window itself
+        tid, _ = get_window_thread_process_id(foreground_hwnd)
+        gui_info = GUITHREADINFO()
+        gui_info.cbSize = ctypes.sizeof(GUITHREADINFO)
+
+        if user32.GetGUIThreadInfo(tid, ctypes.byref(gui_info)):
+            if gui_info.hwndFocus:
+                return int(gui_info.hwndFocus)
+
         return foreground_hwnd
 
     def is_match(self, x: int, y: int) -> bool:
@@ -85,11 +106,25 @@ class Anchor:
             # Target HWND must be the same window or a child of it
             # We check the root owner/parent window
             root_hwnd = get_ancestor(target_hwnd, GA_ROOT)
-            return bool(root_hwnd == self.hwnd or target_hwnd == self.hwnd)
+            if root_hwnd == self.hwnd or target_hwnd == self.hwnd:
+                return True
+
+            # If the foreground window has changed but the root is the same, it's a match
+            return False
 
         elif self.scope == "control":
             # For control scope, we strictly check if it's the exact same control
             # or if the control hwnd we captured is the same.
-            return bool(target_hwnd == self.control_hwnd)
+            if target_hwnd == self.control_hwnd:
+                return True
+
+            # Fallback: if it's a child of the captured control
+            parent = user32.GetParent(target_hwnd)
+            while parent:
+                if parent == self.control_hwnd:
+                    return True
+                parent = user32.GetParent(parent)
+
+            return False
 
         return False

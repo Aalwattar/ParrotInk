@@ -54,8 +54,18 @@ class InputMonitor:
 
         if event.event_type == "down":
             # We filter out the hotkey itself to prevent self-cancellation
-            # (Though 'keyboard' library usually handles this isolation)
             self._any_key_callback(event.name)
+
+    def _get_hotkey_parts(self) -> set[str]:
+        """Parses the hotkey string into a set of normalized key names."""
+        if not self._hotkey_str:
+            return set()
+        try:
+            # parse_hotkey returns [( (scan_codes), (names) ), ...]
+            parsed = keyboard.parse_hotkey(self._hotkey_str)
+            return set(parsed[0][1])  # names
+        except Exception:
+            return set(self._hotkey_str.split("+"))
 
     def start(self):
         """Starts the keyboard hooks."""
@@ -63,21 +73,10 @@ class InputMonitor:
             return
 
         try:
+            hotkey_parts = self._get_hotkey_parts()
+
             # 1. Register the hotkey with suppression
             if self._hold_mode:
-                # For Hold Mode with potential multi-key combos, we use add_hotkey for the 'down'
-                # trigger and a general hook to detect the 'up' trigger when any key in the
-                # combo is released. This avoids the limitation of on_press_key (single keys only).
-
-                # Parse the hotkey to know which keys to track for release
-                try:
-                    # parse_hotkey returns [( (scan_codes), (names) ), ...]
-                    parsed = keyboard.parse_hotkey(self._hotkey_str)
-                    hotkey_parts = set(parsed[0][1])  # names
-                except Exception:
-                    hotkey_parts = set(self._hotkey_str.split("+"))
-
-                self._current_parts_down = set()
                 self._is_hotkey_down = False
 
                 def _on_press_internal():
@@ -99,8 +98,21 @@ class InputMonitor:
                 )
                 keyboard.hook(_on_release_hook)
             else:
-                # In Toggle mode, we can use the simpler add_hotkey
-                keyboard.add_hotkey(self._hotkey_str, self._on_press_callback, suppress=True)
+                # In Toggle mode, we use a similar debounced structure to prevent
+                # rapid fire if the key is held down.
+                def _on_toggle_press():
+                    if not self._is_hotkey_down:
+                        self._is_hotkey_down = True
+                        self._on_press_callback()
+
+                def _on_toggle_release(event):
+                    if event.event_type == "up" and event.name in hotkey_parts:
+                        self._is_hotkey_down = False
+
+                keyboard.add_hotkey(
+                    self._hotkey_str, _on_toggle_press, suppress=True, trigger_on_release=False
+                )
+                keyboard.hook(_on_toggle_release)
 
             # 2. Register the 'any-key' hook for cancellation
             keyboard.hook(self._any_key_hook)
