@@ -210,4 +210,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Code Audit & Refactoring**
-*Link: [./tracks/code_audit_refactor_20260216/](./tracks/code_audit_refactor_20260216/)*
+*Link: [./archive/code_audit_refactor_20260216/](./archive/code_audit_refactor_20260216/)*
