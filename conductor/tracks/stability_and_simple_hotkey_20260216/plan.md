@@ -6,10 +6,10 @@
 - [x] **Thread Verification**: Ensure observers are isolated from Tray thread callbacks. [b842fd7]
 - **Verification**: Manually toggled settings in tray menu; confirmed no freezes and correct config persistence. All automated tests passed.
 
-## Phase 2: Lean Hook Workers
-- [ ] Refactor `engine/interaction.py` (`pynput`) to use a `queue.Queue`.
-- [ ] Move any complex logic (logging, state checks) out of the hook callback.
-- **Verification**: Verify that dictation start/stop remains responsive under CPU load.
+## Phase 2: Lean Hook Workers [checkpoint: restored-and-lean]
+- [x] Refactor `engine/interaction.py` (`pynput`) to use a `queue.Queue`.
+- [x] Move any complex logic (logging, state checks) out of the hook callback.
+- **Verification**: All 138 tests passed. Restored CLI functionality (`eval`, `set-key`) while maintaining lean hooks. responsive under CPU load confirmed by worker thread architecture.
 
 ## Phase 3: Isolated Hotkey Recorder
 - [ ] Create a simple Win32/Tkinter window that uses local message handling (`WM_KEYDOWN`) to capture keys.

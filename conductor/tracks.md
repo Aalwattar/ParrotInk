@@ -189,6 +189,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
+- [~] **Track: Boringly Simple Stability**
+*Link: [./tracks/stability_and_simple_hotkey_20260216/](./tracks/stability_and_simple_hotkey_20260216/)*
+
+---
+
 - [ ] **Track: Proactive Stale Hotkey Eviction**
 *Link: [./tracks/fix_stale_hotkey_20260215/](./tracks/fix_stale_hotkey_20260215/)*
 

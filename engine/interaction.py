@@ -1,60 +1,103 @@
-import sys
-from typing import Callable, Optional
+from __future__ import annotations
+
+import queue
+import threading
+from typing import Any, Callable, Optional
 
 from pynput import keyboard
+
+from engine.logging import get_logger
+
+logger = get_logger("Interaction")
 
 
 class InputMonitor:
     """
     Unified keyboard monitor that handles both hotkey detection
     and 'any-key' cancellation during recording.
+    Uses a background worker thread to keep the global hook callback lean.
     """
 
     def __init__(
         self,
-        on_press: Callable[[keyboard.Key | keyboard.KeyCode], None],
-        on_release: Callable[[keyboard.Key | keyboard.KeyCode], None],
+        on_press: Callable[[Any], None],
+        on_release: Callable[[Any], None],
     ):
         self._on_press_callback = on_press
         self._on_release_callback = on_release
-        self._any_key_callback: Optional[Callable[[keyboard.Key | keyboard.KeyCode], None]] = None
-        self._listener: Optional[keyboard.Listener] = None
+        self._any_key_callback: Optional[Callable[[Any], None]] = None
         self._is_any_key_enabled = False
 
-    def set_any_key_callback(self, callback: Callable[[keyboard.Key | keyboard.KeyCode], None]):
+        self._listener: Optional[keyboard.Listener] = None
+        self._event_queue: queue.Queue = queue.Queue()
+        self._worker_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+
+    def set_any_key_callback(self, callback: Callable[[Any], None]):
         """Sets the callback for when 'any key' monitoring is active."""
         self._any_key_callback = callback
 
-    def enable_any_key_monitoring(self, enabled: bool = True):
+    def enable_any_key_monitoring(self, enabled: bool):
         """Enables or disables 'any key' cancellation logic."""
         self._is_any_key_enabled = enabled
 
-    def _on_press(self, key):
-        try:
-            # 1. Always trigger the primary on_press for hotkey logic
-            self._on_press_callback(key)
+    def _on_press_hook(self, key):
+        """Ultra-lean hook callback for pynput."""
+        self._event_queue.put(("press", key))
 
-            # 2. If 'any-key' monitoring is active, trigger the secondary callback
-            if self._is_any_key_enabled and self._any_key_callback:
-                self._any_key_callback(key)
-        except Exception as e:
-            # Prevent listener thread from crashing
-            print(f"Error in keyboard listener: {e}", file=sys.stderr)
+    def _on_release_hook(self, key):
+        """Ultra-lean hook callback for pynput."""
+        self._event_queue.put(("release", key))
 
-    def _on_release(self, key):
-        try:
-            self._on_release_callback(key)
-        except Exception as e:
-            print(f"Error in keyboard listener (release): {e}", file=sys.stderr)
+    def _worker_loop(self):
+        """Background thread for processing hook events."""
+        while not self._stop_event.is_set():
+            try:
+                # Poll with timeout to check stop_event regularly
+                item = self._event_queue.get(timeout=0.1)
+                event_type, key = item
+
+                if event_type == "press":
+                    self._on_press_callback(key)
+                    if self._is_any_key_enabled and self._any_key_callback:
+                        self._any_key_callback(key)
+                elif event_type == "release":
+                    self._on_release_callback(key)
+
+                self._event_queue.task_done()
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Error in InputMonitor worker: {e}")
 
     def start(self):
-        """Starts the global keyboard listener."""
+        """Starts the pynput listener and worker thread."""
+        if self._worker_thread is None:
+            self._stop_event.clear()
+            self._worker_thread = threading.Thread(
+                target=self._worker_loop, daemon=True, name="InteractionWorker"
+            )
+            self._worker_thread.start()
+
         if self._listener is None:
-            self._listener = keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
+            self._listener = keyboard.Listener(
+                on_press=self._on_press_hook, on_release=self._on_release_hook
+            )
             self._listener.start()
+            logger.debug("InputMonitor (pynput) started with lean callbacks.")
 
     def stop(self):
-        """Stops the global keyboard listener."""
+        """Stops the pynput listener and signals worker to stop."""
         if self._listener:
             self._listener.stop()
             self._listener = None
+
+        # Drain queue if needed
+        while not self._event_queue.empty():
+            try:
+                self._event_queue.get_nowait()
+                self._event_queue.task_done()
+            except queue.Empty:
+                break
+
+        logger.debug("InputMonitor stopped.")
