@@ -13,16 +13,23 @@ def setup_coordinator(hold_mode=True):
     return coordinator
 
 
-def test_hotkey_parsing():
+def test_hotkey_assignment():
     coordinator = setup_coordinator()
-    # Normalize hotkey for keyboard library
-    assert coordinator.target_hotkey == {"ctrl", "alt", "v"}
+    # In the new architecture, InputMonitor holds the hotkey
+    assert coordinator.input_monitor._hotkey_str == "ctrl+alt+v"
+    assert coordinator.input_monitor._hold_mode is True
 
 
-def test_key_normalization():
+def test_hotkey_update_on_config_change():
     coordinator = setup_coordinator()
-    # keyboard uses lowercase
-    assert coordinator.target_hotkey == {"ctrl", "alt", "v"}
+    new_config = coordinator.config
+    new_config.hotkeys.hotkey = "ctrl+space"
+    new_config.hotkeys.hold_mode = False
+
+    coordinator._on_config_changed(new_config)
+
+    assert coordinator.input_monitor._hotkey_str == "ctrl+space"
+    assert coordinator.input_monitor._hold_mode is False
 
 
 def test_hold_mode_logic():

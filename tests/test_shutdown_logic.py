@@ -15,8 +15,8 @@ async def test_shutdown_idempotency():
     coordinator.ui_bridge = MagicMock()
     coordinator.loop = asyncio.get_running_loop()
 
-    # Track calls to stop_listening
-    with patch.object(coordinator, "stop_listening", AsyncMock()) as mock_stop:
+    # Track calls to stop_provider
+    with patch.object(coordinator.connection_manager, "stop_provider", AsyncMock()) as mock_stop:
         # Call shutdown multiple times in parallel
         await asyncio.gather(
             coordinator.shutdown("test1"),
@@ -35,21 +35,17 @@ async def test_shutdown_deadline_exceeded():
     coordinator.ui_bridge = MagicMock()
     coordinator.loop = asyncio.get_running_loop()
 
-    # Mock stop_listening to hang
-    async def hung_stop():
+    # Mock stop_provider and pipeline.stop to hang
+    async def hung_stop(*args, **kwargs):
         await asyncio.sleep(20)
 
-    with patch.object(coordinator, "stop_listening", hung_stop):
+    with (
+        patch.object(coordinator.connection_manager, "stop_provider", hung_stop),
+        patch.object(coordinator.pipeline, "stop", hung_stop),
+    ):
         # We expect it to call os._exit(1)
         with patch("os._exit") as mock_exit:
-            # Avoid recursion by using original_timeout
-            original_timeout = asyncio.timeout
-
-            def side_effect(t):
-                if t == 10.0:
-                    return original_timeout(0.1)
-                return original_timeout(t)
-
-            with patch("asyncio.timeout", side_effect=side_effect):
+            # Mock asyncio.timeout to raise TimeoutError (from asyncio)
+            with patch("asyncio.timeout", side_effect=asyncio.TimeoutError):
                 await coordinator.shutdown("test_hang")
                 assert mock_exit.called

@@ -1,7 +1,4 @@
-import time
 from unittest.mock import MagicMock, patch
-
-from pynput import keyboard
 
 from engine.interaction import InputMonitor
 
@@ -10,41 +7,47 @@ def test_input_monitor_any_key_callback():
     """Verify that any key press triggers the registered callback when enabled."""
     on_press = MagicMock()
     on_release = MagicMock()
-    monitor = InputMonitor(on_press=on_press, on_release=on_release)
 
-    callback = MagicMock()
-    monitor.set_any_key_callback(callback)
-    monitor.start()
+    # Mock keyboard library
+    with patch("engine.interaction.keyboard"):
+        monitor = InputMonitor(on_press=on_press, on_release=on_release)
 
-    # 1. Test Disabled state
-    monitor._on_press_hook(keyboard.Key.space)
-    time.sleep(0.2)  # Wait for worker thread
-    callback.assert_not_called()
-    on_press.assert_called_with(keyboard.Key.space)
+        callback = MagicMock()
+        monitor.set_any_key_callback(callback)
+        monitor.set_hotkey("ctrl+space")
+        monitor.start()
 
-    # 2. Test Enabled state
-    monitor.enable_any_key_monitoring(True)
-    monitor._on_press_hook(keyboard.Key.enter)
-    time.sleep(0.2)  # Wait for worker thread
-    callback.assert_called_once_with(keyboard.Key.enter)
-    on_press.assert_called_with(keyboard.Key.enter)
+        # 1. Test Disabled state
+        # Simulate a key event
+        event = MagicMock()
+        event.event_type = "down"
+        event.name = "a"
+        monitor._any_key_hook(event)
 
-    monitor.stop()
+        callback.assert_not_called()
+
+        # 2. Test Enabled state
+        monitor.enable_any_key_monitoring(True)
+        monitor._any_key_hook(event)
+        callback.assert_called_once_with("a")
+
+        monitor.stop()
 
 
 def test_input_monitor_start_stop():
     """Verify that the monitor can be started and stopped."""
-    with patch("pynput.keyboard.Listener") as mock_listener_class:
-        mock_listener = mock_listener_class.return_value
+    with patch("engine.interaction.keyboard") as mock_keyboard:
         on_press = MagicMock()
         on_release = MagicMock()
         monitor = InputMonitor(on_press=on_press, on_release=on_release)
+        monitor.set_hotkey("ctrl+space")
 
         monitor.start()
-        mock_listener_class.assert_called_once()
-        assert monitor._listener is not None
-        assert monitor._worker_thread is not None
+        # Should call hook() for any-key and either add_hotkey or on_press_key
+        assert mock_keyboard.hook.called
+        assert mock_keyboard.add_hotkey.called or mock_keyboard.on_press_key.called
+        assert monitor._is_running is True
 
         monitor.stop()
-        assert monitor._listener is None
-        mock_listener.stop.assert_called_once()
+        assert monitor._is_running is False
+        mock_keyboard.unhook_all.assert_called_once()
