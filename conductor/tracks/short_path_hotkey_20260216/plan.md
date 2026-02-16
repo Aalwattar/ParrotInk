@@ -20,3 +20,6 @@ This track simplifies the hotkey architecture and implements selective suppressi
 - [x] Task: Manual Leakage Verification. [checkpoint: 53a31d1]
 - [x] Task: Run full "Definition of Done Gate". [checkpoint: 53a31d1]
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions [checkpoint: 69a91bd]
