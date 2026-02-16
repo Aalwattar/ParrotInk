@@ -209,10 +209,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Short Path Hotkey Migration** [checkpoint: 53a31d1]
-*Link: [./tracks/short_path_hotkey_20260216/](./tracks/short_path_hotkey_20260216/)*
-
----
-
 - [ ] **Track: Code Audit & Refactoring**
 *Link: [./tracks/code_audit_refactor_20260216/](./tracks/code_audit_refactor_20260216/)*
