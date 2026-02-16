@@ -3,6 +3,7 @@ import time
 from ctypes import wintypes
 
 from engine.logging import get_logger
+from engine.platform_win.constants import BACKSPACE_SAFETY_CAP
 
 logger = get_logger("Injector")
 
@@ -175,7 +176,7 @@ class SmartInjector:
         # Perform Backspaces
         if backspaces > 0:
             # Safety cap
-            backspaces = min(backspaces, 100)
+            backspaces = min(backspaces, BACKSPACE_SAFETY_CAP)
             inject_backspaces(backspaces)
 
         # Perform Typing

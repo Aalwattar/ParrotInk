@@ -3,7 +3,7 @@ from engine.platform_win.instance import SingleInstance
 
 def test_single_instance_detection():
     # 1. Create first instance
-    mutex_name = r"Local\Test_Voice2Text_Mutex_Unique"
+    mutex_name = r"Local\Test_ParrotInk_Mutex_Unique"
     instance1 = SingleInstance(mutex_name)
     assert instance1.already_running is False
     assert instance1.mutex_handle is not None

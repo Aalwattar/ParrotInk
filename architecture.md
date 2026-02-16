@@ -1,7 +1,7 @@
-# Voice2Text Architecture Documentation
+# ParrotInk Architecture Documentation
 
 ## 1. High-Level Architecture
-Voice2Text follows a **hybrid asynchronous/threaded model** designed to handle real-time I/O without blocking the user interface or audio processing.
+ParrotInk follows a **hybrid asynchronous/threaded model** designed to handle real-time I/O without blocking the user interface or audio processing.
 
 ### Core Concepts
 1.  **The Brain (Asyncio):** The core logic runs on Python's `asyncio` event loop (Main Thread). This handles high-level state management and WebSocket communication.

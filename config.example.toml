@@ -1,4 +1,4 @@
-# Voice2Text Configuration Template
+# ParrotInk Configuration Template
 # All values shown below are the factory defaults.
 # To customize a setting, uncomment the line (remove the '#') and change the value.
 
@@ -156,7 +156,7 @@
 
 # A list of up to 100 terms to boost the recognition of. Max 50 characters per term.
 # Best for rare names, unique product brands, or specific jargon.
-# Example: keyterms_prompt = ["Voice2Text", "Gemini", "AssemblyAI"]
+# Example: keyterms_prompt = ["ParrotInk", "Gemini", "AssemblyAI"]
 # keyterms_prompt = []
 
 # Confidence threshold for detecting the end of a sentence. Range: 0.0 to 1.0.
@@ -183,7 +183,7 @@
 # Enable logging to a local file.
 # file_enabled = false
 
-# Override the default log file path. If empty, uses %APPDATA%\Voice2Text\voice2text.log.
+# Override the default log file path. If empty, uses %APPDATA%\ParrotInk\parrotink.log.
 # file_path = ""
 
 # Logging detail level. 1 = INFO (Normal), 2 = DEBUG (Verbose).

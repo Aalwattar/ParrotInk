@@ -1,7 +1,7 @@
 # Track Specification: Foundation & Core Engine
 
 ## 1. Overview
-This track focuses on building the core infrastructure of the `voice2text` application. This includes the background process (system tray), the configuration management system, the audio capture pipeline, and the real-time transcription connectors for OpenAI and AssemblyAI.
+This track focuses on building the core infrastructure of the `parrotink` application. This includes the background process (system tray), the configuration management system, the audio capture pipeline, and the real-time transcription connectors for OpenAI and AssemblyAI.
 
 ## 2. Technical Requirements
 

@@ -17,6 +17,7 @@ from engine.injection import InjectionController
 from engine.interaction import InputMonitor
 from engine.logging import configure_logging, get_logger
 from engine.mouse import MouseMonitor
+from engine.platform_win.constants import MUTEX_NAME_TEMPLATE
 from engine.platform_win.instance import SingleInstance
 from engine.platform_win.paths import APP_NAME
 from engine.security import SecurityManager
@@ -25,7 +26,6 @@ from engine.ui_bridge import UIBridge
 logger = get_logger("App")
 
 # Constants
-MUTEX_NAME_TEMPLATE = "Global\\{APP_NAME}_Mutex_2026"
 COOLDOWN_MANUAL_STOP = 0.5
 COOLDOWN_INJECTION = 0.5
 
@@ -358,7 +358,7 @@ class AppCoordinator:
 
 def handle_cli():
     parser = argparse.ArgumentParser(
-        description="Voice2Text: A real-time voice-to-text application.",
+        description="ParrotInk: A real-time voice-to-text application.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

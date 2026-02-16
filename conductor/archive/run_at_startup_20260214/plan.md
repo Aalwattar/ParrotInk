@@ -4,7 +4,7 @@
 Goal: Implement the core Windows Registry manipulation logic in a dedicated module.
 
 - [x] Task: Create `engine/platform_win/startup.py` with registry management functions. [7302392]
-    - [x] Task: Implement `set_run_at_startup(enabled: bool)` using `winreg` to create/delete the "Voice2Text" **value**.
+    - [x] Task: Implement `set_run_at_startup(enabled: bool)` using `winreg` to create/delete the "ParrotInk" **value**.
     - [x] Task: Implement `is_run_at_startup_synced() -> bool` to check if registry matches current exe path.
     - [x] Task: Ensure the executable path is correctly resolved for both script and EXE modes.
 - [x] Task: Update `engine/config.py` to include the new setting. [0b6c0f7]

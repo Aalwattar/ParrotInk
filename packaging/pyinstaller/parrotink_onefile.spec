@@ -7,7 +7,7 @@ import os
 
 block_cipher = None
 
-APP_NAME = "Voice2Text"
+APP_NAME = "ParrotInk"
 
 
 

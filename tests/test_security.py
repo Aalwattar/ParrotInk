@@ -11,7 +11,7 @@ def test_get_key_from_keyring(mocker):
     key = SecurityManager.get_key("openai_api_key")
 
     assert key == "keyring-secret"
-    mock_keyring.assert_called_once_with("voice2text", "openai_api_key")
+    mock_keyring.assert_called_once_with("parrotink", "openai_api_key")
 
 
 def test_get_key_fallback_to_env(mocker):
@@ -41,4 +41,4 @@ def test_set_key(mocker):
 
     SecurityManager.set_key("openai_api_key", "new-secret")
 
-    mock_keyring.assert_called_once_with("voice2text", "openai_api_key", "new-secret")
+    mock_keyring.assert_called_once_with("parrotink", "openai_api_key", "new-secret")

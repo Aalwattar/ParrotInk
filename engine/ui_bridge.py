@@ -46,7 +46,7 @@ class UIBridge:
         self._last_final_time = time.time()
         self.queue.put((UIEvent.UPDATE_FINAL_TEXT, text))
 
-    def notify(self, message: str, title: str = "Voice2Text"):
+    def notify(self, message: str, title: str = "ParrotInk"):
         self.queue.put((UIEvent.NOTIFY, (message, title)))
 
     def update_availability(self, availability: Dict[str, bool]):

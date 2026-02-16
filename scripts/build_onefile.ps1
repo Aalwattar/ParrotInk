@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 # --- Configuration ---
-$APP_NAME = "Voice2Text"
-$SPEC_FILE = "packaging/pyinstaller/voice2text_onefile.spec"
+$APP_NAME = "ParrotInk"
+$SPEC_FILE = "packaging/pyinstaller/parrotink_onefile.spec"
 
 # 1) Go to repo root
 $repoRoot = (Split-Path -Parent $PSScriptRoot)

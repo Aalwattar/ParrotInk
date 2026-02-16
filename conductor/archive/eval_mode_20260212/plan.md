@@ -1,6 +1,6 @@
 # Implementation Plan: Headless Evaluation Mode (Eval)
 
-Add a test-only, headless CLI mode (`eval`) to `voice2text` that replays a WAV file through the existing transcription pipeline for deterministic accuracy testing.
+Add a test-only, headless CLI mode (`eval`) to `parrotink` that replays a WAV file through the existing transcription pipeline for deterministic accuracy testing.
 
 ## Phase 1: Infrastructure & Decoupling
 Refactor the application entry point to separate the CLI dispatcher from the UI/Tray logic, ensuring strict import boundaries for the headless mode.

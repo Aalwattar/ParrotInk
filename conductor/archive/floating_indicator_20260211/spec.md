@@ -1,7 +1,7 @@
 # Specification: Floating Acrylic Recording Indicator
 
 ## Overview
-Implement a modern, floating, and draggable recording indicator for the `voice2text` application. This indicator provides real-time visual feedback of the recording status and displays a short buffer of non-final (partial) transcription text in a sleek, Fluent-style interface.
+Implement a modern, floating, and draggable recording indicator for the `parrotink` application. This indicator provides real-time visual feedback of the recording status and displays a short buffer of non-final (partial) transcription text in a sleek, Fluent-style interface.
 
 ## Functional Requirements
 - **Draggable UI**: A floating window that can be moved anywhere on the screen by clicking and dragging.

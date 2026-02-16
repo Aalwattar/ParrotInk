@@ -33,7 +33,7 @@ This track introduces a robust, multi-level logging system to assist in debuggin
 - Add a `[logging]` section to `config.toml`.
 - **Options:**
     - `file_enabled` (bool): Enable persistent file logging (default: `false`).
-    - `file_path` (string): Destination path. Default: Use `platformdirs.user_log_dir()` (e.g., `%LOCALAPPDATA%\Voice2Text\logs`).
+    - `file_path` (string): Destination path. Default: Use `platformdirs.user_log_dir()` (e.g., `%LOCALAPPDATA%\ParrotInk\logs`).
     - `file_level` (int): Verbosity level for the file (1 or 2). Default: `1`.
 - **Precedence:**
     - CLI flags control **console** verbosity only.

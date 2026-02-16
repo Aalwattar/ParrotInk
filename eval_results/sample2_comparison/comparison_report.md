@@ -1,6 +1,6 @@
 # Transcription Accuracy Comparison Report
 
-**Audio File:** `voice2text_sample2.wav` (48kHz, Stereo, ~100s)
+**Audio File:** `parrotink_sample2.wav` (48kHz, Stereo, ~100s)
 **Date:** 2026-02-12
 
 ## 1. Executive Summary

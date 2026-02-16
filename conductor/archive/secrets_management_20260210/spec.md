@@ -11,7 +11,7 @@ This track implements a modern, secure handling system for API keys. It moves aw
     1. **Windows Credential Manager (Keyring):** Primary source.
     2. **Environment Variables:** Secondary source for development/automated environments.
 - **NO Config Fallback:** Literal keys in `config.toml` are strictly prohibited.
-- **Service/Account Mapping:** Service `voice2text`, Accounts `openai_api_key`, `assemblyai_api_key`.
+- **Service/Account Mapping:** Service `parrotink`, Accounts `openai_api_key`, `assemblyai_api_key`.
 
 ### 2.2 System Tray Credential Management
 - **Menu Structure:** `Credentials` > `Set OpenAI Key...`, `Set AssemblyAI Key...`.

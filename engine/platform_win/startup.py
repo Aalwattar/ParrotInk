@@ -3,11 +3,11 @@ import winreg
 from pathlib import Path
 
 from engine.logging import get_logger
+from engine.platform_win.paths import APP_NAME
 
 logger = get_logger("Startup")
 
 RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-APP_NAME = "Voice2Text"
 
 
 def get_executable_path() -> str:
@@ -16,7 +16,7 @@ def get_executable_path() -> str:
     Handles both frozen (PyInstaller) and script (Development) modes.
     """
 
-    # Absolute path to the current executable (python.exe or voice2text.exe)
+    # Absolute path to the current executable (python.exe or parrotink.exe)
     exe_path = str(Path(sys.executable).absolute())
 
     if getattr(sys, "frozen", False):

@@ -1,4 +1,4 @@
-# Voice2Text
+# ParrotInk
 
 A real-time voice-to-text system tray application for Windows. It allows you to inject transcribed text directly into any application via simulated typing using a global hotkey.
 

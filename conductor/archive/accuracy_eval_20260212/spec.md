@@ -6,7 +6,7 @@ Compare the transcription accuracy and latency of the current `master` branch ag
 ## 1. Functional Requirements
 
 ### 1.1 Test Assets
-- **Audio File:** `C:\Users\alwat\OneDrive\Office\ Documents\Sound\ Recordings\voice2text_sample2.wav`
+- **Audio File:** `C:\Users\alwat\OneDrive\Office\ Documents\Sound\ Recordings\parrotink_sample2.wav`
 - **Providers:** `openai`, `assemblyai`
 
 ### 1.2 Target Versions

@@ -14,7 +14,7 @@ Build the core logic for resolving and saving secrets.
 
 - [x] Task: Implement `SecurityManager` in `engine/security.py` [0f2dc3a]
     - [x] Logic to lookup: Keyring -> Environment.
-    - [x] Logic to save: Write to Keyring with service `voice2text`.
+    - [x] Logic to save: Write to Keyring with service `parrotink`.
 - [x] Task: Implement `CredentialDialog` [0f2dc3a]
     - [x] Simple `tkinter` dialog with password masking (`show='*'`).
 - [x] Task: Write tests for `SecurityManager` [0f2dc3a]

@@ -7,7 +7,7 @@ def test_get_app_version_success():
     # Mock pyproject.toml content
     pyproject_content = b"""
 [project]
-name = "voice2text"
+name = "parrotink"
 version = "0.2.0-alpha"
 """
     with patch("builtins.open", mock_open(read_data=pyproject_content)):

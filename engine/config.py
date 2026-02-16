@@ -342,7 +342,7 @@ def explain_config(config: Config, verbose: int = 0):
     from .config_resolver import resolve_effective_config
 
     eff = resolve_effective_config(config)
-    print("\n--- Voice2Text Configuration Report ---")
+    print("\n--- ParrotInk Configuration Report ---")
     print(f"Active Provider: {eff.provider_type}")
     print(f"Hotkey:          {eff.hotkey}")
 

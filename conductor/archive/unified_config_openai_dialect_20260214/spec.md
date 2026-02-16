@@ -1,7 +1,7 @@
 # Specification: Unified Configuration & OpenAI Dialect Alignment
 
 ## 1. Overview
-This track finalizes the configuration architecture of Voice2Text. It resolves technical inconsistencies in the OpenAI Realtime implementation by standardizing on "Dialect B" (Transcription-only), purges legacy AssemblyAI parameters, and enforces a "Basic vs. Advanced" configuration template strategy. It ensures the application is locked to Transcription-only mode for OpenAI, preventing accidental usage of conversational models.
+This track finalizes the configuration architecture of ParrotInk. It resolves technical inconsistencies in the OpenAI Realtime implementation by standardizing on "Dialect B" (Transcription-only), purges legacy AssemblyAI parameters, and enforces a "Basic vs. Advanced" configuration template strategy. It ensures the application is locked to Transcription-only mode for OpenAI, preventing accidental usage of conversational models.
 
 ## 2. Core Invariants & Dialect Selection
 - **OpenAI Dialect:** The application MUST use **Dialect B** (`transcription_session.update`).

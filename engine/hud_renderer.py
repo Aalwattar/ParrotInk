@@ -167,7 +167,7 @@ class HudOverlay:
             return
 
         hinst = GetModuleHandle(None)
-        class_name = "Voice2TextSkiaHUD"
+        class_name = "ParrotInkSkiaHUD"
         wcex = win32gui.WNDCLASS()
         wcex.lpfnWndProc = self._wnd_proc
         wcex.lpszClassName = class_name

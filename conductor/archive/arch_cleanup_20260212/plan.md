@@ -1,6 +1,6 @@
 # Implementation Plan: Architecture & Design Cleanup (ROI-Focused)
 
-Perform a holistic review and refactor of the `voice2text` codebase to improve isolation, organization, and separation of concerns while maintaining a high ROI.
+Perform a holistic review and refactor of the `parrotink` codebase to improve isolation, organization, and separation of concerns while maintaining a high ROI.
 
 ## Phase 1: Discovery & Analysis (Initial Prerequisite)
 Goal: Audit the codebase and produce a comprehensive refactoring proposal for user approval.

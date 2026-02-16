@@ -1,10 +1,10 @@
-Uploading and transcribing voice2text_sample2.wav using Universal-3-Pro...
+Uploading and transcribing parrotink_sample2.wav using Universal-3-Pro...
 {
   "status": "ok",
   "provider": "assemblyai",
   "model": "Universal-3-Pro",
   "timestamp": "2026-02-12T17:46:52.510887",
-  "audio_file": "voice2text_sample2.wav",
+  "audio_file": "parrotink_sample2.wav",
   "api_config": {
     "speech_model": "universal-3-pro",
     "punctuate": true,

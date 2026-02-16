@@ -14,7 +14,7 @@ Goal: Use a named mutex to detect an existing process.
 Goal: Exit gracefully with a notification if already running.
 
 - [x] Task: Integrate check into `main.py` entry point. [35f6979]
-- [x] Task: If already running, show a Win32 `MessageBoxW` with the message: "Voice2Text is already running. Please check the system tray icon." [35f6979]
+- [x] Task: If already running, show a Win32 `MessageBoxW` with the message: "ParrotInk is already running. Please check the system tray icon." [35f6979]
 - [x] Task: (Optional) Support `--background` flag to suppress the message box if launched via automation. [35f6979]
 - [x] Task: Conductor - User Manual Verification 'Single Instance'
 

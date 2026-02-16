@@ -1,7 +1,7 @@
 # Track Specification: Architecture & Design Cleanup (ROI-Focused)
 
 ## Overview
-Perform a holistic review and refactor of the `voice2text` codebase to improve isolation, organization, and separation of concerns. The goal is to align the project with "best practices" where they provide clear value for future maintenance and scalability, without over-engineering.
+Perform a holistic review and refactor of the `parrotink` codebase to improve isolation, organization, and separation of concerns. The goal is to align the project with "best practices" where they provide clear value for future maintenance and scalability, without over-engineering.
 
 **CRITICAL PREREQUISITE:** This track begins with a detailed analysis phase resulting in a `cleanup.md` report. Implementation will only proceed after user approval of this report.
 

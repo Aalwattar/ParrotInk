@@ -29,7 +29,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
 - **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
 - A context menu on the tray icon will allow the user to:
-    - **Version Header:** Displays the current application version and active provider (e.g., "Voice2Text v0.2.0 (OpenAI)") at the top.
+    - **Version Header:** Displays the current application version and active provider (e.g., "ParrotInk v0.2.0 (OpenAI)") at the top.
     - Enable or disable transcription.
     - Select the active transcription provider.
     - Open the settings/configuration file.
@@ -65,8 +65,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - Simple post-processing rules for the transcribed text.
 
 ### 2.9. Distribution
-- **Standalone Executable:** The application can be packaged as a single, portable Windows executable (`Voice2Text.exe`) for easy distribution and installation.
-    - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\Voice2Text` directory, ensuring it works even when launched from read-only locations.
+- **Standalone Executable:** The application can be packaged as a single, portable Windows executable (`ParrotInk.exe`) for easy distribution and installation.
+    - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\ParrotInk` directory, ensuring it works even when launched from read-only locations.
     - **Single Instance Protection:** The application uses a Win32 Mutex to ensure only one instance is running at a time, preventing hotkey and microphone conflicts. If a second instance is launched, it displays a helpful notification and exits gracefully.
     - **Automation-Friendly:** A `--background` CLI flag allows the application to start silently without the "already running" warning, ideal for startup scripts and automation.
 

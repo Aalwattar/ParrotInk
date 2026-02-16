@@ -1,7 +1,7 @@
 # Specification: Cosmetic & UI Refinements Track
 
 ## 1. Overview
-This track focuses on modernizing the visual identity of Voice2Text and exposing existing features to the Tray UI for better accessibility. The goal is a "top-tier UX" feel that is crisp, modern, and native to Windows.
+This track focuses on modernizing the visual identity of ParrotInk and exposing existing features to the Tray UI for better accessibility. The goal is a "top-tier UX" feel that is crisp, modern, and native to Windows.
 
 ## 2. Functional Requirements
 
@@ -24,7 +24,7 @@ This track focuses on modernizing the visual identity of Voice2Text and exposing
     - **Label:** "Hold to Talk".
     - **Functionality:** Toggles the `hotkeys.hold_mode` configuration boolean.
 - **Menu Header:** Add a non-clickable (disabled) menu item at the very top of the tray menu.
-    - **Format:** `[Product Name] v[Version]` (e.g., "Voice2Text v0.1.5").
+    - **Format:** `[Product Name] v[Version]` (e.g., "ParrotInk v0.1.5").
     - **Implementation:** Dynamically read the version from `pyproject.toml`.
 
 ## 3. Technical Requirements

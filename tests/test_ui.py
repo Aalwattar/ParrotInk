@@ -77,7 +77,7 @@ def test_tray_menu_structure(mocker, config):
         menu = args[3]
         items = list(menu)
         # First item should be version header
-        assert "Voice2Text v" in items[0].text
+        assert "ParrotInk v" in items[0].text
         assert items[0].enabled is False
         # Second item is separator
         assert items[2].text == "OpenAI"

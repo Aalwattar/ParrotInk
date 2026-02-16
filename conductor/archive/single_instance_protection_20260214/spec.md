@@ -10,8 +10,8 @@
 
 ## 2. User Feedback
 - **UI:** Win32 `MessageBoxW`.
-- **Message:** "Voice2Text is already running. Please check the system tray icon for the active instance."
-- **Title:** "Voice2Text".
+- **Message:** "ParrotInk is already running. Please check the system tray icon for the active instance."
+- **Title:** "ParrotInk".
 - **Icon:** Information (`MB_ICONINFORMATION`).
 
 ## 3. CLI Integration

@@ -1,7 +1,7 @@
 # Track Specification: Headless Evaluation Mode (Eval)
 
 ## Overview
-Add a test-only, headless CLI mode (`eval`) to `voice2text` that replays a WAV file through the existing transcription pipeline. This allows for deterministic accuracy testing and regression monitoring without requiring a UI or manual speech.
+Add a test-only, headless CLI mode (`eval`) to `parrotink` that replays a WAV file through the existing transcription pipeline. This allows for deterministic accuracy testing and regression monitoring without requiring a UI or manual speech.
 
 ## 1. Functional Requirements
 

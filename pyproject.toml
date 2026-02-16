@@ -1,5 +1,5 @@
 [project]
-name = "voice2text"
+name = "parrotink"
 version = "0.2.0-alpha"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"

@@ -11,7 +11,7 @@ Improve the application's transparency during long-running or fragile operations
     *   The HUD must display the current status message prominently during the `CONNECTING` or `SWITCHING` states.
     *   Transition smoothly from "DISCONNECTING" -> "CONNECTING" -> "LISTENING".
 3.  **Tray Tooltip Updates:**
-    *   The tray icon's tooltip (title) should reflect the current detailed status (e.g., "Voice2Text: Connecting...").
+    *   The tray icon's tooltip (title) should reflect the current detailed status (e.g., "ParrotInk: Connecting...").
 4.  **Optimized Provider Switching:**
     *   Refactor the provider switch logic to keep the HUD visible and show a "Switching..." message instead of immediately hiding it.
 

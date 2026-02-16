@@ -173,7 +173,7 @@ class TrayApp:
         version = get_app_version()
         return pystray.Menu(
             pystray.MenuItem(
-                f"Voice2Text v{version}",
+                f"ParrotInk v{version}",
                 lambda: None,
                 enabled=False,
             ),
@@ -282,7 +282,7 @@ class TrayApp:
     def _create_icon(self) -> pystray.Icon:
         menu = self._create_menu()
         return pystray.Icon(
-            "voice2text", self._create_image(self._get_icon_color(self.state)), "Voice2Text", menu
+            "parrotink", self._create_image(self._get_icon_color(self.state)), "ParrotInk", menu
         )
 
     def set_state(self, state: AppState) -> None:
@@ -299,7 +299,7 @@ class TrayApp:
             AppState.SHUTTING_DOWN: "Shutting down...",
         }
         provider_info = f" ({self.config.transcription.provider.title()})"
-        self.icon.title = f"Voice2Text: {state_map.get(state, 'Unknown')}{provider_info}"
+        self.icon.title = f"ParrotInk: {state_map.get(state, 'Unknown')}{provider_info}"
 
         # Sync indicator visibility and status
         if self.indicator:
@@ -326,7 +326,7 @@ class TrayApp:
         """Updates the availability status of providers."""
         self.availability = availability
 
-    def notify(self, message: str, title: str = "Voice2Text"):
+    def notify(self, message: str, title: str = "ParrotInk"):
         """Show a system tray notification."""
         self.icon.notify(message, title)
 
@@ -368,7 +368,7 @@ class TrayApp:
                     self.indicator.on_final(data)
             elif msg_type == UIEvent.UPDATE_STATUS_MESSAGE:
                 # Update Tray Tooltip
-                self.icon.title = f"Voice2Text: {data}"
+                self.icon.title = f"ParrotInk: {data}"
                 # Forward to HUD
                 if self.indicator:
                     self.indicator.update_status_icon(data)

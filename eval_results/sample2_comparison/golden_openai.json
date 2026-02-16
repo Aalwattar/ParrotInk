@@ -3,7 +3,7 @@
   "provider": "openai",
   "model": "gpt-4o-transcribe",
   "timestamp": "2026-02-12T18:35:06.735651",
-  "audio_file": "voice2text_sample2.wav",
+  "audio_file": "parrotink_sample2.wav",
   "api_config": {
     "model": "gpt-4o-transcribe",
     "response_format": "json"

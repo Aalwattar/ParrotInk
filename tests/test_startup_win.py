@@ -35,7 +35,7 @@ def test_set_run_at_startup_enable_script_mode():
                 expected_command = r'"C:\path\to\python.exe" "C:\app\main.py"'
                 mock_winreg.SetValueEx.assert_called_once_with(
                     mock_winreg.OpenKey.return_value,
-                    "Voice2Text",
+                    "ParrotInk",
                     0,
                     mock_winreg.REG_SZ,
                     expected_command,
@@ -43,7 +43,7 @@ def test_set_run_at_startup_enable_script_mode():
 
 
 def test_set_run_at_startup_enable_frozen():
-    with patch("sys.executable", r"C:\path\to\voice2text.exe"):
+    with patch("sys.executable", r"C:\path\to\parrotink.exe"):
         with patch("sys.frozen", True, create=True):
             set_run_at_startup(True)
 
@@ -52,10 +52,10 @@ def test_set_run_at_startup_enable_frozen():
             # Should set the value
             mock_winreg.SetValueEx.assert_called_once_with(
                 mock_winreg.OpenKey.return_value,
-                "Voice2Text",
+                "ParrotInk",
                 0,
                 mock_winreg.REG_SZ,
-                r"C:\path\to\voice2text.exe",
+                r"C:\path\to\parrotink.exe",
             )
 
 
@@ -65,14 +65,14 @@ def test_set_run_at_startup_disable():
     # Should open the key
     mock_winreg.OpenKey.assert_called_once()
     # Should delete the value
-    mock_winreg.DeleteValue.assert_called_once_with(mock_winreg.OpenKey.return_value, "Voice2Text")
+    mock_winreg.DeleteValue.assert_called_once_with(mock_winreg.OpenKey.return_value, "ParrotInk")
 
 
 def test_is_run_at_startup_synced_true():
-    with patch("sys.executable", r"C:\path\to\voice2text.exe"):
+    with patch("sys.executable", r"C:\path\to\parrotink.exe"):
         with patch("sys.frozen", True, create=True):
             mock_winreg.QueryValueEx.return_value = (
-                r"C:\path\to\voice2text.exe",
+                r"C:\path\to\parrotink.exe",
                 mock_winreg.REG_SZ,
             )
 
@@ -80,8 +80,8 @@ def test_is_run_at_startup_synced_true():
 
 
 def test_is_run_at_startup_synced_false_different_path():
-    with patch("sys.executable", r"C:\new\path\voice2text.exe"):
-        mock_winreg.QueryValueEx.return_value = (r"C:\old\path\voice2text.exe", mock_winreg.REG_SZ)
+    with patch("sys.executable", r"C:\new\path\parrotink.exe"):
+        mock_winreg.QueryValueEx.return_value = (r"C:\old\path\parrotink.exe", mock_winreg.REG_SZ)
 
         assert is_run_at_startup_synced() is False
 
