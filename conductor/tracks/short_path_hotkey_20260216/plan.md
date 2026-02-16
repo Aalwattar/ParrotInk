@@ -11,11 +11,8 @@ This track simplifies the hotkey architecture and implements selective suppressi
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Architectural Integration
-- [ ] Task: Simplify `main.py` (`AppCoordinator`).
-    - Remove `current_keys` and manual modifier tracking.
-    - Replace `on_press`/`on_release` with direct `start_listening`/`stop_listening` callbacks.
-- [ ] Task: Implement dynamic hotkey switching.
-    - Ensure `_on_config_changed` correctly unhooks the old key and hooks the new one.
+- [x] Task: Simplify `main.py` (`AppCoordinator`). [checkpoint: 38024ab]
+- [x] Task: Implement dynamic hotkey switching. [checkpoint: 4390596]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Validation & Tests
