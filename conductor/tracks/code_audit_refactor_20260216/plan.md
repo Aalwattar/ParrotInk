@@ -5,16 +5,21 @@ This track follows a module-by-module audit and refactor workflow.
 ## Phase 1: Audit & Refactor - Core Engine (`main.py`, `engine/connection.py`, `engine/config.py`) [checkpoint: f98e3ab]
 - [x] Task: **Audit**: Core Engine. [200d639]
 - [x] Task: **Report**: Present findings for Core Engine to user for approval. [200d639]
-- [x] Task: **Refactor**: Core Engine (Only after approval). [200d639]
+- [x] Task: **Refactor**: Core Engine (Only after approval). [a6b89c6]
+    - [x] Wire up neglected config items.
+    - [x] Consolidate constants.
+    - [x] Cleanup imports and dead code.
+    - [x] Fix 'Hold to Talk' for multi-key hotkeys. [a6b89c6]
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) [200d639]
 
-## Phase 2: Audit & Refactor - Audio Pipeline (`engine/audio/`)
-- [ ] Task: **Audit**: Audio Pipeline.
-    - [ ] Check chunk sizes, sample rates, and buffer logic for hardcoded values.
-    - [ ] Verify if all audio-related config items are respected.
-- [ ] Task: **Report**: Present findings for Audio Pipeline to user for approval.
-- [ ] Task: **Refactor**: Audio Pipeline (Only after approval).
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+## Phase 2: Audit & Refactor - Audio Pipeline (`engine/audio/`) [checkpoint: a6b89c6]
+- [x] Task: **Audit**: Audio Pipeline.
+- [x] Task: **Report**: Present findings for Audio Pipeline to user for approval.
+- [x] Task: **Refactor**: Audio Pipeline (Only after approval). [a6b89c6]
+    - [x] Consolidate internal constants (Queue size, log intervals).
+    - [x] Remove deprecated `_normalize_audio`.
+    - [x] Cleanup imports and docstrings.
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Audit & Refactor - UI & HUD (`engine/ui.py`, `engine/indicator_ui.py`, `engine/hud_renderer.py`)
 - [ ] Task: **Audit**: UI & HUD.
