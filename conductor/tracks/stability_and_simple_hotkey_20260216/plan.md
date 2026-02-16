@@ -1,9 +1,10 @@
 # Implementation Plan: Boringly Simple Stability
 
-## Phase 1: Thread Ownership & Atomic Save
-- [x] Centralize `config.save()` to use an atomic write (temp + rename). [c19ad41]
-- [x] Wrap all `TrayApp` callbacks in `gui_main.py` with `loop.call_soon_threadsafe`. [c19ad41]
-- **Verification**: Verify that changing a setting in the Tray menu no longer has any chance of freezing the app.
+## Phase 1: Thread Ownership & Atomic Save [checkpoint: b842fd7]
+- [x] Centralize `config.save()` to use an atomic write (temp + rename). [b842fd7]
+- [x] Wrap all `TrayApp` callbacks in `gui_main.py` with `loop.call_soon_threadsafe`. [b842fd7]
+- [x] **Thread Verification**: Ensure observers are isolated from Tray thread callbacks. [b842fd7]
+- **Verification**: Manually toggled settings in tray menu; confirmed no freezes and correct config persistence. All automated tests passed.
 
 ## Phase 2: Lean Hook Workers
 - [ ] Refactor `engine/interaction.py` (`pynput`) to use a `queue.Queue`.
