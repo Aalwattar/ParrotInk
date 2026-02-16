@@ -204,12 +204,12 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Hotkey Input Suppression (Anti-Leak)**
+- [~] **Track: Hotkey Input Suppression (Anti-Leak)**
 *Link: [./tracks/hotkey_suppression_20260216/](./tracks/hotkey_suppression_20260216/)*
 
 ---
 
-- [ ] **Track: Tray Menu Hotkey Label Sync**
+- [x] **Track: Tray Menu Hotkey Label Sync** [checkpoint: 2027c5f]
 *Link: [./tracks/tray_menu_sync_20260216/](./tracks/tray_menu_sync_20260216/)*
 
 ---
