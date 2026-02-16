@@ -259,21 +259,28 @@ class AppCoordinator:
         self.set_state(AppState.CONNECTING)
 
         try:
-            # Capture anchor point
-            self.anchor = Anchor.capture()
+            # 1. Capture anchor point
+            if self.config.interaction.cancel_on_click_outside_anchor:
+                self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
+
             self.ui_bridge.clear_hud()
 
-            # Start pipeline
-            self.pipeline.start()
+            # 2. Initiate connection (Ensure we have provider and adapter ready)
+            await self.connection_manager.ensure_connected(is_listening=True)
+
+            # 3. Start pipeline with the resolved connection components
+            await self.pipeline.start(
+                adapter=self.connection_manager.audio_adapter,
+                provider=self.connection_manager.provider,
+                loop=self.loop,
+            )
             self._play_feedback_sound("start")
 
-            # Start mouse monitoring
+            # 4. Start mouse monitoring
             self.mouse_monitor.start()
             # Enable any-key monitoring for cancellation
             self.input_monitor.enable_any_key_monitoring(True)
 
-            # Initiate connection
-            await self.connection_manager.start(self.pipeline)
             self.set_state(AppState.LISTENING)
 
         except Exception as e:
@@ -289,6 +296,7 @@ class AppCoordinator:
         logger.debug("Stopping transcription session...")
         self.input_monitor.enable_any_key_monitoring(False)
         self.mouse_monitor.stop()
+        self.anchor = None
 
         await self.connection_manager.stop_provider()
         await self.pipeline.stop()
@@ -441,8 +449,11 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Standard run mode
+    config = load_config()
     configure_logging(
-        logging.DEBUG if cli_args.verbose > 0 else logging.INFO,
+        config,
+        verbose_count=cli_args.verbose,
+        quiet=cli_args.quiet,
     )
 
     from engine.gui_main import main_gui

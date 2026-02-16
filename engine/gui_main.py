@@ -136,6 +136,9 @@ async def main_gui(cli_args):
         def apply():
             config.update_and_save({"hotkeys": {"hold_mode": enabled}})
             logger.info(f"Hold to Talk {'enabled' if enabled else 'disabled'}")
+            # Update and Restart the listener to apply mode change
+            coordinator.input_monitor.set_hotkey(config.hotkeys.hotkey, enabled)
+            coordinator.input_monitor.start()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
@@ -159,7 +162,8 @@ async def main_gui(cli_args):
         def apply():
             logger.info(f"Applying new hotkey: {new_hotkey}")
             config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
-            # Restart the global listener
+            # Update and Restart the listener
+            coordinator.input_monitor.set_hotkey(new_hotkey, config.hotkeys.hold_mode)
             coordinator.input_monitor.start()
 
         if coordinator.loop:
@@ -189,6 +193,8 @@ async def main_gui(cli_args):
     ui_thread = threading.Thread(target=app.run, daemon=True)
     ui_thread.start()
 
+    # The monitor is configured during coordinator init, but we start it here 
+    # to begin capturing global events before the main loop blocks.
     coordinator.input_monitor.start()
     logger.info(
         f"Hotkey listener started: {config.hotkeys.hotkey} (hold_mode={config.hotkeys.hold_mode})"
