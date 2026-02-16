@@ -3,9 +3,9 @@
 This track addresses the issue where non-modifier keys in the hotkey combination (like 'Space') are leaked to the active window.
 
 ## Phase 1: Research & Infrastructure
-- [ ] Task: Research `pynput` and `pywin32` suppression capabilities.
-    - [ ] Determine if the current `InputMonitor` (based on `pynput`) can selectively suppress events by returning `False` from the listener.
-    - [ ] Verify if a low-level Win32 `WH_KEYBOARD_LL` hook is required for more reliable suppression.
+- [x] Task: Research `pynput` and `pywin32` suppression capabilities. [checkpoint: e9b56b8]
+    - [x] Determine if the current `InputMonitor` (based on `pynput`) can selectively suppress events by returning `False` from the listener. (Found: `win32_event_filter` allows this).
+    - [x] Verify if a low-level Win32 `WH_KEYBOARD_LL` hook is required for more reliable suppression. (Found: `pynput` already uses this, `win32_event_filter` exposes it).
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Implementation & TDD
