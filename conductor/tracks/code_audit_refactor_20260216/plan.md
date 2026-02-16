@@ -3,15 +3,12 @@
 This track follows a module-by-module audit and refactor workflow.
 
 ## Phase 1: Audit & Refactor - Core Engine (`main.py`, `engine/connection.py`, `engine/config.py`)
-- [ ] Task: **Audit**: Core Engine.
-    - [ ] Search for hardcoded values (timeouts, rates, strings).
-    - [ ] Identify dead code (unused methods in AppCoordinator or ConnectionManager).
-    - [ ] Check import ordering.
-- [ ] Task: **Report**: Present findings for Core Engine to user for approval.
-- [ ] Task: **Refactor**: Core Engine (Only after approval).
-    - [ ] Wire up neglected config items.
-    - [ ] Consolidate constants.
-    - [ ] Cleanup imports and dead code.
+- [x] Task: **Audit**: Core Engine.
+- [x] Task: **Report**: Present findings for Core Engine to user for approval.
+- [x] Task: **Refactor**: Core Engine (Only after approval). [200d639]
+    - [x] Wire up neglected config items.
+    - [x] Consolidate constants.
+    - [x] Cleanup imports and dead code.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Audit & Refactor - Audio Pipeline (`engine/audio/`)
