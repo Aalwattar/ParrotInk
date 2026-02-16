@@ -1,0 +1,8 @@
+{
+  "track_id": "tray_menu_sync_20260216",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-02-16T10:55:00Z",
+  "updated_at": "2026-02-16T10:55:00Z",
+  "description": "minor bug with the change hotkey: tray menu label does not update immediately after change"
+}
