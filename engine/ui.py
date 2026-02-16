@@ -159,6 +159,116 @@ class TrayApp:
             else:
                 self.notify("Configuration file not found.", "Error")
 
+    def _create_menu(self) -> pystray.Menu:
+        version = get_app_version()
+        return pystray.Menu(
+            pystray.MenuItem(
+                f"Voice2Text v{version}",
+                lambda: None,
+                enabled=False,
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "OpenAI",
+                lambda icon, item: self._on_provider_selection(icon, "openai"),
+                checked=lambda item: self.current_provider == "openai",
+                enabled=lambda item: self.availability.get("openai", True),
+                radio=True,
+            ),
+            pystray.MenuItem(
+                "AssemblyAI",
+                lambda icon, item: self._on_provider_selection(icon, "assemblyai"),
+                checked=lambda item: self.current_provider == "assemblyai",
+                enabled=lambda item: self.availability.get("openai", True),
+                radio=True,
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                "Credentials",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        "Set OpenAI Key...",
+                        lambda: self._on_set_key_clicked("openai_api_key", "OpenAI"),
+                    ),
+                    pystray.MenuItem(
+                        "Set AssemblyAI Key...",
+                        lambda: self._on_set_key_clicked("assemblyai_api_key", "AssemblyAI"),
+                    ),
+                ),
+            ),
+            pystray.MenuItem(
+                "Settings",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        lambda item: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
+                        self._on_change_hotkey_clicked,
+                    ),
+                    pystray.MenuItem(
+                        "Hold to Talk",
+                        self._on_toggle_hold_mode_clicked,
+                        checked=lambda item: self.config.hotkeys.hold_mode,
+                    ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Enable Audio Feedback",
+                        self._on_toggle_sounds_clicked,
+                        checked=lambda item: self.sounds_enabled,
+                    ),
+                    pystray.MenuItem(
+                        "Run at Startup",
+                        self._on_toggle_startup_clicked,
+                        checked=lambda item: self.config.interaction.run_at_startup,
+                    ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Show HUD",
+                        self._on_toggle_hud_clicked,
+                        checked=lambda item: self.config.ui.floating_indicator.enabled,
+                    ),
+                    pystray.MenuItem(
+                        "HUD Click-Through",
+                        self._on_toggle_click_through_clicked,
+                        checked=lambda item: self.config.ui.floating_indicator.click_through,
+                        enabled=lambda item: self.config.ui.floating_indicator.enabled,
+                    ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Microphone Profile",
+                        pystray.Menu(
+                            pystray.MenuItem(
+                                "Headset (Noise Reduction On)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "headset"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "headset"
+                                ),
+                                radio=True,
+                            ),
+                            pystray.MenuItem(
+                                "Laptop/Room (Far Field)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "laptop"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "laptop"
+                                ),
+                                radio=True,
+                            ),
+                            pystray.MenuItem(
+                                "None (Raw Audio - Recommended)",
+                                lambda icon, item: self._on_mic_profile_selection(icon, "none"),
+                                checked=lambda item: (
+                                    self.config.transcription.mic_profile == "none"
+                                ),
+                                radio=True,
+                            ),
+                        ),
+                        enabled=lambda item: self.current_provider == "openai",
+                    ),
+                ),
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Open Config", self._open_config),
+            pystray.MenuItem("Quit", self.stop),
+        )
+
     def _create_icon(self) -> pystray.Icon:
         version = get_app_version()
         menu = pystray.Menu(

@@ -109,6 +109,8 @@ class AppCoordinator:
         logger.info("Configuration changed. Reloading settings...")
         self.target_hotkey = self._parse_hotkey(config.hotkeys.hotkey)
         logger.debug(f"Target hotkey updated to: {self.target_hotkey}")
+        # Notify UI to refresh menu/labels
+        self.ui_bridge.update_settings({})
 
     @property
     def is_connecting(self) -> bool:
