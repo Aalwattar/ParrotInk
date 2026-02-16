@@ -3,8 +3,7 @@
 This track simplifies the hotkey architecture and implements selective suppression using the `keyboard` library.
 
 ## Phase 1: Infrastructure & Cleanup
-- [ ] Task: Add `keyboard` library to dependencies.
-    - `uv add keyboard`
+- [x] Task: Add `keyboard` library to dependencies. [checkpoint: d18c394]
 - [ ] Task: Strip `engine/interaction.py`.
     - Remove `queue.Queue`.
     - Remove `_worker_loop` and `WorkerThread`.
