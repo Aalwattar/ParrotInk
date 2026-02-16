@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import logging
 import sys
 import time
 from typing import Literal, Optional
@@ -104,9 +103,13 @@ class AppCoordinator:
     def _on_config_changed(self, config: Config):
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
-        # Update hotkey capture
+        # 1. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
-        # Notify UI to refresh menu/labels
+
+        # 2. Update connection manager config (crucial for provider switching)
+        self.connection_manager.config = config
+
+        # 3. Notify UI to refresh menu/labels
         self.ui_bridge.update_settings({})
 
     @property
@@ -298,8 +301,11 @@ class AppCoordinator:
         self.mouse_monitor.stop()
         self.anchor = None
 
-        await self.connection_manager.stop_provider()
+        # Do NOT call stop_provider() here!
+        # ConnectionManager handles keeping the connection "warm" or rotating it.
         await self.pipeline.stop()
+        self.connection_manager.start_idle_timer()
+
         self._play_feedback_sound("stop")
 
         if self.state != AppState.ERROR:
