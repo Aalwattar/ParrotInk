@@ -14,6 +14,12 @@ logger = get_logger("IndicatorUI")
 
 HUD_AVAILABLE = True
 
+# Internal Constants (Not exposed to user)
+DEFAULT_LINGER_SECONDS = 2.5
+MIN_VISIBLE_DURATION = 0.3
+REDRAW_THROTTLE_SECONDS = 0.05
+DEFAULT_MAX_CHARS = 180
+
 
 class GdiFallbackWindow:
     """Mock implementation for tests where HUD is missing."""
@@ -73,6 +79,7 @@ class IndicatorWindow:
         self._shown_at = 0.0
         self._last_redraw_at = 0.0
         self._visible = False
+        self._session_id = 0
 
         # Use globals check to respect test patches
         if globals().get("HUD_AVAILABLE", True):
@@ -129,6 +136,7 @@ class IndicatorWindow:
         self.impl.update_status(is_recording)
 
         if is_recording:
+            self._session_id += 1
             self._committed_text = ""
             self._current_partial_text = ""
             self._last_status_msg = ""  # Clear status so it doesn't linger
@@ -164,13 +172,19 @@ class IndicatorWindow:
             self.impl.update_text("")
         self._render_preview()
 
-    def _start_linger_timer(self, duration: float = 2.5):
+    def _start_linger_timer(self, duration: Optional[float] = None):
+        if duration is None:
+            duration = DEFAULT_LINGER_SECONDS
+
+        session_at_start = self._session_id
+
         def _hide_after():
             elapsed = time.time() - self._shown_at
-            if elapsed < 0.3:
-                time.sleep(0.3 - elapsed)
+            if elapsed < MIN_VISIBLE_DURATION:
+                time.sleep(MIN_VISIBLE_DURATION - elapsed)
             time.sleep(duration)
-            if not self.is_recording:
+            # Only hide if we haven't started a NEW session since this timer was created
+            if not self.is_recording and self._session_id == session_at_start:
                 self.hide()
 
         threading.Thread(target=_hide_after, daemon=True).start()
@@ -178,7 +192,7 @@ class IndicatorWindow:
     def on_partial(self, text: str):
         self._current_partial_text = text
         now = time.time()
-        if now - self._last_redraw_at < 0.05:
+        if now - self._last_redraw_at < REDRAW_THROTTLE_SECONDS:
             return
         self._last_redraw_at = now
         self._render_preview()
@@ -207,6 +221,10 @@ class IndicatorWindow:
                 full_text += " "
             full_text += self._current_partial_text
 
+        max_chars = DEFAULT_MAX_CHARS
+        if self.config:
+            max_chars = self.config.ui.floating_indicator.max_characters
+
         if not full_text:
             if self._last_status_msg and self._last_status_msg.lower() not in (
                 "listening",
@@ -215,8 +233,8 @@ class IndicatorWindow:
                 display_text = self._last_status_msg
             else:
                 display_text = ""
-        elif len(full_text) > 180:
-            display_text = "…" + full_text[-(180 - 1) :]
+        elif len(full_text) > max_chars:
+            display_text = "…" + full_text[-(max_chars - 1) :]
         else:
             display_text = full_text
 

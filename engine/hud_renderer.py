@@ -23,6 +23,13 @@ from .platform_win.api import (
 
 logger = get_logger("HudRenderer")
 
+# Internal Constants (Not exposed to user)
+WIN_WIDTH = 1000
+WIN_HEIGHT = 52
+DEFAULT_Y_OFFSET = 60
+DEFAULT_REFRESH_RATE_MS = 50
+
+
 try:
     import skia
     import win32con
@@ -54,8 +61,8 @@ class HudOverlay:
         self._ready_event = threading.Event()
 
         # UI Specs
-        self.win_width = 1000
-        self.win_height = 52
+        self.win_width = WIN_WIDTH
+        self.win_height = WIN_HEIGHT
 
         # GDI Resources
         self._hdc_mem = None
@@ -175,11 +182,13 @@ class HudOverlay:
         screen_w = user32.GetSystemMetrics(0)
         screen_h = user32.GetSystemMetrics(1)
 
-        y_offset = 60
-        refresh_rate = 50
+        y_offset = DEFAULT_Y_OFFSET
+        refresh_rate = DEFAULT_REFRESH_RATE_MS
         if self.config:
-            y_offset = getattr(self.config.ui.floating_indicator, "y_offset", 60)
-            refresh_rate = getattr(self.config.ui.floating_indicator, "refresh_rate_ms", 50)
+            y_offset = getattr(self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET)
+            refresh_rate = getattr(
+                self.config.ui.floating_indicator, "refresh_rate_ms", DEFAULT_REFRESH_RATE_MS
+            )
 
         x_pos = (screen_w - self.win_width) // 2
         y_pos = screen_h - self.win_height - y_offset

@@ -17,6 +17,16 @@ if TYPE_CHECKING:
 
 logger = get_logger("UI")
 
+# Internal Constants (Not exposed to user)
+ICON_SIZE = 64
+ICON_RADIUS = 12
+
+COLOR_LISTENING = "#0078D4"  # Microsoft Blue (Vibrant)
+COLOR_CONNECTING = "#FACC15"  # Yellow-400
+COLOR_ERROR = "#EF4444"  # Red-500
+COLOR_TRANSITION = "#94A3B8"  # Slate-400
+COLOR_IDLE = "#475569"  # Slate-600
+
 
 class TrayApp:
     def __init__(
@@ -73,24 +83,24 @@ class TrayApp:
             logger.info("Floating Indicator is disabled.")
 
     def _create_image(self, color: str) -> Image.Image:
-        width, height = 64, 64
+        width, height = ICON_SIZE, ICON_SIZE
         # Use RGBA for transparency support (rounded corners)
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
         # Modern rounded square design - Increased size and adjusted radius for clarity
-        dc.rounded_rectangle((2, 2, 62, 62), radius=12, fill=color)
+        dc.rounded_rectangle((2, 2, width - 2, height - 2), radius=ICON_RADIUS, fill=color)
         return image
 
     def _get_icon_color(self, state: AppState) -> str:
         if state == AppState.LISTENING:
-            return "#0078D4"  # Microsoft Blue (Vibrant)
+            return COLOR_LISTENING
         if state == AppState.CONNECTING:
-            return "#FACC15"  # Yellow-400
+            return COLOR_CONNECTING
         if state == AppState.ERROR:
-            return "#EF4444"  # Red-500
+            return COLOR_ERROR
         if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
-            return "#94A3B8"  # Slate-400
-        return "#475569"  # Slate-600 (Better visibility than Slate-700)
+            return COLOR_TRANSITION
+        return COLOR_IDLE
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
         self.current_provider = provider

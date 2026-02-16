@@ -2,6 +2,17 @@ from abc import ABC, abstractmethod
 
 import skia
 
+# Internal Constants (Not exposed to user)
+CAPSULE_RADIUS = 18.0
+CAPSULE_HEIGHT = 44.0
+MAX_CAPSULE_WIDTH = 800.0
+CAPSULE_PADDING = 8.0
+TEXT_SIZE = 16
+TEXT_MAX_LENGTH = 100
+
+DOT_BASE_RADIUS = 3.0
+DOT_GLOW_RADIUS_OFFSET = 1.5
+
 
 class HudStyle(ABC):
     @abstractmethod
@@ -21,10 +32,10 @@ class HudStyle(ABC):
 
 class GlassStyle(HudStyle):
     def __init__(self):
-        self.radius = 18.0
-        self.capsule_height = 44.0  # Increased for larger 16pt font
-        self.max_capsule_width = 800.0
-        self.padding = 8.0
+        self.radius = CAPSULE_RADIUS
+        self.capsule_height = CAPSULE_HEIGHT  # Increased for larger 16pt font
+        self.max_capsule_width = MAX_CAPSULE_WIDTH
+        self.padding = CAPSULE_PADDING
 
     def draw(
         self,
@@ -45,7 +56,7 @@ class GlassStyle(HudStyle):
         except Exception:
             tf_reg = skia.Typeface.MakeDefault()
 
-        font_text = skia.Font(tf_reg, 16)
+        font_text = skia.Font(tf_reg, TEXT_SIZE)
 
         # 2. Content Preparation
         is_listening_placeholder = False
@@ -55,8 +66,8 @@ class GlassStyle(HudStyle):
         else:
             display_text = text if text else "..."
 
-        if len(display_text) > 100:
-            display_text = "…" + display_text[-97:]
+        if len(display_text) > TEXT_MAX_LENGTH:
+            display_text = "…" + display_text[-(TEXT_MAX_LENGTH - 1) :]
 
         # Use slightly more transparent paint for placeholder
         if is_listening_placeholder:
@@ -103,7 +114,7 @@ class GlassStyle(HudStyle):
         dot_y = rect.fTop + (self.capsule_height / 2.0)
 
         # Dot Visuals (Dynamic based on voice_active)
-        base_radius = 3.0
+        base_radius = DOT_BASE_RADIUS
         if voice_active:
             dot_radius = base_radius + 1.0  # Subtle grow
             glow_alpha = 180
@@ -131,7 +142,7 @@ class GlassStyle(HudStyle):
                 Alpha=glow_alpha,
                 ImageFilter=skia.ImageFilters.Blur(blur_sigma, blur_sigma),
             )
-            canvas.drawCircle(dot_x, dot_y, dot_radius + 1.5, glow_paint)
+            canvas.drawCircle(dot_x, dot_y, dot_radius + DOT_GLOW_RADIUS_OFFSET, glow_paint)
 
         canvas.drawCircle(
             dot_x,
