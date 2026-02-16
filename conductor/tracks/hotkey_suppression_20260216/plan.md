@@ -9,18 +9,13 @@ This track addresses the issue where non-modifier keys in the hotkey combination
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Implementation & TDD
-- [ ] Task: Create a reproduction test case for key leakage.
-    - [ ] **Red Phase**: Write a test in `tests/test_suppression.py` that simulates a `Ctrl+Space` press and asserts that the `Space` event is marked as suppressed/handled.
-    - [ ] Confirm the test fails with the current implementation.
-- [ ] Task: Implement selective suppression in `engine/interaction.py`.
-    - [ ] **Green Phase**: Update the `InputMonitor` to return `False` (or use the equivalent Win32 suppression) specifically for keys matching the `target_hotkey`.
-    - [ ] Ensure the `AppCoordinator` still receives the event to trigger dictation.
-- [ ] Task: Verify fix with reproduction test.
-    - [ ] Rerun `tests/test_suppression.py` and confirm it passes.
+- [x] Task: Create a reproduction test case for key leakage. [checkpoint: 8daf51c]
+- [x] Task: Implement selective suppression in `engine/interaction.py`. [checkpoint: 8daf51c]
+- [x] Task: Verify fix with reproduction test. [checkpoint: 8daf51c]
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: Final Validation
-- [ ] Task: Run full "Definition of Done Gate".
+- [~] Task: Run full "Definition of Done Gate".
     - [ ] `uv run ruff check .`
     - [ ] `uv run ruff format --check .`
     - [ ] `uv run mypy .`
