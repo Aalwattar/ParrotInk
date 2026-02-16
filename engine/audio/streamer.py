@@ -10,6 +10,11 @@ from engine.logging import get_logger
 
 logger = get_logger("Audio")
 
+# Internal Constants (Not exposed to user)
+QUEUE_MAX_SIZE = 500
+DROP_LOG_INTERVAL = 1.0
+DEFAULT_DTYPE = "float32"
+
 
 def downmix_stereo_to_mono(chunk: np.ndarray) -> np.ndarray:
     """Downmixes stereo (N, 2) to mono (N,) by averaging channels in float64."""
@@ -49,7 +54,9 @@ class AudioStreamer:
     def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
-        self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(maxsize=500)
+        self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(
+            maxsize=QUEUE_MAX_SIZE
+        )
         self.is_running = False
         self._stream: sd.InputStream | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -84,7 +91,7 @@ class AudioStreamer:
         else:
             self._drop_count += 1
             now = time.time()
-            if now - self._last_drop_log > 1.0:
+            if now - self._last_drop_log > DROP_LOG_INTERVAL:
                 logger.warning(
                     f"Audio capture dropping chunks: event loop unavailable. "
                     f"Dropped so far: {self._drop_count}"
@@ -98,7 +105,7 @@ class AudioStreamer:
                 self.async_q.get_nowait()
                 self._drop_count += 1
                 now = time.time()
-                if now - self._last_drop_log > 1.0:
+                if now - self._last_drop_log > DROP_LOG_INTERVAL:
                     logger.warning(
                         f"Audio queue full, dropping oldest chunks. "
                         f"Dropped total: {self._drop_count}"
@@ -128,7 +135,7 @@ class AudioStreamer:
             self._stream = sd.InputStream(
                 samplerate=self.sample_rate,
                 channels=1,
-                dtype="float32",
+                dtype=DEFAULT_DTYPE,
                 blocksize=self.chunk_size,
                 callback=self._callback,
             )
@@ -138,7 +145,7 @@ class AudioStreamer:
                 self._stream = sd.InputStream(
                     samplerate=self.sample_rate,
                     channels=2,
-                    dtype="float32",
+                    dtype=DEFAULT_DTYPE,
                     blocksize=self.chunk_size,
                     callback=self._callback,
                 )
@@ -172,10 +179,6 @@ class AudioStreamer:
 
         self._loop = None
         logger.info("Audio capture stopped.")
-
-    def _normalize_audio(self, chunk: np.ndarray) -> np.ndarray:
-        """DEPRECATED: Normalization now happens at the capture boundary."""
-        return chunk
 
     async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
         """Yields (audio_chunk, timestamp) tuples asynchronously."""

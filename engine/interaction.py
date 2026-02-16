@@ -28,6 +28,7 @@ class InputMonitor:
         self._hotkey_str: Optional[str] = None
         self._is_running = False
         self._hold_mode = False
+        self._is_hotkey_down = False
 
     def set_hotkey(self, hotkey_str: str, hold_mode: bool = False):
         """Sets the hotkey string and mode."""
@@ -64,14 +65,39 @@ class InputMonitor:
         try:
             # 1. Register the hotkey with suppression
             if self._hold_mode:
-                # In Hold mode, we need to detect both press and release
-                # We use lower-level hooks for Hold mode to ensure reliable release detection
-                keyboard.on_press_key(
-                    self._hotkey_str, lambda _: self._on_press_callback(), suppress=True
+                # For Hold Mode with potential multi-key combos, we use add_hotkey for the 'down'
+                # trigger and a general hook to detect the 'up' trigger when any key in the
+                # combo is released. This avoids the limitation of on_press_key (single keys only).
+
+                # Parse the hotkey to know which keys to track for release
+                try:
+                    # parse_hotkey returns [( (scan_codes), (names) ), ...]
+                    parsed = keyboard.parse_hotkey(self._hotkey_str)
+                    hotkey_parts = set(parsed[0][1])  # names
+                except Exception:
+                    hotkey_parts = set(self._hotkey_str.split("+"))
+
+                self._current_parts_down = set()
+                self._is_hotkey_down = False
+
+                def _on_press_internal():
+                    if not self._is_hotkey_down:
+                        self._is_hotkey_down = True
+                        self._on_press_callback()
+
+                def _on_release_hook(event):
+                    if event.event_type == "up" and event.name in hotkey_parts:
+                        if self._is_hotkey_down:
+                            self._is_hotkey_down = False
+                            self._on_release_callback()
+
+                keyboard.add_hotkey(
+                    self._hotkey_str,
+                    _on_press_internal,
+                    suppress=True,
+                    trigger_on_release=False,
                 )
-                keyboard.on_release_key(
-                    self._hotkey_str, lambda _: self._on_release_callback(), suppress=True
-                )
+                keyboard.hook(_on_release_hook)
             else:
                 # In Toggle mode, we can use the simpler add_hotkey
                 keyboard.add_hotkey(self._hotkey_str, self._on_press_callback, suppress=True)
