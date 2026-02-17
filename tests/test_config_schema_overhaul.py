@@ -38,8 +38,8 @@ def test_volume_validation():
         SoundsConfig(volume=101.0)
 
     # Valid volume should pass
-    sc = SoundsConfig(volume=50.0)
-    assert sc.volume == 50.0
+    sc = SoundsConfig(volume=50)
+    assert sc.volume == 50
 
 
 def test_aai_inactivity_timeout_validation():

@@ -58,10 +58,10 @@ def play_sound(path: str, volume: float = 0.5):
                     if n_channels > 1:
                         audio = audio.reshape(-1, n_channels)
 
-                    # Apply volume using a cubic taper for natural loudness control
-                    # A 0-100 scale is used for simplicity. (volume / 100)**3
-                    # ensures the sound is much quieter at the low end of the scale.
-                    tapered_volume = (volume / 100.0) ** 3
+                    # Apply volume using a quadratic taper for natural loudness control
+                    # A 0-100 scale is used for simplicity. (volume / 100)**2
+                    # provides a good balance between sensitivity and audibility.
+                    tapered_volume = (volume / 100.0) ** 2
                     audio *= tapered_volume
 
                     # Play

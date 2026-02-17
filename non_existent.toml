@@ -9,7 +9,7 @@ run_at_startup = false
 
 [interaction.sounds]
 enabled = true
-volume = 0.5
+volume = 30
 start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
 stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
