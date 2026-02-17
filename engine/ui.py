@@ -272,10 +272,11 @@ class TrayApp:
                         ),
                         enabled=lambda item: self.current_provider == "openai",
                     ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem("Open Configuration File", self._open_config),
                 ),
             ),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Open Config", self._open_config),
             pystray.MenuItem("Quit", self.stop),
         )
 
