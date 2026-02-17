@@ -15,13 +15,21 @@ def play_sound(path: str, volume: float = 0.5):
     Play a WAV sound file asynchronously with volume control.
     """
     try:
-        if not os.path.exists(path):
-            logger.warning(f"Sound file not found: {path}")
-            return
+        resolved_path = path
+        if not os.path.exists(resolved_path):
+            # Fallback to assets/sounds if it's a relative path or filename
+            filename = os.path.basename(path)
+            # Try project root assets
+            bundled_path = os.path.join("assets", "sounds", filename)
+            if os.path.exists(bundled_path):
+                resolved_path = bundled_path
+            else:
+                logger.warning(f"Sound file not found: {path} (bundled: {bundled_path})")
+                return
 
         def _play():
             try:
-                with wave.open(path, "rb") as wf:
+                with wave.open(resolved_path, "rb") as wf:
                     sample_rate = wf.getframerate()
                     n_channels = wf.getnchannels()
                     sampwidth = wf.getsampwidth()
@@ -49,6 +57,11 @@ def play_sound(path: str, volume: float = 0.5):
                     # Reshape if multi-channel
                     if n_channels > 1:
                         audio = audio.reshape(-1, n_channels)
+
+                    # Peak normalization to ensure the sound is audible
+                    max_val = np.max(np.abs(audio))
+                    if max_val > 0:
+                        audio = audio / max_val
 
                     # Apply volume
                     audio *= volume
