@@ -77,6 +77,10 @@ class AppCoordinator:
         self._last_voice_activity = 0.0
         self._inactivity_task: Optional[asyncio.Task] = None
 
+        # Statistics tracking
+        self.session_start_time = 0.0
+        self.session_word_count = 0
+
         # Injection safety
         self.injection_controller = InjectionController()
 
@@ -282,6 +286,9 @@ class AppCoordinator:
         if not text:
             return
 
+        # Update statistics
+        self.session_word_count += len(text.split())
+
         # Forward to floating indicator
         self.ui_bridge.update_final_text(text)
 
@@ -332,6 +339,8 @@ class AppCoordinator:
 
         self.session_cancelled = False
         self.start_time = time.time()
+        self.session_start_time = self.start_time
+        self.session_word_count = 0
         self.set_state(AppState.CONNECTING)
 
         try:
@@ -400,6 +409,20 @@ class AppCoordinator:
         self.connection_manager.start_idle_timer()
 
         self._play_feedback_sound("stop")
+
+        # Record statistics
+        duration = 0.0
+        if self.session_start_time > 0:
+            duration = time.time() - self.session_start_time
+
+        self.ui_bridge.record_stats(
+            duration=duration,
+            words=self.session_word_count,
+            provider=self.config.transcription.provider,
+            error=(self.state == AppState.ERROR),
+        )
+        self.session_start_time = 0.0
+        self.session_word_count = 0
 
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)

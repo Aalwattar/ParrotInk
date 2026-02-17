@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw
 from .app_types import AppState, ProviderType
 from .credential_ui import ask_key
 from .logging import get_logger
+from .stats import StatsManager
 from .ui_utils import get_app_version
 
 if TYPE_CHECKING:
@@ -68,6 +69,9 @@ class TrayApp:
 
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
+
+        # Stats Management
+        self.stats_manager = StatsManager()
 
         # Lazy-load indicator (I5)
         self.indicator = None
@@ -199,6 +203,7 @@ class TrayApp:
                 radio=True,
             ),
             pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Statistics...", self._on_show_stats_clicked),
             pystray.MenuItem(
                 "Settings",
                 pystray.Menu(
@@ -336,6 +341,15 @@ class TrayApp:
         """Updates the availability status of providers."""
         self.availability = availability
 
+    def _on_show_stats_clicked(self):
+        """Fetches stats and shows the reporting dialog."""
+        report = self.stats_manager.get_report()
+
+        # We run the Tkinter dialog in its own thread because it has its own mainloop
+        from .stats_ui import show_stats_dialog
+
+        threading.Thread(target=show_stats_dialog, args=(report,), daemon=True).start()
+
     def notify(self, message: str, title: str = "ParrotInk"):
         """Show a system tray notification."""
         self.icon.notify(message, title)
@@ -396,6 +410,14 @@ class TrayApp:
             elif msg_type == UIEvent.CLEAR_HUD:
                 if self.indicator:
                     self.indicator.clear()
+            elif msg_type == UIEvent.RECORD_STATS:
+                self.stats_manager.record_session(
+                    duration_seconds=data["duration"],
+                    words=data["words"],
+                    provider=data["provider"],
+                    error=data["error"],
+                )
+                self.stats_manager.save()
             elif msg_type == UIEvent.QUIT:
                 logger.info("UI received QUIT signal via bridge.")
                 self.stop()

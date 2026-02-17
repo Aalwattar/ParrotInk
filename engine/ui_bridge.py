@@ -20,6 +20,7 @@ class UIEvent:
     UPDATE_SETTINGS = "update_settings"
     REFRESH_HUD = "refresh_hud"
     CLEAR_HUD = "clear_hud"
+    RECORD_STATS = "record_stats"
     QUIT = "quit"
 
 
@@ -68,6 +69,11 @@ class UIBridge:
     def clear_hud(self):
         """Signal the HUD to clear its state."""
         self.queue.put((UIEvent.CLEAR_HUD, None))
+
+    def record_stats(self, duration: float, words: int, provider: str, error: bool = False):
+        """Signal the UI to record session statistics."""
+        data = {"duration": duration, "words": words, "provider": provider, "error": error}
+        self.queue.put((UIEvent.RECORD_STATS, data))
 
     def stop(self):
         """Signal the UI to stop."""
