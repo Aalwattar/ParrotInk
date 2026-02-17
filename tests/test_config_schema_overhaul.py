@@ -31,15 +31,15 @@ def test_config_redundancy_removed():
 
 
 def test_volume_validation():
-    """Verify that volume is restricted to 0.0 - 1.0."""
+    """Verify that volume is restricted to 0.0 - 100.0."""
     with pytest.raises(ValidationError):
-        SoundsConfig(volume=-0.1)
+        SoundsConfig(volume=-1.0)
     with pytest.raises(ValidationError):
-        SoundsConfig(volume=1.1)
+        SoundsConfig(volume=101.0)
 
     # Valid volume should pass
-    sc = SoundsConfig(volume=0.5)
-    assert sc.volume == 0.5
+    sc = SoundsConfig(volume=50.0)
+    assert sc.volume == 50.0
 
 
 def test_aai_inactivity_timeout_validation():

@@ -5,11 +5,11 @@ def test_config_update_and_save(tmp_path):
     """Verify that update_and_save persists changes to disk."""
     config_file = tmp_path / "config.toml"
     config = Config()
-    config.interaction.sounds.volume = 0.5
+    config.interaction.sounds.volume = 50.0
     config.save(config_file, blocking=True)
 
     # Update and save
-    new_volume = 0.8
+    new_volume = 80.0
     config.update_and_save(
         {"interaction": {"sounds": {"volume": new_volume}}}, path=config_file, blocking=True
     )

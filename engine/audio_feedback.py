@@ -58,13 +58,11 @@ def play_sound(path: str, volume: float = 0.5):
                     if n_channels > 1:
                         audio = audio.reshape(-1, n_channels)
 
-                    # Peak normalization to ensure the sound is audible
-                    max_val = np.max(np.abs(audio))
-                    if max_val > 0:
-                        audio = audio / max_val
-
-                    # Apply volume
-                    audio *= volume
+                    # Apply volume using a cubic taper for natural loudness control
+                    # A 0-100 scale is used for simplicity. (volume / 100)**3
+                    # ensures the sound is much quieter at the low end of the scale.
+                    tapered_volume = (volume / 100.0) ** 3
+                    audio *= tapered_volume
 
                     # Play
                     sd.play(audio, sample_rate)

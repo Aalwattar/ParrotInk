@@ -71,7 +71,7 @@ class HotkeysConfig(BaseModel):
 class SoundsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     enabled: bool = True
-    volume: float = Field(default=0.5, ge=0.0, le=1.0)
+    volume: float = Field(default=30.0, ge=0.0, le=100.0)
     start_sound_path: str = r"C:\Windows\Media\Speech On.wav"
     stop_sound_path: str = r"C:\Windows\Media\Speech Off.wav"
 
