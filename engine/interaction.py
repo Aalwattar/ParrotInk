@@ -40,10 +40,10 @@ class InputMonitor:
             self._hold_mode = hold_mode
             if self._is_running:
                 # Re-register if already running
-                # Note: stop() and start() also use the lock, 
+                # Note: stop() and start() also use the lock,
                 # so we must be careful with recursion.
                 pass
-        
+
         # Call outside lock to avoid deadlock if stop/start also use it
         if self._is_running:
             self.stop()

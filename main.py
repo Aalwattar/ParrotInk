@@ -160,7 +160,9 @@ class AppCoordinator:
                 asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
             else:
                 # Toggle Mode: Toggle listening
-                if self.is_listening:
+                # We check the actual state machine for reliable toggling
+                if self.state == AppState.LISTENING:
+                    logger.debug("Toggle Mode: Hotkey pressed while listening. Stopping...")
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
                 else:
                     asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
@@ -178,7 +180,13 @@ class AppCoordinator:
 
         now = time.time()
         # Cooldown to avoid catching the release of the hotkey itself
-        if now - self.start_time < COOLDOWN_MANUAL_STOP:
+        # However, in Toggle Mode, if the key pressed IS the hotkey, we allow it.
+        is_hotkey = False
+        if key and self.config.hotkeys.hotkey:
+            # Simple check if the key name is in our hotkey string
+            is_hotkey = key.lower() in self.config.hotkeys.hotkey.lower()
+
+        if not is_hotkey and (now - self.start_time < COOLDOWN_MANUAL_STOP):
             return
 
         # Ignore keyboard events if they are coming from our own injection
