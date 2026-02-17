@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable, Optional
 
 import keyboard
@@ -30,13 +31,21 @@ class InputMonitor:
         self._hold_mode = False
         self._is_hotkey_down = False
         self._hooks: list[Any] = []
+        self._lock = threading.Lock()
 
     def set_hotkey(self, hotkey_str: str, hold_mode: bool = False):
         """Sets the hotkey string and mode."""
-        self._hotkey_str = hotkey_str
-        self._hold_mode = hold_mode
+        with self._lock:
+            self._hotkey_str = hotkey_str
+            self._hold_mode = hold_mode
+            if self._is_running:
+                # Re-register if already running
+                # Note: stop() and start() also use the lock, 
+                # so we must be careful with recursion.
+                pass
+        
+        # Call outside lock to avoid deadlock if stop/start also use it
         if self._is_running:
-            # Re-register if already running
             self.stop()
             self.start()
 
@@ -50,7 +59,8 @@ class InputMonitor:
 
     def reset_state(self):
         """Resets the internal tracking state (e.g. if hotkey is considered down)."""
-        self._is_hotkey_down = False
+        with self._lock:
+            self._is_hotkey_down = False
 
     def _any_key_hook(self, event):
         """Hook for detecting any key press during recording."""
@@ -74,76 +84,82 @@ class InputMonitor:
 
     def start(self):
         """Starts the keyboard hooks."""
-        if self._is_running or not self._hotkey_str:
-            return
+        with self._lock:
+            if self._is_running or not self._hotkey_str:
+                return
 
-        try:
-            hotkey_parts = self._get_hotkey_parts()
+            try:
+                hotkey_parts = self._get_hotkey_parts()
 
-            # 1. Register the hotkey with suppression
-            if self._hold_mode:
-                self._is_hotkey_down = False
+                # 1. Register the hotkey with suppression
+                if self._hold_mode:
+                    self._is_hotkey_down = False
 
-                def _on_press_internal():
-                    if not self._is_hotkey_down:
-                        self._is_hotkey_down = True
-                        self._on_press_callback()
+                    def _on_press_internal():
+                        with self._lock:
+                            if not self._is_hotkey_down:
+                                self._is_hotkey_down = True
+                                self._on_press_callback()
 
-                def _on_release_hook(event):
-                    if event.event_type == "up" and event.name in hotkey_parts:
-                        if self._is_hotkey_down:
-                            self._is_hotkey_down = False
-                            self._on_release_callback()
+                    def _on_release_hook(event):
+                        if event.event_type == "up" and event.name in hotkey_parts:
+                            with self._lock:
+                                if self._is_hotkey_down:
+                                    self._is_hotkey_down = False
+                                    self._on_release_callback()
 
-                h1 = keyboard.add_hotkey(
-                    self._hotkey_str,
-                    _on_press_internal,
-                    suppress=True,
-                    trigger_on_release=False,
-                )
-                self._hooks.append(h1)
+                    h1 = keyboard.add_hotkey(
+                        self._hotkey_str,
+                        _on_press_internal,
+                        suppress=True,
+                        trigger_on_release=False,
+                    )
+                    self._hooks.append(h1)
 
-                h2 = keyboard.hook(_on_release_hook)
-                self._hooks.append(h2)
-            else:
-                # In Toggle mode, we use a similar debounced structure to prevent
-                # rapid fire if the key is held down.
-                def _on_toggle_press():
-                    if not self._is_hotkey_down:
-                        self._is_hotkey_down = True
-                        self._on_press_callback()
+                    h2 = keyboard.hook(_on_release_hook)
+                    self._hooks.append(h2)
+                else:
+                    # In Toggle mode, we use a similar debounced structure to prevent
+                    # rapid fire if the key is held down.
+                    def _on_toggle_press():
+                        with self._lock:
+                            if not self._is_hotkey_down:
+                                self._is_hotkey_down = True
+                                self._on_press_callback()
 
-                def _on_toggle_release(event):
-                    if event.event_type == "up" and event.name in hotkey_parts:
-                        self._is_hotkey_down = False
+                    def _on_toggle_release(event):
+                        if event.event_type == "up" and event.name in hotkey_parts:
+                            with self._lock:
+                                self._is_hotkey_down = False
 
-                h1 = keyboard.add_hotkey(
-                    self._hotkey_str, _on_toggle_press, suppress=True, trigger_on_release=False
-                )
-                self._hooks.append(h1)
+                    h1 = keyboard.add_hotkey(
+                        self._hotkey_str, _on_toggle_press, suppress=True, trigger_on_release=False
+                    )
+                    self._hooks.append(h1)
 
-                h2 = keyboard.hook(_on_toggle_release)
-                self._hooks.append(h2)
+                    h2 = keyboard.hook(_on_toggle_release)
+                    self._hooks.append(h2)
 
-            # 2. Register the 'any-key' hook for cancellation
-            h3 = keyboard.hook(self._any_key_hook)
-            self._hooks.append(h3)
+                # 2. Register the 'any-key' hook for cancellation
+                h3 = keyboard.hook(self._any_key_hook)
+                self._hooks.append(h3)
 
-            self._is_running = True
-            logger.debug(f"InputMonitor started with hotkey: {self._hotkey_str} (suppressed)")
-        except Exception as e:
-            logger.error(f"Failed to start InputMonitor: {e}")
+                self._is_running = True
+                logger.debug(f"InputMonitor started with hotkey: {self._hotkey_str} (suppressed)")
+            except Exception as e:
+                logger.error(f"Failed to start InputMonitor: {e}")
 
     def stop(self):
         """Stops all keyboard hooks tracked by this monitor."""
-        try:
-            for hook in self._hooks:
-                try:
-                    keyboard.unhook(hook)
-                except Exception:
-                    pass
-            self._hooks.clear()
-            self._is_running = False
-            logger.debug("InputMonitor stopped (tracked hooks removed).")
-        except Exception as e:
-            logger.error(f"Error stopping InputMonitor: {e}")
+        with self._lock:
+            try:
+                for hook in self._hooks:
+                    try:
+                        keyboard.unhook(hook)
+                    except Exception:
+                        pass
+                self._hooks.clear()
+                self._is_running = False
+                logger.debug("InputMonitor stopped (tracked hooks removed).")
+            except Exception as e:
+                logger.error(f"Error stopping InputMonitor: {e}")

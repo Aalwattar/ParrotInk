@@ -73,11 +73,23 @@
 # warm_idle_timeout_seconds = 300
 
 # Timeout for the initial WebSocket handshake in seconds.
-# connection_timeout_seconds = 10.0
+# connection_timeout_seconds = 20.0
+
+# Timeout for the application cleanup during shutdown in seconds.
+# shutdown_timeout_seconds = 10.0
 
 # Sensitivity for local voice activity detection. Lower is more sensitive.
 # Range: 0.001 to 0.05.
 # voice_activity_threshold = 0.005
+
+# Maximum number of retry attempts for a failed connection.
+# max_retries = 3
+
+# Initial delay in seconds before the first connection retry.
+# initial_backoff_seconds = 1.0
+
+# Maximum delay in seconds between connection retries.
+# max_backoff_seconds = 60.0
 
 [transcription]
 # The active transcription service provider.
@@ -100,6 +112,9 @@
 
 # BCP-47 language code (e.g., "en", "es", "fr", "ja").
 # language = "en"
+
+# How long to keep a single OpenAI session open before forcing a refresh (in seconds).
+# session_rotation_seconds = 3300
 
 # --- OpenAI Advanced ---
 [providers.openai.advanced]
