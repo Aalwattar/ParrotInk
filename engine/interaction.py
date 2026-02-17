@@ -30,6 +30,7 @@ class InputMonitor:
         self._is_running = False
         self._hold_mode = False
         self._is_hotkey_down = False
+        self._hotkey_scan_codes: set[int] = set()
         self._handles: list[tuple[str, Any]] = []
         self._lock = threading.Lock()
 
@@ -68,16 +69,33 @@ class InputMonitor:
             # We filter out the hotkey itself to prevent self-cancellation
             self._any_key_callback(event.name)
 
-    def _get_hotkey_parts(self) -> set[str]:
-        """Parses the hotkey string into a set of normalized key names."""
+    def _get_hotkey_parts(self) -> tuple[set[str], set[int]]:
+        """Parses the hotkey string into normalized names and scan codes."""
         if not self._hotkey_str:
-            return set()
+            return set(), set()
         try:
-            # parse_hotkey returns [( (scan_codes), (names) ), ...]
+            # parse_hotkey returns [( (scan_codes), (names) ), ...] or similar nested structures
             parsed = keyboard.parse_hotkey(self._hotkey_str)
-            return set(parsed[0][1])  # names
+            names = set()
+            scan_codes = set()
+            for chord in parsed:
+                # A chord is a tuple of tuples, e.g. ((sc1, sc2), (sc3,))
+                for part in chord:
+                    if isinstance(part, (tuple, list)):
+                        for item in part:
+                            if isinstance(item, int):
+                                scan_codes.add(item)
+                            else:
+                                names.add(str(item).lower())
+                    else:
+                        if isinstance(part, int):
+                            scan_codes.add(part)
+                        else:
+                            names.add(str(part).lower())
+            return names, scan_codes
         except Exception:
-            return set(self._hotkey_str.split("+"))
+            names = {name.strip().lower() for name in self._hotkey_str.split("+")}
+            return names, set()
 
     def start(self):
         """Starts the keyboard hooks."""
@@ -87,7 +105,8 @@ class InputMonitor:
 
             new_handles: list[tuple[str, Any]] = []
             try:
-                hotkey_parts = self._get_hotkey_parts()
+                hotkey_names, hotkey_scan_codes = self._get_hotkey_parts()
+                self._hotkey_scan_codes = hotkey_scan_codes
 
                 # 1. Register the hotkey with suppression
                 if self._hold_mode:
@@ -100,7 +119,7 @@ class InputMonitor:
                                 self._on_press_callback()
 
                     def _on_release_hook(event):
-                        if event.event_type == "up" and event.name in hotkey_parts:
+                        if event.event_type == "up" and event.scan_code in self._hotkey_scan_codes:
                             with self._lock:
                                 if self._is_hotkey_down:
                                     self._is_hotkey_down = False
@@ -126,7 +145,7 @@ class InputMonitor:
                                 self._on_press_callback()
 
                     def _on_toggle_release(event):
-                        if event.event_type == "up" and event.name in hotkey_parts:
+                        if event.event_type == "up" and event.scan_code in self._hotkey_scan_codes:
                             with self._lock:
                                 self._is_hotkey_down = False
 

@@ -343,9 +343,8 @@ class TrayApp:
     def _refresh_menu(self):
         """Rebuilds and refreshes the tray menu."""
         logger.debug("TrayApp: Refreshing tray menu...")
-        # On some platforms/versions of pystray, we need to re-create the menu
-        # to ensure dynamic labels (lambdas) are re-evaluated or updated.
-        self.icon.menu = self._create_icon().menu
+        # Update the menu on the existing icon to avoid WinError 1410
+        self.icon.menu = self._create_menu()
 
     def _poll_bridge(self):
         """Polls the UI bridge for events and updates the icon."""

@@ -178,7 +178,6 @@ class AppCoordinator:
                     # to prevent rapid Stop -> Start oscillation.
                     if time.time() - self._last_manual_stop_time < 0.3:
                         logger.info("Ignoring rapid Toggle START trigger (lockout active).")
-                        self.input_monitor.reset_state()
                         return
                     asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
 
