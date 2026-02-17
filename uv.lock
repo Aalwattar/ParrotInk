@@ -794,7 +794,7 @@ wheels = [
 
 [[package]]
 name = "parrotink"
-version = "0.2.2a0"
+version = "0.3.0a0"
 source = { virtual = "." }
 dependencies = [
     { name = "assemblyai" },
