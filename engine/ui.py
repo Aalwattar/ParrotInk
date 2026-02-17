@@ -179,14 +179,20 @@ class TrayApp:
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
-                lambda item: "OpenAI" if self.availability.get("openai", True) else "OpenAI (Missing Key)",
+                lambda item: (
+                    "OpenAI" if self.availability.get("openai", True) else "OpenAI (Missing Key)"
+                ),
                 lambda icon, item: self._on_provider_selection(icon, "openai"),
                 checked=lambda item: self.current_provider == "openai",
                 enabled=lambda item: self.availability.get("openai", True),
                 radio=True,
             ),
             pystray.MenuItem(
-                lambda item: "AssemblyAI" if self.availability.get("assemblyai", True) else "AssemblyAI (Missing Key)",
+                lambda item: (
+                    "AssemblyAI"
+                    if self.availability.get("assemblyai", True)
+                    else "AssemblyAI (Missing Key)"
+                ),
                 lambda icon, item: self._on_provider_selection(icon, "assemblyai"),
                 checked=lambda item: self.current_provider == "assemblyai",
                 enabled=lambda item: self.availability.get("assemblyai", True),
@@ -205,7 +211,9 @@ class TrayApp:
                             ),
                             pystray.MenuItem(
                                 "Set AssemblyAI Key...",
-                                lambda: self._on_set_key_clicked("assemblyai_api_key", "AssemblyAI"),
+                                lambda: self._on_set_key_clicked(
+                                    "assemblyai_api_key", "AssemblyAI"
+                                ),
                             ),
                         ),
                     ),

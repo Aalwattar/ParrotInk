@@ -105,8 +105,13 @@ class Anchor:
         if self.scope == "window":
             # Target HWND must be the same window or a child of it
             # We check the root owner/parent window
-            root_hwnd = get_ancestor(target_hwnd, GA_ROOT)
-            if root_hwnd == self.hwnd or target_hwnd == self.hwnd:
+            target_root = get_ancestor(target_hwnd, GA_ROOT)
+
+            if self.hwnd is None:
+                return False
+
+            anchor_root = get_ancestor(self.hwnd, GA_ROOT)
+            if target_root == anchor_root or target_hwnd == anchor_root:
                 return True
 
             # If the foreground window has changed but the root is the same, it's a match

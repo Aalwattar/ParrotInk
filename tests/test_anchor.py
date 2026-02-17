@@ -17,15 +17,18 @@ def test_anchor_match_window(mocker):
     assert anchor.hwnd == mock_hwnd
 
     # Mock WindowFromPoint for is_match
+
+    # We use a side_effect that returns the input HWND as its own ancestor (root)
+    # to simulate simple windows that are their own roots.
+    mocker.patch("engine.anchor.get_ancestor", side_effect=lambda h, f: h)
+
     # 1. Click on the same window
     mocker.patch("engine.anchor.window_from_point", return_value=mock_hwnd)
-    mocker.patch("engine.anchor.get_ancestor", return_value=mock_hwnd)
     assert anchor.is_match(100, 100) is True
 
     # 2. Click on a different window
     other_hwnd = 67890
     mocker.patch("engine.anchor.window_from_point", return_value=other_hwnd)
-    mocker.patch("engine.anchor.get_ancestor", return_value=other_hwnd)
     assert anchor.is_match(500, 500) is False
 
 

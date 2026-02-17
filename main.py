@@ -200,7 +200,6 @@ class AppCoordinator:
         # If we are in Toggle mode, ANY key press (other than hotkey) should stop the session.
         if not self.config.hotkeys.hold_mode:
             logger.info(f"Manual stop triggered by key: {key}")
-            self.session_cancelled = True
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
@@ -216,8 +215,10 @@ class AppCoordinator:
         logger.debug(f"Inactivity monitor started (timeout={timeout}s)")
 
         try:
-            while self.is_listening:
+            while self.state == AppState.LISTENING:
                 await asyncio.sleep(1.0)  # Check every second
+                if self.state != AppState.LISTENING:
+                    break
                 now = time.time()
                 elapsed = now - self._last_voice_activity
                 if elapsed >= timeout:

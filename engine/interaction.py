@@ -35,17 +35,15 @@ class InputMonitor:
 
     def set_hotkey(self, hotkey_str: str, hold_mode: bool = False):
         """Sets the hotkey string and mode."""
+        was_running = False
         with self._lock:
+            if self._hotkey_str == hotkey_str and self._hold_mode == hold_mode:
+                return
             self._hotkey_str = hotkey_str
             self._hold_mode = hold_mode
-            if self._is_running:
-                # Re-register if already running
-                # Note: stop() and start() also use the lock,
-                # so we must be careful with recursion.
-                pass
+            was_running = self._is_running
 
-        # Call outside lock to avoid deadlock if stop/start also use it
-        if self._is_running:
+        if was_running:
             self.stop()
             self.start()
 
@@ -88,6 +86,7 @@ class InputMonitor:
             if self._is_running or not self._hotkey_str:
                 return
 
+            new_hooks = []
             try:
                 hotkey_parts = self._get_hotkey_parts()
 
@@ -114,10 +113,10 @@ class InputMonitor:
                         suppress=True,
                         trigger_on_release=False,
                     )
-                    self._hooks.append(h1)
+                    new_hooks.append(h1)
 
                     h2 = keyboard.hook(_on_release_hook)
-                    self._hooks.append(h2)
+                    new_hooks.append(h2)
                 else:
                     # In Toggle mode, we use a similar debounced structure to prevent
                     # rapid fire if the key is held down.
@@ -135,19 +134,27 @@ class InputMonitor:
                     h1 = keyboard.add_hotkey(
                         self._hotkey_str, _on_toggle_press, suppress=True, trigger_on_release=False
                     )
-                    self._hooks.append(h1)
+                    new_hooks.append(h1)
 
                     h2 = keyboard.hook(_on_toggle_release)
-                    self._hooks.append(h2)
+                    new_hooks.append(h2)
 
                 # 2. Register the 'any-key' hook for cancellation
                 h3 = keyboard.hook(self._any_key_hook)
-                self._hooks.append(h3)
+                new_hooks.append(h3)
 
+                # Commit changes
+                self._hooks.extend(new_hooks)
                 self._is_running = True
                 logger.debug(f"InputMonitor started with hotkey: {self._hotkey_str} (suppressed)")
             except Exception as e:
                 logger.error(f"Failed to start InputMonitor: {e}")
+                # Transactional cleanup
+                for h in new_hooks:
+                    try:
+                        keyboard.unhook(h)
+                    except Exception:
+                        pass
 
     def stop(self):
         """Stops all keyboard hooks tracked by this monitor."""
