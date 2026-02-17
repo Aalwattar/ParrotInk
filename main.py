@@ -73,6 +73,7 @@ class AppCoordinator:
 
         self.session_cancelled = False
         self.start_time = 0
+        self._last_manual_stop_time = 0.0
         self._last_voice_activity = 0.0
         self._inactivity_task: Optional[asyncio.Task] = None
 
@@ -137,6 +138,12 @@ class AppCoordinator:
         if self.state == state:
             return
         logger.debug(f"State transition: {self.state.name} -> {state.name}")
+
+        # If we are stopping a listening session, record the time for debouncing
+        if self.state == AppState.LISTENING and state != AppState.LISTENING:
+            self._last_manual_stop_time = time.time()
+            logger.info(f"Lockout timer set at {self._last_manual_stop_time}")
+
         self.state = state
         self.ui_bridge.set_state(state)
 
@@ -167,6 +174,12 @@ class AppCoordinator:
                     logger.debug("Toggle Mode: Hotkey pressed while listening. Stopping...")
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
                 else:
+                    # Intent Lockout: If we just stopped, ignore this trigger
+                    # to prevent rapid Stop -> Start oscillation.
+                    if time.time() - self._last_manual_stop_time < 0.3:
+                        logger.info("Ignoring rapid Toggle START trigger (lockout active).")
+                        self.input_monitor.reset_state()
+                        return
                     asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
 
     def _on_hotkey_release(self):

@@ -57,8 +57,7 @@ class InputMonitor:
 
     def reset_state(self):
         """Resets the internal tracking state (e.g. if hotkey is considered down)."""
-        with self._lock:
-            self._is_hotkey_down = False
+        self._is_hotkey_down = False
 
     def _any_key_hook(self, event):
         """Hook for detecting any key press during recording."""
