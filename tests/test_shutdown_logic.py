@@ -3,12 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from engine.config import Config
 from main import AppCoordinator
 
 
 @pytest.mark.asyncio
 async def test_shutdown_idempotency():
-    config = MagicMock()
+    config = Config()
     # Mock streamer and UI
     coordinator = AppCoordinator(config)
     coordinator.streamer = MagicMock()
@@ -29,7 +30,7 @@ async def test_shutdown_idempotency():
 
 @pytest.mark.asyncio
 async def test_shutdown_deadline_exceeded():
-    config = MagicMock()
+    config = Config()
     coordinator = AppCoordinator(config)
     coordinator.streamer = MagicMock()
     coordinator.ui_bridge = MagicMock()
