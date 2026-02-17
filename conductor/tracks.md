@@ -206,3 +206,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Code Audit & Refactoring**
 *Link: [./archive/code_audit_refactor_20260216/](./archive/code_audit_refactor_20260216/)*
+
+---
+
+- [ ] **Track: Create a stat page to record and display usage statistics (Daily, Monthly, Lifetime) in the menu.**
+*Link: [./tracks/stats_page_20260217/](./tracks/stats_page_20260217/)*
