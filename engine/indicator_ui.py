@@ -210,7 +210,7 @@ class IndicatorWindow:
         if linger_seconds is not None:
             self._start_linger_timer(linger_seconds)
 
-    def update_voice_active(self, active: bool):
+    def update_voice_activity(self, active: bool):
         if hasattr(self.impl, "update_voice_active"):
             self.impl.update_voice_active(active)
 

@@ -73,6 +73,8 @@ class AppCoordinator:
 
         self.session_cancelled = False
         self.start_time = 0
+        self._last_voice_activity = 0.0
+        self._inactivity_task: Optional[asyncio.Task] = None
 
         # Injection safety
         self.injection_controller = InjectionController()
@@ -202,6 +204,33 @@ class AppCoordinator:
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
+    def _on_voice_activity(self, active: bool):
+        """Callback from AudioPipeline when voice activity is detected."""
+        if active:
+            self._last_voice_activity = time.time()
+        self.ui_bridge.update_voice_activity(active)
+
+    async def _inactivity_check_loop(self):
+        """Background task that stops recording if silent for too long (Toggle Mode)."""
+        timeout = self.config.audio.inactivity_timeout_seconds
+        logger.debug(f"Inactivity monitor started (timeout={timeout}s)")
+
+        try:
+            while self.is_listening:
+                await asyncio.sleep(1.0)  # Check every second
+                now = time.time()
+                elapsed = now - self._last_voice_activity
+                if elapsed >= timeout:
+                    logger.info(f"Auto-stopping due to {timeout}s inactivity.")
+                    # We must run this in the loop
+                    if self.loop:
+                        asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+                    break
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in inactivity check loop: {e}")
+
     def on_partial(self, text: str):
         if self.session_cancelled:
             return
@@ -286,6 +315,9 @@ class AppCoordinator:
 
             self.ui_bridge.clear_hud()
 
+            self._last_voice_activity = time.time()
+            self.pipeline.on_voice_activity = self._on_voice_activity
+
             # 2. Initiate connection (Ensure we have provider and adapter ready)
             # Use a timeout for the overall start operation
             async with asyncio.timeout(self.config.audio.connection_timeout_seconds + 10.0):
@@ -303,6 +335,12 @@ class AppCoordinator:
             self.mouse_monitor.start()
             # Enable any-key monitoring for cancellation
             self.input_monitor.enable_any_key_monitoring(True)
+
+            # 5. Start inactivity monitor if in Toggle Mode
+            if not self.config.hotkeys.hold_mode:
+                if self._inactivity_task:
+                    self._inactivity_task.cancel()
+                self._inactivity_task = asyncio.create_task(self._inactivity_check_loop())
 
             self.set_state(AppState.LISTENING)
 
@@ -326,9 +364,14 @@ class AppCoordinator:
         self.mouse_monitor.stop()
         self.anchor = None
 
+        if self._inactivity_task:
+            self._inactivity_task.cancel()
+            self._inactivity_task = None
+
         # Do NOT call stop_provider() here!
         # ConnectionManager handles keeping the connection "warm" or rotating it.
         await self.pipeline.stop()
+        self.pipeline.on_voice_activity = None
         self.connection_manager.start_idle_timer()
 
         self._play_feedback_sound("stop")

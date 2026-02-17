@@ -82,6 +82,10 @@
 # Range: 0.001 to 0.05.
 # voice_activity_threshold = 0.005
 
+# Automatically stop recording in 'Toggle Mode' after this many seconds of silence.
+# Range: 5 to 3600.
+# inactivity_timeout_seconds = 30
+
 # Maximum number of retry attempts for a failed connection.
 # max_retries = 3
 
