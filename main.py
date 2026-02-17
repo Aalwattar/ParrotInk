@@ -222,28 +222,41 @@ class AppCoordinator:
             self._last_voice_activity = time.time()
         self.ui_bridge.update_voice_activity(active)
 
-    async def _inactivity_check_loop(self):
-        """Background task that stops recording if silent for too long (Toggle Mode)."""
+    async def _listening_monitor_loop(self):
+        """Background task that monitors pipeline health and inactivity."""
         timeout = self.config.audio.inactivity_timeout_seconds
-        logger.debug(f"Inactivity monitor started (timeout={timeout}s)")
+        logger.debug(f"Listening monitor started (inactivity_timeout={timeout}s)")
 
         try:
             while self.state == AppState.LISTENING:
-                await asyncio.sleep(1.0)  # Check every second
+                await asyncio.sleep(0.5)  # Check twice per second
                 if self.state != AppState.LISTENING:
                     break
-                now = time.time()
-                elapsed = now - self._last_voice_activity
-                if elapsed >= timeout:
-                    logger.info(f"Auto-stopping due to {timeout}s inactivity.")
-                    # We must run this in the loop
+
+                # 1. Check for Pipeline Failure (e.g. provider network error)
+                if not self.pipeline.is_active:
+                    logger.error("Audio pipeline stopped unexpectedly during listening.")
+                    self.set_state(AppState.ERROR)
+                    # Force cleanup
                     if self.loop:
-                        asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+                        self.loop.create_task(self.stop_listening())
+                    else:
+                        await self.stop_listening()
                     break
+
+                # 2. Check for Inactivity (Toggle Mode only)
+                if not self.config.hotkeys.hold_mode:
+                    now = time.time()
+                    elapsed = now - self._last_voice_activity
+                    if elapsed >= timeout:
+                        logger.info(f"Auto-stopping due to {timeout}s inactivity.")
+                        if self.loop:
+                            asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+                        break
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error(f"Error in inactivity check loop: {e}")
+            logger.error(f"Error in listening monitor loop: {e}")
 
     def on_partial(self, text: str):
         if self.session_cancelled:
@@ -350,11 +363,10 @@ class AppCoordinator:
             # Enable any-key monitoring for cancellation
             self.input_monitor.enable_any_key_monitoring(True)
 
-            # 5. Start inactivity monitor if in Toggle Mode
-            if not self.config.hotkeys.hold_mode:
-                if self._inactivity_task:
-                    self._inactivity_task.cancel()
-                self._inactivity_task = asyncio.create_task(self._inactivity_check_loop())
+            # 5. Start listening monitor (inactivity + health)
+            if self._inactivity_task:
+                self._inactivity_task.cancel()
+            self._inactivity_task = asyncio.create_task(self._listening_monitor_loop())
 
             self.set_state(AppState.LISTENING)
 

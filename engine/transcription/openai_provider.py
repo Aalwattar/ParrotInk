@@ -147,6 +147,7 @@ class OpenAIProvider(BaseProvider):
             await self.ws.send(json.dumps(event))
         except Exception as e:
             logger.error(f"Error sending audio to OpenAI: {e}")
+            self._is_running = False
 
     async def _receive_loop(self):
         """Handle incoming server events."""
@@ -158,6 +159,7 @@ class OpenAIProvider(BaseProvider):
         except Exception as e:
             if self._is_running:
                 logger.error(f"Error in OpenAI receive loop: {e}")
+                self._is_running = False
 
     async def _handle_event(self, event: dict):
         """Route transcription events."""

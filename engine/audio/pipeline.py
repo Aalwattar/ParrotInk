@@ -75,6 +75,11 @@ class AudioPipeline:
 
                 await provider.send_audio(processed, capture_time)
 
+                # Check if provider has crashed/stopped due to network failure
+                if not provider.is_running and self._is_running:
+                    logger.error(f"Provider {provider.get_type()} stopped unexpectedly.")
+                    break
+
         except Exception as e:
             # We don't want to crash the whole app if the pipe fails,
 
