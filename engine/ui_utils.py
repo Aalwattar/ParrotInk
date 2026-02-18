@@ -4,10 +4,15 @@ import tomllib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .logging import get_logger
+
+logger = get_logger("UIUtils")
+
 try:
     from win11toast import toast
 except ImportError:
     # Optional dependency: Only required for Windows notifications
+    logger.debug("win11toast not found. Startup notifications disabled.")
     toast = None
 
 if TYPE_CHECKING:
@@ -59,15 +64,22 @@ def show_startup_toast(config: "Config"):
         config (Config): The application configuration, used to get the hotkey.
     """
     if not toast:
+        logger.debug("Toast library not available. Skipping startup notification.")
         return
 
-    hotkey = config.hotkeys.hotkey.upper()
-    try:
-        toast(
-            title="ParrotInk Ready",
-            body=f"Press {hotkey} to start transcription",
-            duration="short",
-        )
-    except Exception:
-        # Notifications should be non-blocking and safe to fail
-        pass
+    import threading
+
+    def _show():
+        hotkey = config.hotkeys.hotkey.upper()
+        try:
+            logger.debug(f"Attempting to show startup toast with hotkey: {hotkey}")
+            # Removing explicit app_id to use default Python/Windows handling
+            toast(
+                title="✨ ParrotInk is Ready",
+                body=f"Hotkey {hotkey} is active. Right-click the tray icon for settings.",
+                duration="short",
+            )
+        except Exception as e:
+            logger.warning(f"Failed to show startup toast: {e}")
+
+    threading.Thread(target=_show, daemon=True).start()

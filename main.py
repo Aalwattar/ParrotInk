@@ -529,7 +529,8 @@ if __name__ == "__main__":
             "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
         }
         account_id, provider_name = account_map[cli_args.provider]
-        key = ask_key(provider_name)
+        # Added missing title argument for CLI mode
+        key = ask_key(None, f"Set {provider_name} Key")
         if key:
             SecurityManager.set_key(account_id, key)
             print(f"Key for {provider_name} saved.")
