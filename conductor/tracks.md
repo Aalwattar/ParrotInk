@@ -215,4 +215,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Startup Toast Notification** [checkpoint: 2ca5a8f]
-*Link: [./tracks/startup_toast_20260217/](./tracks/startup_toast_20260217/)*
+*Link: [./archive/startup_toast_20260217/](./archive/startup_toast_20260217/)*
