@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 import ttkbootstrap as tb
-from ttkbootstrap.constants import BOTH, DEFAULT, EW, INFO, LEFT, PRIMARY, RIGHT, SECONDARY, W, X
+from ttkbootstrap.constants import BOTH, INFO, LEFT, PRIMARY, RIGHT, SECONDARY, W, X
 
 
 def show_stats_dialog(master, stats_report: Dict[str, Any]):
@@ -13,88 +13,102 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
     window = tb.Toplevel(
         master=master,
         title="ParrotInk Analytics",
-        size=(520, 580),
+        size=(520, 600),
         resizable=(False, False),
     )
 
-    # Main container with padding
-    main_frame = tb.Frame(window, padding=25)
+    # Main container with generous padding for luxury feel
+    main_frame = tb.Frame(window, padding=35)
     main_frame.pack(fill=BOTH, expand=True)
 
     # --- Header ---
     header_frame = tb.Frame(main_frame)
-    header_frame.pack(fill=X, pady=(0, 20))
+    header_frame.pack(fill=X, pady=(0, 30))
 
     tb.Label(
         header_frame,
         text="Usage Analytics",
-        font=("Segoe UI Variable Display", 20, "bold"),
-        bootstyle=DEFAULT,
+        font=("Segoe UI Variable Display", 22, "bold"),
     ).pack(side=LEFT)
 
     # --- Tabs ---
+    # Notebook is styled via the global theme, but we ensure content is clean
     notebook = tb.Notebook(main_frame, bootstyle=PRIMARY)
     notebook.pack(fill=BOTH, expand=True)
 
     def create_stat_tab(parent, data):
-        tab = tb.Frame(parent, padding=20)
+        tab = tb.Frame(parent, padding=25)
 
-        # Hero Stat
+        # Hero Stat - Large, clean numbers without boxes
         val = data.get("total_transcriptions", 0)
         hero_frame = tb.Frame(tab)
-        hero_frame.pack(fill=X, pady=(10, 20))
+        hero_frame.pack(fill=X, pady=(10, 30))
 
         tb.Label(
             hero_frame,
             text=str(val),
-            font=("Segoe UI Variable Display", 32, "bold"),
-            bootstyle=PRIMARY,
+            font=("Segoe UI Variable Display", 42, "bold"),
+            foreground="white",
         ).pack()
         tb.Label(
             hero_frame,
             text="TOTAL TRANSCRIPTIONS",
-            font=("Segoe UI", 8, "bold"),
+            font=("Segoe UI Variable Text", 9, "bold"),
             bootstyle=SECONDARY,
         ).pack()
 
-        # Secondary Stats
+        # Secondary Stats - Clean alignment, no distracting tiles
         metrics_frame = tb.Frame(tab)
         metrics_frame.pack(fill=X, pady=10)
         metrics_frame.columnconfigure((0, 1), weight=1)
 
         dur_sec = data.get("total_duration_seconds", 0)
         dur_min = round(dur_sec / 60, 1)
-        dur_tile = tb.Frame(metrics_frame, bootstyle=SECONDARY, padding=10)
-        dur_tile.grid(row=0, column=0, padx=(0, 5), sticky=EW)
-        tb.Label(dur_tile, text=f"{dur_min}m", font=("Segoe UI", 14, "bold")).pack()
-        tb.Label(dur_tile, text="DURATION", font=("Segoe UI", 7, "bold"), bootstyle=INFO).pack()
 
-        words_tile = tb.Frame(metrics_frame, bootstyle=SECONDARY, padding=10)
-        words_tile.grid(row=0, column=1, padx=(5, 0), sticky=EW)
-        tb.Label(
-            words_tile, text=str(data.get("total_words", 0)), font=("Segoe UI", 14, "bold")
-        ).pack()
-        tb.Label(words_tile, text="WORDS", font=("Segoe UI", 7, "bold"), bootstyle=INFO).pack()
+        # Duration Column
+        dur_col = tb.Frame(metrics_frame)
+        dur_col.grid(row=0, column=0, sticky=W)
+        tb.Label(dur_col, text=f"{dur_min}m", font=("Segoe UI Variable Display", 18, "bold")).pack(
+            anchor=W
+        )
+        tb.Label(dur_col, text="DURATION", font=("Segoe UI", 8, "bold"), bootstyle=INFO).pack(
+            anchor=W
+        )
 
-        # Service Breakdown
+        # Words Column
+        words_col = tb.Frame(metrics_frame)
+        words_col.grid(row=0, column=1, sticky=W)
         tb.Label(
-            tab, text="SERVICE UTILIZATION", font=("Segoe UI", 8, "bold"), bootstyle=SECONDARY
-        ).pack(anchor=W, pady=(25, 5))
+            words_col,
+            text=str(data.get("total_words", 0)),
+            font=("Segoe UI Variable Display", 18, "bold"),
+        ).pack(anchor=W)
+        tb.Label(words_col, text="WORDS", font=("Segoe UI", 8, "bold"), bootstyle=INFO).pack(
+            anchor=W
+        )
+
+        # Service Breakdown - Minimalist list
+        tb.Label(
+            tab,
+            text="SERVICE UTILIZATION",
+            font=("Segoe UI Variable Text", 8, "bold"),
+            bootstyle=SECONDARY,
+        ).pack(anchor=W, pady=(35, 10))
 
         providers = data.get("provider_usage", {})
         if not providers:
             tb.Label(tab, text="No activity data yet.", font=("Segoe UI", 10), bootstyle=INFO).pack(
-                pady=10
+                anchor=W, pady=5
             )
         else:
             list_frame = tb.Frame(tab)
             list_frame.pack(fill=X)
             for p, count in providers.items():
                 row = tb.Frame(list_frame)
-                row.pack(fill=X, pady=2)
+                row.pack(fill=X, pady=4)
                 tb.Label(row, text=p.title(), font=("Segoe UI", 11)).pack(side=LEFT)
                 tb.Label(
-                    row, text=str(count), font=("Segoe UI", 11, "bold"), bootstyle=PRIMARY
+                    row, text=str(count), font=("Segoe UI", 11, "bold"), foreground="#CCCCCC"
                 ).pack(side=RIGHT)
 
         return tab

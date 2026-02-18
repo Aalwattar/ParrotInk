@@ -19,16 +19,20 @@ def test_show_startup_toast_triggered(mock_config):
         # Define a side effect that calls the target function immediately
         def run_thread(target, daemon=None):
             target()
-        mock_thread.return_value.start.side_effect = lambda: run_thread(mock_thread.call_args[1]["target"])
-        
+
+        mock_thread.return_value.start.side_effect = lambda: run_thread(
+            mock_thread.call_args[1]["target"]
+        )
+
         show_startup_toast(mock_config)
-        
+
         mock_toast.assert_called_once()
         args, kwargs = mock_toast.call_args
         assert kwargs["title"] == "✨ ParrotInk is Ready"
         assert "CTRL+SPACE" in kwargs["body"]
         assert "tray icon" in kwargs["body"].lower()
         assert kwargs["duration"] == "short"
+
 
 def test_show_startup_toast_handles_missing_lib(mock_config):
     """Verify that it doesn't crash if win11toast is missing (e.g. non-windows)."""

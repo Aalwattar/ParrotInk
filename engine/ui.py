@@ -100,13 +100,13 @@ class TrayApp:
         """Dedicated background thread for the Tcl/Tk interpreter."""
         global _master_root
         if _master_root is None:
-            # We initialize the master here, strictly on the UI thread.
-            _master_root = tb.Window(themename="superhero")
+            # Senior Architecture: Use 'darkly' for a luxury, monochromatic feel.
+            _master_root = tb.Window(themename="darkly")
             _master_root.withdraw()
-        
+
         self.ui_root = _master_root
         self._ui_ready.set()
-        
+
         # Enter the hidden Master mainloop
         self.ui_root.mainloop()
 
@@ -172,7 +172,7 @@ class TrayApp:
         # We launch the dialog on the UI Thread via after(0, ...)
         def prompt():
             from .credential_ui import ask_key
-            
+
             if self.ui_root:
                 key = ask_key(self.ui_root, provider_name)
                 if key and self.on_set_key:
@@ -366,7 +366,7 @@ class TrayApp:
     def run(self) -> None:
         # 1. Launch the hidden Master on its own sidecar thread
         threading.Thread(target=self._run_ui_loop, daemon=True).start()
-        
+
         # 2. Wait for the UI Master to be initialized before continuing
         self._ui_ready.wait(timeout=5.0)
 
@@ -376,7 +376,7 @@ class TrayApp:
         # 4. Start polling the bridge (also in its own thread)
         if self.bridge:
             threading.Thread(target=self._poll_bridge, daemon=True).start()
-        
+
         if self.indicator:
             threading.Thread(target=self.indicator.start, daemon=True).start()
 
