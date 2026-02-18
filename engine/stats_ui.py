@@ -2,7 +2,7 @@ import tkinter as tk
 from typing import Any, Dict
 
 import ttkbootstrap as tb
-from ttkbootstrap.constants import BOTH, LEFT, RIGHT, X
+from ttkbootstrap.constants import LEFT, RIGHT, X
 
 
 def show_stats_dialog(master, stats_report: Dict[str, Any]):
@@ -11,17 +11,15 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
     Increased tab visibility and absolute stability.
     """
     # --- 1. DESIGN SYSTEM ---
-    BG_COLOR = "#0A0A0A"  # Deep Technical Black
-    TEXT_WHITE = "#FFFFFF"
-    TEXT_MUTED = "#888888"  # Increased visibility for inactive tabs
-    ACCENT_CYAN = "#33B5E5"
-    ACCENT_PURPLE = "#E040FB"
+    bg_color = "#0A0A0A"  # Deep Technical Black
+    text_white = "#FFFFFF"
+    text_muted = "#888888"  # Increased visibility for inactive tabs
 
     # --- 2. WINDOW SETUP ---
     window = tb.Toplevel(master=master)
     window.overrideredirect(True)
     window.geometry("440x700")
-    window.configure(background=BG_COLOR)
+    window.configure(background=bg_color)
 
     # Center window
     screen_w = window.winfo_screenwidth()
@@ -52,7 +50,7 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
     err_val = tk.StringVar()
 
     # Dynamic Container Placeholder
-    provider_container = tk.Frame(window, background=BG_COLOR)
+    provider_container = tk.Frame(window, background=bg_color)
 
     def update_ui(tab_name: str):
         key_map = {
@@ -83,14 +81,14 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
                 text="NO ACTIVITY DATA",
                 font=("Segoe UI", 8, "bold"),
                 foreground="#444444",
-                background=BG_COLOR,
+                background=bg_color,
             ).pack(anchor="w", pady=20)
         else:
             for name, count in sorted(providers.items(), key=lambda x: x[1], reverse=True):
-                row = tk.Frame(provider_container, background=BG_COLOR, pady=10)
+                row = tk.Frame(provider_container, background=bg_color, pady=10)
                 row.pack(fill=X)
 
-                lbl_row = tk.Frame(row, background=BG_COLOR)
+                lbl_row = tk.Frame(row, background=bg_color)
                 lbl_row.pack(fill=X)
 
                 tk.Label(
@@ -98,14 +96,14 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
                     text=name.upper(),
                     font=("Segoe UI", 9, "bold"),
                     foreground="#BBBBBB",
-                    background=BG_COLOR,
+                    background=bg_color,
                 ).pack(side=LEFT)
                 tk.Label(
                     lbl_row,
                     text=str(count),
                     font=("Segoe UI", 10, "bold"),
-                    foreground=TEXT_WHITE,
-                    background=BG_COLOR,
+                    foreground=text_white,
+                    background=bg_color,
                 ).pack(side=RIGHT)
 
                 # Progress Bar
@@ -119,14 +117,14 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
         # 3. Nav Highlight
         for name, lbl in nav_labels.items():
             if name == tab_name:
-                lbl.configure(foreground=TEXT_WHITE, font=("Segoe UI", 9, "bold"))
+                lbl.configure(foreground=text_white, font=("Segoe UI", 9, "bold"))
             else:
-                lbl.configure(foreground=TEXT_MUTED, font=("Segoe UI", 9, "normal"))
+                lbl.configure(foreground=text_muted, font=("Segoe UI", 9, "normal"))
 
     # --- 3. COMPONENTS ---
 
     # Header
-    header = tk.Frame(window, background=BG_COLOR, padx=30, pady=25)
+    header = tk.Frame(window, background=bg_color, padx=30, pady=25)
     header.pack(fill=X)
 
     tk.Label(
@@ -134,13 +132,13 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
         text="PARROTINK // ANALYTICS",
         font=("Segoe UI", 7, "bold"),
         foreground="#444444",
-        background=BG_COLOR,
+        background=bg_color,
     ).pack(side=LEFT)
 
     close_btn = tk.Label(
         header,
         text="✕",
-        background=BG_COLOR,
+        background=bg_color,
         foreground="#666666",
         cursor="hand2",
         font=("Segoe UI", 12),
@@ -151,57 +149,65 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
     close_btn.bind("<Leave>", lambda e: close_btn.configure(foreground="#666666"))
 
     # Nav
-    nav = tk.Frame(window, background=BG_COLOR, pady=10)
+    nav = tk.Frame(window, background=bg_color, pady=10)
     nav.pack(fill=X)
-    nav_container = tk.Frame(nav, background=BG_COLOR)
+    nav_container = tk.Frame(nav, background=bg_color)
     nav_container.pack()
 
     nav_labels = {}
     for t in ["TODAY", "WEEKLY", "MONTHLY", "LIFETIME"]:
+        # We define a captured variable function to avoid mypy lambda inference issues
+        def make_click_handler(name):
+            return lambda e: update_ui(name)
+
         lbl = tk.Label(
             nav_container,
             text=t,
-            foreground=TEXT_MUTED,
-            background=BG_COLOR,
+            foreground=text_muted,
+            background=bg_color,
             cursor="hand2",
             padx=15,
             pady=5,
         )
         lbl.pack(side=LEFT)
-        lbl.bind("<Button-1>", lambda e, n=t: update_ui(n))
+        lbl.bind("<Button-1>", make_click_handler(t))
         nav_labels[t] = lbl
 
     # Hero
-    hero = tk.Frame(window, background=BG_COLOR, pady=30)
+    hero = tk.Frame(window, background=bg_color, pady=30)
     hero.pack(fill=X)
     tk.Label(
         hero,
         textvariable=hero_val,
         font=("Segoe UI Variable Display", 72),
-        foreground=TEXT_WHITE,
-        background=BG_COLOR,
+        foreground=text_white,
+        background=bg_color,
     ).pack()
     tk.Label(
         hero,
         text="TOTAL TRANSCRIPTIONS",
         font=("Segoe UI", 8, "bold"),
         foreground="#666666",
-        background=BG_COLOR,
+        background=bg_color,
     ).pack()
 
     # Grid
-    grid = tk.Frame(window, background=BG_COLOR, padx=60, pady=20)
+    grid = tk.Frame(window, background=bg_color, padx=60, pady=20)
     grid.pack(fill=X)
     grid.columnconfigure((0, 1, 2), weight=1)
 
-    def add_col(col, var, label, color=TEXT_WHITE):
-        f = tk.Frame(grid, background=BG_COLOR)
+    def add_col(col, var, label, color=text_white):
+        f = tk.Frame(grid, background=bg_color)
         f.grid(row=0, column=col, sticky="nsew")
         tk.Label(
-            f, textvariable=var, font=("Segoe UI", 18, "bold"), foreground=color, background=BG_COLOR
+            f,
+            textvariable=var,
+            font=("Segoe UI", 18, "bold"),
+            foreground=color,
+            background=bg_color,
         ).pack()
         tk.Label(
-            f, text=label, font=("Segoe UI", 6, "bold"), foreground="#444444", background=BG_COLOR
+            f, text=label, font=("Segoe UI", 6, "bold"), foreground="#444444", background=bg_color
         ).pack()
 
     add_col(0, dur_val, "DURATION")
@@ -209,17 +215,17 @@ def show_stats_dialog(master, stats_report: Dict[str, Any]):
     add_col(2, err_val, "ERRORS", color="#CC3333")
 
     # Provider Frame
-    provider_frame = tk.Frame(window, background=BG_COLOR, padx=60, pady=40)
+    provider_frame = tk.Frame(window, background=bg_color, padx=60, pady=40)
     provider_frame.pack(fill=X)
     tk.Label(
         provider_frame,
         text="SERVICE INTELLIGENCE",
         font=("Segoe UI", 7, "bold"),
         foreground="#555555",
-        background=BG_COLOR,
+        background=bg_color,
     ).pack(anchor="w", pady=(0, 20))
 
-    provider_container = tk.Frame(provider_frame, background=BG_COLOR)
+    provider_container = tk.Frame(provider_frame, background=bg_color)
     provider_container.pack(fill=X)
 
     # INIT

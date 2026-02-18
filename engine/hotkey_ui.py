@@ -14,6 +14,7 @@ from engine.platform_win.api import (
     WM_DESTROY,
     WM_KEYDOWN,
     WM_KEYUP,
+    WM_LBUTTONDOWN,
     WM_SYSKEYDOWN,
     WM_SYSKEYUP,
     WNDCLASSEXW,
@@ -63,6 +64,10 @@ class HotkeyRecorder:
         elif msg == WM_CLOSE:
             user32.DestroyWindow(hwnd)
             return 0
+        elif msg == WM_LBUTTONDOWN:
+            # Cancel on click
+            self._cancel()
+            return 0
         elif msg in (WM_KEYDOWN, WM_SYSKEYDOWN):
             self._handle_key_down(wparam, lparam)
             return 0
@@ -71,7 +76,17 @@ class HotkeyRecorder:
             return 0
         return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
+    def _cancel(self):
+        """Aborts recording without saving anything."""
+        self.final_hotkey = None
+        user32.PostMessageW(self._hwnd, WM_CLOSE, 0, 0)
+
     def _handle_key_down(self, vk: int, lparam: int):
+        # Escape key (0x1B) cancels recording
+        if vk == 0x1B:
+            self._cancel()
+            return
+
         scan_code = (lparam >> 16) & 0xFF
         key_name = self._vk_to_text(vk, scan_code)
         if key_name and key_name not in self.current_keys:
@@ -179,17 +194,35 @@ class HotkeyRecorder:
         text_brush = ctypes.c_void_p()
         gdiplus.GdipCreateSolidFill(0xFFFFFFFF, ctypes.byref(text_brush))
 
+        # Primary Text
         display_text = "Press keys for new hotkey..."
         if self.current_keys:
             display_text = " + ".join(sorted(list(self.current_keys))).upper()
 
-        rect = (ctypes.c_float * 4)(20.0, 35.0, float(self._width - 40), 40.0)
+        rect = (ctypes.c_float * 4)(20.0, 30.0, float(self._width - 40), 30.0)
         fmt = ctypes.c_void_p()
         gdiplus.GdipCreateStringFormat(0, 0, ctypes.byref(fmt))
         gdiplus.GdipSetStringFormatAlign(fmt, 1)  # Center
 
         gdiplus.GdipDrawString(
             graphics, display_text, -1, font, ctypes.byref(rect), fmt, text_brush
+        )
+
+        # Secondary Text (Hint)
+        hint_brush = ctypes.c_void_p()
+        gdiplus.GdipCreateSolidFill(0xFF888888, ctypes.byref(hint_brush))
+        hint_font = ctypes.c_void_p()
+        gdiplus.GdipCreateFont(font_family, 8.0, 0, 3, ctypes.byref(hint_font))
+        hint_rect = (ctypes.c_float * 4)(20.0, 60.0, float(self._width - 40), 20.0)
+
+        gdiplus.GdipDrawString(
+            graphics,
+            "(ESC or Click to cancel)",
+            -1,
+            hint_font,
+            ctypes.byref(hint_rect),
+            fmt,
+            hint_brush,
         )
 
         # Update Window
@@ -213,8 +246,10 @@ class HotkeyRecorder:
         gdiplus.GdipDeletePath(path)
         gdiplus.GdipDeleteBrush(brush)
         gdiplus.GdipDeleteFont(font)
+        gdiplus.GdipDeleteFont(hint_font)
         gdiplus.GdipDeleteFontFamily(font_family)
         gdiplus.GdipDeleteBrush(text_brush)
+        gdiplus.GdipDeleteBrush(hint_brush)
         gdiplus.GdipDeleteStringFormat(fmt)
         gdi32.DeleteObject(hbmp)
         gdi32.DeleteDC(hdc_mem)
