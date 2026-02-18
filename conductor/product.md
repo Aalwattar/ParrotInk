@@ -33,6 +33,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - Enable or disable transcription.
     - Select the active transcription provider.
     - Open the settings/configuration file.
+    - **Reload Configuration:** Manually refresh and apply settings from `config.toml` without restarting the application.
     - Exit the application.
 
 ### 2.6. Configuration
@@ -48,6 +49,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Verbose Debugging & Structured Logging:** Multi-level, non-blocking logging to console and file, with automatic redaction of secrets and truncation of audio data.
     - **Interactive Hotkey Setup:** Users can record their desired hotkey combination directly through a tray-driven recording dialog.
     - **Diagnostics:** A new `app config --explain` CLI command provides a clear report of how high-level profiles map to specific technical timings and thresholds.
+    - **Live Configuration Refresh:** The application supports an in-place reload mechanism that validates and applies manual edits to the `config.toml` file without requiring a process restart.
     - **Hold to Talk:** A toggle in the Tray menu to switch between "Hold to Talk" and "Smart Toggle" modes.
     - Transcription language.
     - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
