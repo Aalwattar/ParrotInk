@@ -26,7 +26,7 @@ class ConnectionManager:
         set_state_cb: Callable[[AppState], None],
         on_status_cb: Optional[Callable[[str], None]] = None,
     ):
-        self.config = config
+        self._config = config
         self.on_partial = on_partial
         self.on_final = on_final
         self.set_state = set_state_cb
@@ -41,6 +41,27 @@ class ConnectionManager:
         self._last_fail_time = 0.0
         self._last_activity_time = 0.0
         self._idle_timer_task: Optional[asyncio.Task] = None
+
+    @property
+    def config(self) -> Config:
+        return self._config
+
+    @config.setter
+    def config(self, new_config: Config):
+        """
+        Updates the internal configuration.
+        If the provider has changed, we prepare for rotation or restart.
+        """
+        old_provider = self._config.transcription.provider
+        new_provider = new_config.transcription.provider
+        self._config = new_config
+
+        if old_provider != new_provider:
+            logger.info(f"ConnectionManager: Provider changed from {old_provider} to {new_provider}")
+            # We don't stop immediately if listening (to avoid stutter),
+            # but ensure_connected will catch it.
+            # If idle, we can mark for rotation to force a fresh connect on next use.
+            self._rotation_pending = True
 
     async def ensure_connected(self, is_listening: bool):
         """

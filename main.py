@@ -129,10 +129,7 @@ class AppCoordinator:
 
         # 3. Notify UI to refresh menu/labels
         self.ui_bridge.update_settings({})
-
-    @property
-    def is_connecting(self) -> bool:
-        return self.state == AppState.CONNECTING
+        self.ui_bridge.refresh_hud()
 
     @property
     def is_shutting_down(self) -> bool:

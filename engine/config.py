@@ -241,6 +241,7 @@ class Config(BaseModel):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     _observers: List = PrivateAttr(default_factory=list)
+    _update_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
 
     def register_observer(self, callback):
         if callback not in self._observers:
@@ -272,6 +273,36 @@ class Config(BaseModel):
 
     def get_assemblyai_key(self) -> Optional[str]:
         return SecurityManager.get_key("assemblyai_api_key")
+
+    def reload(self, path: Optional[Path | str] = None):
+        """
+        Reloads the configuration from disk in-place.
+        If the file is invalid, it raises ConfigError and preserves existing state.
+        """
+        if path is None:
+            path = get_config_path()
+        path = Path(path)
+
+        # Load into a fresh instance first to validate
+        new_cfg = self.from_file(path)
+
+        # Apply updates in-place atomically
+        with self._update_lock:
+            # We dump the new config and load it into the current one
+            # using model_dump() and deep_merge logic
+            updates = new_cfg.model_dump(exclude_none=True)
+
+            def deep_merge(target, source):
+                for key, value in source.items():
+                    if isinstance(value, dict) and hasattr(target, key):
+                        deep_merge(getattr(target, key), value)
+                    else:
+                        setattr(target, key, value)
+
+            deep_merge(self, updates)
+
+        logger.info(f"Configuration reloaded from {path}")
+        self._notify_observers()
 
     def save(self, path: Optional[Path | str] = None, blocking: bool = False):
         """
