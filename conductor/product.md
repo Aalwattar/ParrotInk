@@ -75,6 +75,13 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern Typography:** The HUD uses the Windows system font (**Segoe UI**) at a high-readability size (16pt) for a professional, integrated look.
 - **Dynamic Status:** The HUD indicator pulses or changes color based on voice activity and finalization state.
 - **Integrated Branding:** The active provider name (e.g., "OpenAI", "AssemblyAI") is displayed directly on the HUD for immediate context.
+
+### 2.11 Usage Statistics
+- **Persistent Tracking:** The application automatically tracks key usage metrics, including total transcriptions, cumulative duration, word count, and error rates.
+- **Provider Breakdown:** Usage is tracked per transcription provider to help users understand their utilization of different services.
+- **Modern Dashboard:** A "Statistics" menu item in the system tray opens a professional, instant-launch dashboard (using `ttkbootstrap`) that aggregates data for Today, This Week, This Month, and Lifetime.
+- **Data Sovereignty:** All statistics are stored locally in a `stats.json` file within the user's `%APPDATA%\ParrotInk` directory and never transmitted to external servers.
+
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline
