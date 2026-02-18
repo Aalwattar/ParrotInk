@@ -1,123 +1,119 @@
-import tkinter as tk
-from tkinter import ttk
 from typing import Any, Dict
 
+import ttkbootstrap as tb
+from ttkbootstrap.constants import BOTH, DEFAULT, EW, INFO, LEFT, PRIMARY, RIGHT, SECONDARY, W, X
 
-def show_stats_dialog(stats_report: Dict[str, Any]):
+
+def show_stats_dialog(master, stats_report: Dict[str, Any]):
     """
-    Displays a modern Tkinter dialog with the usage statistics.
+    Displays an instant, modern dashboard using ttkbootstrap.
+    Designed as a Toplevel child of the persistent GUI master.
     """
-    root = tk.Tk()
-    root.title("ParrotInk - Usage Statistics")
-    root.geometry("500x450")
-    root.resizable(False, False)
+    # Create instant child window
+    window = tb.Toplevel(
+        master=master,
+        title="ParrotInk Analytics",
+        size=(520, 580),
+        resizable=(False, False),
+    )
 
-    # Styling
-    style = ttk.Style()
-    style.configure("Header.TLabel", font=("Segoe UI", 12, "bold"))
-    style.configure("Stat.TLabel", font=("Segoe UI", 10))
-    style.configure("Value.TLabel", font=("Segoe UI", 10, "bold"))
+    # Main container with padding
+    main_frame = tb.Frame(window, padding=25)
+    main_frame.pack(fill=BOTH, expand=True)
 
-    main_frame = ttk.Frame(root, padding="20")
-    main_frame.pack(fill=tk.BOTH, expand=True)
+    # --- Header ---
+    header_frame = tb.Frame(main_frame)
+    header_frame.pack(fill=X, pady=(0, 20))
 
-    header = ttk.Label(main_frame, text="Usage Statistics Report", style="Header.TLabel")
-    header.pack(pady=(0, 20))
+    tb.Label(
+        header_frame,
+        text="Usage Analytics",
+        font=("Segoe UI Variable Display", 20, "bold"),
+        bootstyle=DEFAULT,
+    ).pack(side=LEFT)
 
-    # Notebook for Tabs
-    notebook = ttk.Notebook(main_frame)
-    notebook.pack(fill=tk.BOTH, expand=True)
+    # --- Tabs ---
+    notebook = tb.Notebook(main_frame, bootstyle=PRIMARY)
+    notebook.pack(fill=BOTH, expand=True)
 
     def create_stat_tab(parent, data):
-        frame = ttk.Frame(parent, padding="15")
+        tab = tb.Frame(parent, padding=20)
 
-        def add_row(label, value, row):
-            ttk.Label(frame, text=label, style="Stat.TLabel").grid(
-                row=row, column=0, sticky="w", pady=5
-            )
-            ttk.Label(frame, text=str(value), style="Value.TLabel").grid(
-                row=row, column=1, sticky="e", pady=5
-            )
+        # Hero Stat
+        val = data.get("total_transcriptions", 0)
+        hero_frame = tb.Frame(tab)
+        hero_frame.pack(fill=X, pady=(10, 20))
 
-        add_row("Total Transcriptions:", data.get("total_transcriptions", 0), 0)
+        tb.Label(
+            hero_frame,
+            text=str(val),
+            font=("Segoe UI Variable Display", 32, "bold"),
+            bootstyle=PRIMARY,
+        ).pack()
+        tb.Label(
+            hero_frame,
+            text="TOTAL TRANSCRIPTIONS",
+            font=("Segoe UI", 8, "bold"),
+            bootstyle=SECONDARY,
+        ).pack()
 
-        duration_sec = data.get("total_duration_seconds", 0)
-        duration_min = round(duration_sec / 60, 1)
-        add_row("Total Duration (min):", f"{duration_min}m", 1)
+        # Secondary Stats
+        metrics_frame = tb.Frame(tab)
+        metrics_frame.pack(fill=X, pady=10)
+        metrics_frame.columnconfigure((0, 1), weight=1)
 
-        add_row("Total Words:", data.get("total_words", 0), 2)
-        add_row("Error Count:", data.get("error_count", 0), 3)
+        dur_sec = data.get("total_duration_seconds", 0)
+        dur_min = round(dur_sec / 60, 1)
+        dur_tile = tb.Frame(metrics_frame, bootstyle=SECONDARY, padding=10)
+        dur_tile.grid(row=0, column=0, padx=(0, 5), sticky=EW)
+        tb.Label(dur_tile, text=f"{dur_min}m", font=("Segoe UI", 14, "bold")).pack()
+        tb.Label(dur_tile, text="DURATION", font=("Segoe UI", 7, "bold"), bootstyle=INFO).pack()
 
-        # Provider Breakdown
+        words_tile = tb.Frame(metrics_frame, bootstyle=SECONDARY, padding=10)
+        words_tile.grid(row=0, column=1, padx=(5, 0), sticky=EW)
+        tb.Label(
+            words_tile, text=str(data.get("total_words", 0)), font=("Segoe UI", 14, "bold")
+        ).pack()
+        tb.Label(words_tile, text="WORDS", font=("Segoe UI", 7, "bold"), bootstyle=INFO).pack()
+
+        # Service Breakdown
+        tb.Label(
+            tab, text="SERVICE UTILIZATION", font=("Segoe UI", 8, "bold"), bootstyle=SECONDARY
+        ).pack(anchor=W, pady=(25, 5))
+
         providers = data.get("provider_usage", {})
-        if providers:
-            ttk.Separator(frame, orient="horizontal").grid(
-                row=4, column=0, columnspan=2, sticky="ew", pady=10
+        if not providers:
+            tb.Label(tab, text="No activity data yet.", font=("Segoe UI", 10), bootstyle=INFO).pack(
+                pady=10
             )
-            row = 5
+        else:
+            list_frame = tb.Frame(tab)
+            list_frame.pack(fill=X)
             for p, count in providers.items():
-                add_row(f"Provider - {p.title()}:", count, row)
-                row += 1
+                row = tb.Frame(list_frame)
+                row.pack(fill=X, pady=2)
+                tb.Label(row, text=p.title(), font=("Segoe UI", 11)).pack(side=LEFT)
+                tb.Label(
+                    row, text=str(count), font=("Segoe UI", 11, "bold"), bootstyle=PRIMARY
+                ).pack(side=RIGHT)
 
-        frame.columnconfigure(1, weight=1)
-        return frame
+        return tab
 
-    # Add Tabs
     notebook.add(create_stat_tab(notebook, stats_report.get("today", {})), text="Today")
-    notebook.add(create_stat_tab(notebook, stats_report.get("this_week", {})), text="This Week")
-    notebook.add(create_stat_tab(notebook, stats_report.get("this_month", {})), text="This Month")
+    notebook.add(create_stat_tab(notebook, stats_report.get("this_week", {})), text="Weekly")
+    notebook.add(create_stat_tab(notebook, stats_report.get("this_month", {})), text="Monthly")
     notebook.add(create_stat_tab(notebook, stats_report.get("lifetime", {})), text="Lifetime")
 
-    # Close Button
-    btn_close = ttk.Button(main_frame, text="Close", command=root.destroy)
-    btn_close.pack(pady=(20, 0))
+    # --- Footer ---
+    footer = tb.Frame(main_frame)
+    footer.pack(fill=X, pady=(20, 0))
 
-    # Center the window
-    root.update_idletasks()
-    width = root.winfo_width()
-    height = root.winfo_height()
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry(f"{width}x{height}+{x}+{y}")
+    tb.Button(footer, text="Dismiss", command=window.destroy, bootstyle=SECONDARY, width=12).pack(
+        side=RIGHT
+    )
 
-    # Bring to front
-    root.lift()
-    root.attributes("-topmost", True)
-    root.after_idle(root.attributes, "-topmost", False)
-
-    root.mainloop()
-
-
-if __name__ == "__main__":
-    # Test stub
-    sample_data = {
-        "today": {
-            "total_transcriptions": 5,
-            "total_duration_seconds": 300,
-            "total_words": 250,
-            "error_count": 0,
-            "provider_usage": {"openai": 5},
-        },
-        "this_week": {
-            "total_transcriptions": 25,
-            "total_duration_seconds": 1500,
-            "total_words": 1250,
-            "error_count": 1,
-            "provider_usage": {"openai": 25},
-        },
-        "this_month": {
-            "total_transcriptions": 100,
-            "total_duration_seconds": 6000,
-            "total_words": 5000,
-            "error_count": 2,
-            "provider_usage": {"openai": 80, "assemblyai": 20},
-        },
-        "lifetime": {
-            "total_transcriptions": 500,
-            "total_duration_seconds": 30000,
-            "total_words": 25000,
-            "error_count": 5,
-            "provider_usage": {"openai": 400, "assemblyai": 100},
-        },
-    }
-    show_stats_dialog(sample_data)
+    # Bring to front and show
+    window.deiconify()
+    window.place_window_center()
+    window.lift()
+    window.focus_force()

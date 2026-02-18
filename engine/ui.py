@@ -3,11 +3,20 @@ import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
+# Senior Architectural Fix: Set DPI Unaware BEFORE ANY OTHER IMPORTS
+# This is the only way to ensure Skia HUD and pystray remain at their original, preferred scaling.
+try:
+    import ctypes
+
+    ctypes.windll.shcore.SetProcessDpiAwareness(0)
+except Exception:
+    pass
+
 import pystray
+import ttkbootstrap as tb
 from PIL import Image, ImageDraw
 
 from .app_types import AppState, ProviderType
-from .credential_ui import ask_key
 from .logging import get_logger
 from .stats import StatsManager
 from .ui_utils import get_app_version
@@ -18,15 +27,18 @@ if TYPE_CHECKING:
 
 logger = get_logger("UI")
 
+# Master Root (Stored globally for the UI Thread)
+_master_root: Optional[tb.Window] = None
+
 # Internal Constants (Not exposed to user)
 ICON_SIZE = 64
 ICON_RADIUS = 12
 
-COLOR_LISTENING = "#0078D4"  # Microsoft Blue (Vibrant)
-COLOR_CONNECTING = "#FACC15"  # Yellow-400
-COLOR_ERROR = "#EF4444"  # Red-500
-COLOR_TRANSITION = "#94A3B8"  # Slate-400
-COLOR_IDLE = "#475569"  # Slate-600
+COLOR_LISTENING = "#0078D4"
+COLOR_CONNECTING = "#FACC15"
+COLOR_ERROR = "#EF4444"
+COLOR_TRANSITION = "#94A3B8"
+COLOR_IDLE = "#475569"
 
 
 class TrayApp:
@@ -67,44 +79,52 @@ class TrayApp:
         self.on_mic_profile_change = on_mic_profile_change
         self.availability = availability or {"openai": True, "assemblyai": True}
 
+        # Senior Architecture: Thread-safe UI state
+        self.ui_root = None
+        self._ui_ready = threading.Event()
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
-
-        # Stats Management
         self.stats_manager = StatsManager()
 
-        # Lazy-load indicator (I5)
+        # Lazy-load indicator
         self.indicator = None
         if self.config.ui.floating_indicator.enabled:
-            logger.info("Initializing Floating Indicator...")
             try:
                 from .indicator_ui import IndicatorWindow
 
                 self.indicator = IndicatorWindow(config=self.config)
             except Exception as e:
                 logger.error(f"Failed to initialize indicator: {e}")
-        else:
-            logger.info("Floating Indicator is disabled.")
+
+    def _run_ui_loop(self):
+        """Dedicated background thread for the Tcl/Tk interpreter."""
+        global _master_root
+        if _master_root is None:
+            # We initialize the master here, strictly on the UI thread.
+            _master_root = tb.Window(themename="superhero")
+            _master_root.withdraw()
+        
+        self.ui_root = _master_root
+        self._ui_ready.set()
+        
+        # Enter the hidden Master mainloop
+        self.ui_root.mainloop()
 
     def _create_image(self, color: str) -> Image.Image:
-        width, height = ICON_SIZE, ICON_SIZE
-        # Use RGBA for transparency support (rounded corners)
-        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        image = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
-        # Modern rounded square design - Increased size and adjusted radius for clarity
-        dc.rounded_rectangle((2, 2, width - 2, height - 2), radius=ICON_RADIUS, fill=color)
+        dc.rounded_rectangle((2, 2, ICON_SIZE - 2, ICON_SIZE - 2), radius=ICON_RADIUS, fill=color)
         return image
 
     def _get_icon_color(self, state: AppState) -> str:
-        if state == AppState.LISTENING:
-            return COLOR_LISTENING
-        if state == AppState.CONNECTING:
-            return COLOR_CONNECTING
-        if state == AppState.ERROR:
-            return COLOR_ERROR
-        if state in (AppState.STOPPING, AppState.SHUTTING_DOWN):
-            return COLOR_TRANSITION
-        return COLOR_IDLE
+        colors = {
+            AppState.LISTENING: COLOR_LISTENING,
+            AppState.CONNECTING: COLOR_CONNECTING,
+            AppState.ERROR: COLOR_ERROR,
+            AppState.STOPPING: COLOR_TRANSITION,
+            AppState.SHUTTING_DOWN: COLOR_TRANSITION,
+        }
+        return colors.get(state, COLOR_IDLE)
 
     def _on_provider_selection(self, icon: pystray.Icon, provider: ProviderType) -> None:
         self.current_provider = provider
@@ -149,14 +169,17 @@ class TrayApp:
         threading.Thread(target=record, daemon=True).start()
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
-        # We launch this in a thread because showing a dialog (console or GUI)
-        # from the pystray callback might block the tray icon loop or not work well.
+        # We launch the dialog on the UI Thread via after(0, ...)
         def prompt():
-            key = ask_key(provider_name)
-            if key and self.on_set_key:
-                self.on_set_key(provider_id, key)
+            from .credential_ui import ask_key
+            
+            if self.ui_root:
+                key = ask_key(self.ui_root, provider_name)
+                if key and self.on_set_key:
+                    self.on_set_key(provider_id, key)
 
-        threading.Thread(target=prompt, daemon=True).start()
+        if self.ui_root:
+            self.ui_root.after(0, prompt)
 
     def _open_config(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         from .platform_win.paths import get_config_path
@@ -165,41 +188,38 @@ class TrayApp:
         if config_path.exists():
             os.startfile(config_path)
         else:
-            logger.warning(f"Config file not found at: {config_path}")
-            # Fallback to current directory for development convenience if APPDATA is missing
             local_path = Path("config.toml").absolute()
             if local_path.exists():
                 os.startfile(local_path)
-            else:
-                self.notify("Configuration file not found.", "Error")
+
+    def _on_show_stats_clicked(self):
+        """Launches the statistics dashboard instantly on the UI thread."""
+        report = self.stats_manager.get_report()
+
+        def launch():
+            from .stats_ui import show_stats_dialog
+
+            if self.ui_root:
+                show_stats_dialog(self.ui_root, report)
+
+        if self.ui_root:
+            self.ui_root.after(0, launch)
 
     def _create_menu(self) -> pystray.Menu:
         version = get_app_version()
         return pystray.Menu(
-            pystray.MenuItem(
-                f"ParrotInk v{version}",
-                lambda: None,
-                enabled=False,
-            ),
+            pystray.MenuItem(f"ParrotInk v{version}", lambda: None, enabled=False),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
-                lambda item: (
-                    "OpenAI" if self.availability.get("openai", True) else "OpenAI (Missing Key)"
-                ),
-                lambda icon, item: self._on_provider_selection(icon, "openai"),
-                checked=lambda item: self.current_provider == "openai",
-                enabled=lambda item: self.availability.get("openai", True),
+                "OpenAI",
+                lambda i, it: self._on_provider_selection(i, "openai"),
+                checked=lambda i: self.current_provider == "openai",
                 radio=True,
             ),
             pystray.MenuItem(
-                lambda item: (
-                    "AssemblyAI"
-                    if self.availability.get("assemblyai", True)
-                    else "AssemblyAI (Missing Key)"
-                ),
-                lambda icon, item: self._on_provider_selection(icon, "assemblyai"),
-                checked=lambda item: self.current_provider == "assemblyai",
-                enabled=lambda item: self.availability.get("assemblyai", True),
+                "AssemblyAI",
+                lambda i, it: self._on_provider_selection(i, "assemblyai"),
+                checked=lambda i: self.current_provider == "assemblyai",
                 radio=True,
             ),
             pystray.Menu.SEPARATOR,
@@ -224,67 +244,35 @@ class TrayApp:
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem(
-                        lambda item: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
+                        lambda it: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
                         self._on_change_hotkey_clicked,
                     ),
                     pystray.MenuItem(
                         "Hold to Talk",
                         self._on_toggle_hold_mode_clicked,
-                        checked=lambda item: self.config.hotkeys.hold_mode,
+                        checked=lambda it: self.config.hotkeys.hold_mode,
                     ),
-                    pystray.Menu.SEPARATOR,
                     pystray.MenuItem(
                         "Enable Audio Feedback",
                         self._on_toggle_sounds_clicked,
-                        checked=lambda item: self.sounds_enabled,
+                        checked=lambda it: self.sounds_enabled,
                     ),
                     pystray.MenuItem(
                         "Run at Startup",
                         self._on_toggle_startup_clicked,
-                        checked=lambda item: self.config.interaction.run_at_startup,
+                        checked=lambda it: self.config.interaction.run_at_startup,
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem(
                         "Show HUD",
                         self._on_toggle_hud_clicked,
-                        checked=lambda item: self.config.ui.floating_indicator.enabled,
+                        checked=lambda it: self.config.ui.floating_indicator.enabled,
                     ),
                     pystray.MenuItem(
                         "HUD Click-Through",
                         self._on_toggle_click_through_clicked,
-                        checked=lambda item: self.config.ui.floating_indicator.click_through,
-                        enabled=lambda item: self.config.ui.floating_indicator.enabled,
-                    ),
-                    pystray.Menu.SEPARATOR,
-                    pystray.MenuItem(
-                        "Microphone Profile",
-                        pystray.Menu(
-                            pystray.MenuItem(
-                                "Headset (Noise Reduction On)",
-                                lambda icon, item: self._on_mic_profile_selection(icon, "headset"),
-                                checked=lambda item: (
-                                    self.config.transcription.mic_profile == "headset"
-                                ),
-                                radio=True,
-                            ),
-                            pystray.MenuItem(
-                                "Laptop/Room (Far Field)",
-                                lambda icon, item: self._on_mic_profile_selection(icon, "laptop"),
-                                checked=lambda item: (
-                                    self.config.transcription.mic_profile == "laptop"
-                                ),
-                                radio=True,
-                            ),
-                            pystray.MenuItem(
-                                "None (Raw Audio - Recommended)",
-                                lambda icon, item: self._on_mic_profile_selection(icon, "none"),
-                                checked=lambda item: (
-                                    self.config.transcription.mic_profile == "none"
-                                ),
-                                radio=True,
-                            ),
-                        ),
-                        enabled=lambda item: self.current_provider == "openai",
+                        checked=lambda it: self.config.ui.floating_indicator.click_through,
+                        enabled=lambda it: self.config.ui.floating_indicator.enabled,
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem("Open Configuration File", self._open_config),
@@ -295,83 +283,40 @@ class TrayApp:
         )
 
     def _create_icon(self) -> pystray.Icon:
-        menu = self._create_menu()
         return pystray.Icon(
-            "parrotink", self._create_image(self._get_icon_color(self.state)), "ParrotInk", menu
+            "parrotink",
+            self._create_image(self._get_icon_color(self.state)),
+            "ParrotInk",
+            self._create_menu(),
         )
 
     def set_state(self, state: AppState) -> None:
         self.state = state
         self.icon.icon = self._create_image(self._get_icon_color(state))
-
-        # Update Tooltip
-        state_map = {
-            AppState.IDLE: "Idle",
-            AppState.LISTENING: "Listening",
-            AppState.CONNECTING: "Connecting...",
-            AppState.ERROR: "Error",
-            AppState.STOPPING: "Stopping...",
-            AppState.SHUTTING_DOWN: "Shutting down...",
-        }
-        provider_info = f" ({self.config.transcription.provider.title()})"
-        self.icon.title = f"ParrotInk: {state_map.get(state, 'Unknown')}{provider_info}"
-
-        # Sync indicator visibility and status
         if self.indicator:
-            if state == AppState.LISTENING:
-                logger.debug("TrayApp: Showing indicator (LISTENING)")
-                self.indicator.update_status(True)
+            is_rec = state == AppState.LISTENING
+            self.indicator.update_status(is_rec)
+            if is_rec:
                 self.indicator.show()
-            elif state == AppState.CONNECTING:
-                self.indicator.update_status(True)
-                if hasattr(self.indicator.impl, "update_status_icon"):
-                    self.indicator.impl.update_status_icon("CONNECTING")
-                self.indicator.show()
-            elif state == AppState.IDLE:
-                logger.debug("TrayApp: Updating status to idle (IDLE)")
-                self.indicator.update_status(False)
-                # Removed self.indicator.hide() here to allow on_final to handle lingering text
-            elif state == AppState.ERROR:
-                self.indicator.update_status(False)
-            # We might want to keep it visible to show the error,
-            # but for now let's hide it or just update color
-            pass
 
     def update_availability(self, availability: dict[str, bool]):
-        """Updates the availability status of providers."""
         self.availability = availability
 
-    def _on_show_stats_clicked(self):
-        """Fetches stats and shows the reporting dialog."""
-        report = self.stats_manager.get_report()
-
-        # We run the Tkinter dialog in its own thread because it has its own mainloop
-        from .stats_ui import show_stats_dialog
-
-        threading.Thread(target=show_stats_dialog, args=(report,), daemon=True).start()
-
     def notify(self, message: str, title: str = "ParrotInk"):
-        """Show a system tray notification."""
         self.icon.notify(message, title)
 
     def _refresh_menu(self):
-        """Rebuilds and refreshes the tray menu."""
-        logger.debug("TrayApp: Refreshing tray menu...")
-        # Update the menu on the existing icon to avoid WinError 1410
         self.icon.menu = self._create_menu()
 
     def _poll_bridge(self):
-        """Polls the UI bridge for events and updates the icon."""
         if not self.bridge:
             return
-
         from .ui_bridge import UIEvent
 
         while not self._stop_event.is_set():
             event = self.bridge.get_event(block=True, timeout=0.5)
             if not event:
                 continue
-
             msg_type, data = event
             if msg_type == UIEvent.SET_STATE:
                 self.set_state(data)
@@ -412,32 +357,51 @@ class TrayApp:
                     self.indicator.clear()
             elif msg_type == UIEvent.RECORD_STATS:
                 self.stats_manager.record_session(
-                    duration_seconds=data["duration"],
-                    words=data["words"],
-                    provider=data["provider"],
-                    error=data["error"],
+                    data["duration"], data["words"], data["provider"], data["error"]
                 )
                 self.stats_manager.save()
             elif msg_type == UIEvent.QUIT:
-                logger.info("UI received QUIT signal via bridge.")
                 self.stop()
 
     def run(self) -> None:
+        # 1. Launch the hidden Master on its own sidecar thread
+        threading.Thread(target=self._run_ui_loop, daemon=True).start()
+        
+        # 2. Wait for the UI Master to be initialized before continuing
+        self._ui_ready.wait(timeout=5.0)
+
+        # 3. Launch the Tray Icon in another thread to avoid blocking the main thread
+        threading.Thread(target=self.icon.run, daemon=True).start()
+
+        # 4. Start polling the bridge (also in its own thread)
         if self.bridge:
             threading.Thread(target=self._poll_bridge, daemon=True).start()
+        
         if self.indicator:
-            # Always start indicator in its own thread to prevent blocking tray
             threading.Thread(target=self.indicator.start, daemon=True).start()
-        self.icon.run()
+
+        # Note: In this baseline, the main thread is owned by asyncio (AppCoordinator),
+        # so this method must return to keep the main thread unblocked.
+        logger.info("UI System fully initialized and running in sidecar threads.")
+
+    def _shutdown_ui(self):
+        """Runs on the UI thread to stop the mainloop and cleanup."""
+        if self.ui_root:
+            try:
+                self.ui_root.quit()  # Stop mainloop
+                self.ui_root.destroy()  # Destroy master window
+            except Exception:
+                pass
 
     def stop(self) -> None:
         print("\nShutting down UI...", flush=True)
         self._stop_event.set()
+        # Cleanly destroy the hidden master on the UI thread
+        if self.ui_root:
+            self.ui_root.after(0, self._shutdown_ui)
+
         self.icon.stop()
         if self.indicator:
             self.indicator.stop()
-
-        callback = self.on_quit_callback
-        self.on_quit_callback = None  # Prevent recursion
-        if callback:
-            callback()
+        if self.on_quit_callback:
+            self.on_quit_callback()
