@@ -2,6 +2,16 @@ import os
 import sys
 import tomllib
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+try:
+    from win11toast import toast
+except ImportError:
+    # Optional dependency: Only required for Windows notifications
+    toast = None
+
+if TYPE_CHECKING:
+    from .config import Config
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -40,3 +50,24 @@ def get_app_version() -> str:
             return str(version)
     except Exception:
         return "unknown"
+
+
+def show_startup_toast(config: "Config"):
+    """Shows a Windows toast notification informing the user ParrotInk is ready.
+
+    Args:
+        config (Config): The application configuration, used to get the hotkey.
+    """
+    if not toast:
+        return
+
+    hotkey = config.hotkeys.hotkey.upper()
+    try:
+        toast(
+            title="ParrotInk Ready",
+            body=f"Press {hotkey} to start transcription",
+            duration="short",
+        )
+    except Exception:
+        # Notifications should be non-blocking and safe to fail
+        pass

@@ -22,6 +22,7 @@ from engine.platform_win.instance import SingleInstance
 from engine.platform_win.paths import APP_NAME
 from engine.security import SecurityManager
 from engine.ui_bridge import UIBridge
+from engine.ui_utils import configure_logging, get_logger, show_startup_toast
 
 logger = get_logger("App")
 
@@ -557,6 +558,9 @@ if __name__ == "__main__":
     )
 
     from engine.gui_main import main_gui
+
+    if not cli_args.background:
+        show_startup_toast(config)
 
     try:
         asyncio.run(main_gui(cli_args))
