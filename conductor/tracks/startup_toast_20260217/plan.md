@@ -2,7 +2,7 @@
 
 ## Phase 1: Environment Preparation
 - [x] Task: Add `win11toast` dependency to `pyproject.toml` c47924a
-- [ ] Task: Update `conductor/tech-stack.md` to include `win11toast`
+- [x] Task: Update `conductor/tech-stack.md` to include `win11toast` a961108
 - [ ] Task: Run `uv sync` to install dependencies
 - [ ] Task: Conductor - User Manual Verification 'Environment Preparation' (Protocol in workflow.md)
 
