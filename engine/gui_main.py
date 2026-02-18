@@ -169,6 +169,26 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
+    def on_reload_config():
+        def apply():
+            try:
+                logger.info("Manual configuration reload triggered.")
+                ui_bridge.update_status_message("Reloading config...")
+                config.reload()
+                ui_bridge.update_status_message("Config Updated")
+                # Clear status after a short delay
+                if coordinator.loop:
+                    coordinator.loop.call_later(
+                        3.0, lambda: ui_bridge.update_status_message("Ready")
+                    )
+            except ConfigError as e:
+                logger.error(f"Failed to reload config: {e}")
+                # We'll handle visual error feedback in Phase 3
+                ui_bridge.update_status_message("Reload Failed")
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
     from engine.ui import TrayApp
 
     app = TrayApp(
@@ -185,6 +205,7 @@ async def main_gui(cli_args):
         on_toggle_startup=on_toggle_startup,
         on_toggle_hold_mode=on_toggle_hold_mode,
         on_mic_profile_change=on_mic_profile_change,
+        on_reload_config=on_reload_config,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

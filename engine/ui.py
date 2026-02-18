@@ -57,6 +57,7 @@ class TrayApp:
         on_toggle_startup: Callable[[bool], None] | None = None,
         on_toggle_hold_mode: Callable[[bool], None] | None = None,
         on_mic_profile_change: Callable[[str], None] | None = None,
+        on_reload_config: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -77,6 +78,7 @@ class TrayApp:
         self.on_toggle_startup = on_toggle_startup
         self.on_toggle_hold_mode = on_toggle_hold_mode
         self.on_mic_profile_change = on_mic_profile_change
+        self.on_reload_config = on_reload_config
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         # Senior Architecture: Thread-safe UI state
@@ -276,11 +278,16 @@ class TrayApp:
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem("Open Configuration File", self._open_config),
+                    pystray.MenuItem("Reload Configuration", self._on_reload_config_clicked),
                 ),
             ),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", self.stop),
         )
+
+    def _on_reload_config_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        if self.on_reload_config:
+            self.on_reload_config()
 
     def _create_icon(self) -> pystray.Icon:
         return pystray.Icon(
