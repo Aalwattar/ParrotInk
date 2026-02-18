@@ -27,8 +27,9 @@ hiddenimports += ["keyring.backends.Windows"]
 datas = []
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
-# Include assets relative to repo root
+# Include assets and metadata relative to repo root
 datas += [(os.path.join(repo_root, "assets"), "assets")]
+datas += [(os.path.join(repo_root, "pyproject.toml"), ".")]
 
 binaries = []
 # sounddevice collection usually works better by just collecting the package data
@@ -73,4 +74,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     onefile=True,
+    version=os.path.join(SPECPATH, "version_info.txt"),
 )
