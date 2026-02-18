@@ -183,8 +183,12 @@ async def main_gui(cli_args):
                     )
             except ConfigError as e:
                 logger.error(f"Failed to reload config: {e}")
-                # We'll handle visual error feedback in Phase 3
                 ui_bridge.update_status_message("Reload Failed")
+                import ctypes
+
+                msg = f"Failed to reload configuration:\n\n{e}"
+                # MB_OK (0) | MB_ICONERROR (0x10) | MB_TOPMOST (0x40000)
+                ctypes.windll.user32.MessageBoxW(0, msg, "Configuration Error", 0x10 | 0x40000)
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
