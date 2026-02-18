@@ -25,6 +25,7 @@
 - **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
 - **tomli-w:** Used for writing configuration files in TOML format.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
+- **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
 
 ## 3. API SDKs
 
