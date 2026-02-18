@@ -211,3 +211,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [~] **Track: Create a stat page to record and display usage statistics (Daily, Monthly, Lifetime) in the menu.**
 *Link: [./tracks/stats_page_20260217/](./tracks/stats_page_20260217/)*
+
+---
+
+- [ ] **Track: Startup Toast Notification**
+*Link: [./tracks/startup_toast_20260217/](./tracks/startup_toast_20260217/)*
