@@ -216,3 +216,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Startup Toast Notification** [checkpoint: 2ca5a8f]
 *Link: [./archive/startup_toast_20260217/](./archive/startup_toast_20260217/)*
+
+---
+
+- [ ] **Track: Implement a manual configuration reload button in the tray menu**
+*Link: [./tracks/reload_config_20260218/](./tracks/reload_config_20260218/)*
