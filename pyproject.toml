@@ -22,7 +22,7 @@ dependencies = [
     "skia-python>=138.0",
     "tomli-w>=1.2.0",
     "keyboard>=0.13.5",
-    "win11toast==0.3.4",
+    "win11toast",
 ]
 
 [dependency-groups]
