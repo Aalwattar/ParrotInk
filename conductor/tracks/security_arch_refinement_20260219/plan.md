@@ -3,6 +3,7 @@
 ## Phase 1: Constants & Invariants
 - [ ] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`.
 - [ ] **Task:** Wire `config.toml` to allow optional user-defined trusted endpoints.
+- [ ] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`.
 
 ## Phase 2: Engine API Cleanup
 - [ ] **Task:** Refactor `AppCoordinator._on_config_changed` to handle "silent" transitions.

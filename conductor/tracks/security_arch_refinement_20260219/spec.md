@@ -21,6 +21,11 @@
 - **Problem:** `Config.update_and_save` uses a manual dictionary merge logic.
 - **Goal:** Fully utilize Pydantic's `model_validate` and standard update patterns to ensure 100% schema compliance and cleaner code.
 
+### 1.5 Provider Stop Timeout Optimization
+- **Problem:** `BaseProvider.stop` has a hardcoded 2.0s timeout. Logs show this is frequently exceeded, leading to force-kills. This "hard reset" of the socket is likely causing the inconsistent lag during session starts.
+- **Goal:** De-hardcode the timeout and increase it to **7.0 seconds**.
+- **Standard:** Move this value to `AudioConfig` in `engine/config.py` as `provider_stop_timeout_seconds`.
+
 ## 2. Concurrency & Safety
 - **Audit Requirement:** Systematically review the bridge between the GUI Thread, Hook Threads, and the Asyncio Loop.
 - **Focus Areas:**
