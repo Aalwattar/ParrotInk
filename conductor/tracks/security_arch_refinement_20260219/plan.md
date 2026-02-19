@@ -11,7 +11,7 @@
 
 ## Phase 3: Logging & Privacy
 - [x] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`. [c15bc4a]
-- [~] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts.
+- [x] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts. [4528d95]
 
 ## Phase 4: Pydantic Optimization
 - [ ] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`.
