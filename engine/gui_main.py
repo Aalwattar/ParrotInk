@@ -184,6 +184,11 @@ async def main_gui(cli_args):
             except ConfigError as e:
                 logger.error(f"Failed to reload config: {e}")
                 ui_bridge.update_status_message("Reload Failed")
+                # Clear status after a short delay
+                if coordinator.loop:
+                    coordinator.loop.call_later(
+                        5.0, lambda: ui_bridge.update_status_message("Ready")
+                    )
                 import ctypes
 
                 msg = f"Failed to reload configuration:\n\n{e}"

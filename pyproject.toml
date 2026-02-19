@@ -23,6 +23,8 @@ dependencies = [
     "tomli-w>=1.2.0",
     "keyboard>=0.13.5",
     "win11toast",
+    "ttkbootstrap>=1.10.1",
+    "darkdetect>=0.8.0",
 ]
 
 [dependency-groups]
@@ -37,6 +39,7 @@ dev = [
     "types-setuptools>=69.1.0",
     "types-pynput>=1.8.1.20250809",
     "types-pywin32>=311.0.0.20251008",
+    "types-keyboard>=0.13.2.20250801",
     "pyinstaller>=6.18.0",
 ]
 

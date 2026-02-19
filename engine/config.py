@@ -243,6 +243,13 @@ class Config(BaseModel):
     _observers: List = PrivateAttr(default_factory=list)
     _update_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
 
+    def _deep_merge(self, target, source):
+        for key, value in source.items():
+            if isinstance(value, dict) and hasattr(target, key):
+                self._deep_merge(getattr(target, key), value)
+            else:
+                setattr(target, key, value)
+
     def register_observer(self, callback):
         if callback not in self._observers:
             self._observers.append(callback)
@@ -257,14 +264,7 @@ class Config(BaseModel):
     def update_and_save(
         self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False
     ):
-        def deep_merge(target, source):
-            for key, value in source.items():
-                if isinstance(value, dict) and hasattr(target, key):
-                    deep_merge(getattr(target, key), value)
-                else:
-                    setattr(target, key, value)
-
-        deep_merge(self, updates)
+        self._deep_merge(self, updates)
         self.save(path, blocking=blocking)
         self._notify_observers()
 
@@ -291,15 +291,7 @@ class Config(BaseModel):
             # We dump the new config and load it into the current one
             # using model_dump() and deep_merge logic
             updates = new_cfg.model_dump(exclude_none=True)
-
-            def deep_merge(target, source):
-                for key, value in source.items():
-                    if isinstance(value, dict) and hasattr(target, key):
-                        deep_merge(getattr(target, key), value)
-                    else:
-                        setattr(target, key, value)
-
-            deep_merge(self, updates)
+            self._deep_merge(self, updates)
 
         logger.info(f"Configuration reloaded from {path}")
         self._notify_observers()

@@ -13,6 +13,7 @@
 - **pywin32:** Provides robust, low-level access to the Windows API for creating global hotkeys and injecting text at the cursor location.
 - **pystray:** Manages the application's system tray icon and context menu.
 - **ttkbootstrap:** Provides modern, high-fidelity UI components and themes (e.g., "Superhero" dark theme) for the statistics dashboard and other dialogs, replacing standard Tkinter for a more professional look.
+- **darkdetect:** Used for detecting the system-wide light/dark mode preference, allowing the UI to adapt its theme automatically.
 - **threading:** Used to run the UI loop in a background thread, ensuring the main thread remains responsive to system signals.
 - **pydantic:** Used for robust configuration management, validation, and schema definition.
 - **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.

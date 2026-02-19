@@ -88,8 +88,8 @@ class InputMonitor:
         try:
             # parse_hotkey returns [( (scan_codes), (names) ), ...] or similar nested structures
             parsed = keyboard.parse_hotkey(self._hotkey_str)
-            names = set()
-            scan_codes = set()
+            names: set[str] = set()
+            scan_codes: set[int] = set()
             for chord in parsed:
                 # A chord is a tuple of tuples, e.g. ((sc1, sc2), (sc3,))
                 for part in chord:

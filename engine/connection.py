@@ -57,7 +57,7 @@ class ConnectionManager:
         self._config = new_config
 
         if old_provider != new_provider:
-            logger.info(f"ConnectionManager: Provider changed from {old_provider} to {new_provider}")
+            logger.info(f"Provider changed from {old_provider} to {new_provider}")
             # We don't stop immediately if listening (to avoid stutter),
             # but ensure_connected will catch it.
             # If idle, we can mark for rotation to force a fresh connect on next use.
