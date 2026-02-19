@@ -30,10 +30,28 @@ TRANSCRIPT_PATTERN = re.compile(
 class SanitizingFormatter(logging.Formatter):
     """Formatter that redacts secrets and truncates audio data."""
 
+    # Keys in LogRecord.extra that should be redacted
+    SENSITIVE_METADATA_KEYS = {"transcript", "text", "partial"}
+
     def format(self, record):
+        # 1. Process metadata redaction (First Principles: Data handling before string formatting)
+        # We redact in a copy of the record or handle it during string assembly.
+        # Here we'll append redacted metadata to the message if present.
+        extra_info = []
+        for key in self.SENSITIVE_METADATA_KEYS:
+            val = getattr(record, key, None)
+            if val and isinstance(val, str):
+                safe_val = f"{val[:PII_REDACTION_LENGTH]}<PII_REDACTED>"
+                extra_info.append(f"{key}={safe_val}")
+
+        # 2. Standard formatting
         msg = super().format(record)
 
-        # Redact secrets
+        # 3. Append redacted metadata info if it was found in 'extra'
+        if extra_info:
+            msg = f"{msg} | Metadata: {', '.join(extra_info)}"
+
+        # 4. Legacy Regex Redaction (for strings that already contain secrets)
         for pattern, replacement in REDACT_PATTERNS:
             msg = pattern.sub(replacement, msg)
 
@@ -41,7 +59,7 @@ class SanitizingFormatter(logging.Formatter):
         msg = AUDIO_PATTERN.sub(r"\1<AUDIO_DATA_TRUNCATED>", msg)
         msg = AUDIO_DATA_PATTERN.sub(r"\1<AUDIO_DATA_TRUNCATED>", msg)
 
-        # Mask transcription PII
+        # Mask transcription PII (Legacy support for structured strings)
         msg = TRANSCRIPT_PATTERN.sub(r"\1\2<PII_REDACTED>", msg)
 
         return msg
