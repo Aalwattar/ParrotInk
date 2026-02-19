@@ -6,8 +6,8 @@
 - [x] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`. [0c18dd4]
 
 ## Phase 2: Engine API Cleanup
-- [~] **Task:** Refactor `AppCoordinator._on_config_changed` to handle "silent" transitions.
-- [ ] **Task:** Remove `silent` parameter from `stop_listening` and update all callers.
+- [x] **Task:** Refactor `AppCoordinator._on_config_changed` to handle "silent" transitions. [40bb322]
+- [~] **Task:** Remove `silent` parameter from `stop_listening` and update all callers.
 
 ## Phase 3: Logging & Privacy
 - [ ] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`.
