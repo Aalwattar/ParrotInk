@@ -51,9 +51,7 @@ class AssemblyAIProvider(BaseProvider):
         """Connect to AssemblyAI and start receiving events."""
         from engine.security import SecurityManager
 
-        is_trusted = SecurityManager.is_url_trusted(
-            self.url, extra_trusted=self.effective_config.trusted_domains
-        )
+        is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
 
         if not is_trusted and not is_test:

@@ -1,5 +1,5 @@
-import pytest
 from engine.constants import TRUSTED_DOMAINS
+
 
 def test_trusted_domains_presence():
     """Verify that TRUSTED_DOMAINS contains the required baseline endpoints."""
@@ -12,6 +12,7 @@ def test_trusted_domains_presence():
     }
     for domain in expected:
         assert domain in TRUSTED_DOMAINS
+
 
 def test_trusted_domains_is_set():
     """Verify that TRUSTED_DOMAINS is a set (for O(1) lookup)."""

@@ -46,10 +46,13 @@ class SecurityManager:
         keyring.set_password(cls.SERVICE_NAME, account_name, key)
 
     @classmethod
-    def is_url_trusted(cls, url: str, extra_trusted: Optional[list[str]] = None) -> bool:
+    def is_url_trusted(cls, url: str) -> bool:
         """
         Validates if a URL belongs to a trusted transcription provider domain.
         Used to prevent credential exfiltration to malicious custom endpoints.
+        
+        This check is strictly hardcoded in engine/constants.py to prevent
+        manipulation via the local config file.
         """
         if not url:
             return False
@@ -63,12 +66,6 @@ class SecurityManager:
             # hostname handles cases with ports (e.g. localhost:8081)
             host = (parsed.hostname or "").lower()
 
-            if host in TRUSTED_DOMAINS:
-                return True
-
-            if extra_trusted and host in [d.lower() for d in extra_trusted]:
-                return True
-
-            return False
+            return host in TRUSTED_DOMAINS
         except Exception:
             return False

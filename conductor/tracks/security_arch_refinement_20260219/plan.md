@@ -2,7 +2,7 @@
 
 ## Phase 1: Constants & Invariants
 - [x] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`. [e5361af]
-- [x] **Task:** Wire `config.toml` to allow optional user-defined trusted endpoints. [a1aeec0]
+- [x] **Task:** Remove insecure config-based trust backdoor and harden `is_url_trusted`. [f1b2c3d]
 - [x] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`. [0c18dd4]
 
 ## Phase 2: Engine API Cleanup

@@ -5,8 +5,8 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
-from .platform_win.paths import get_log_path
 from .constants import PII_REDACTION_LENGTH
+from .platform_win.paths import get_log_path
 
 # Regex for redacting sensitive information
 # Redacts things like: authorization: Bearer sk-..., "api_key": "...", etc.

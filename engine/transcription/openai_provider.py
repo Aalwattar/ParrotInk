@@ -56,9 +56,7 @@ class OpenAIProvider(BaseProvider):
 
         # Security Strategy: Only send the API key if the URL is trusted.
         # This prevents credential leak to malicious endpoints in config.
-        is_trusted = SecurityManager.is_url_trusted(
-            self.url, extra_trusted=self.effective_config.trusted_domains
-        )
+        is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
 
         if not is_trusted and not is_test:
