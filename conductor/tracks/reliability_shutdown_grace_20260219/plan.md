@@ -7,8 +7,8 @@
 
 ## Phase 2: Hotkey Reliability (Fixing the Stale Hook)
 - [x] **Task:** Research stability of `keyboard` vs `pynput`. (Decision: Keep `keyboard` + Heartbeat)
-- [x] **Task:** Implement `InputMonitor.restart()` and a 60-minute "Refresh" timer in `AppCoordinator`. [02a5e18]
-- [ ] **Task:** Verify hotkey suppression still works as intended.
+- [x] **Task:** Implement `InputMonitor.restart()` and a 60-minute "Refresh" timer in `AppCoordinator`. [c207e2f]
+- [x] **Task:** Verify hotkey suppression still works as intended. [c207e2f]
 
 ## Phase 3: Validation
 - [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
