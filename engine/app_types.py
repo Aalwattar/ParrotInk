@@ -30,6 +30,7 @@ class EffectiveOpenAIConfig:
     prefix_padding_ms: int
     noise_reduction_type: Optional[str]
     language: str
+    trusted_domains: List[str]
     is_test: bool
 
 
@@ -48,6 +49,7 @@ class EffectiveAssemblyAIConfig:
     word_boost: Optional[List[str]]
     format_text: bool
     language_detection: bool
+    trusted_domains: List[str]
     is_test: bool
 
 

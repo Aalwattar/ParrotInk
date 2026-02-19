@@ -95,6 +95,11 @@ class InteractionConfig(BaseModel):
     run_at_startup: bool = False
 
 
+class SecurityConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    trusted_domains: List[str] = Field(default_factory=list)
+
+
 class AudioConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     capture_sample_rate: int = 16000
@@ -238,6 +243,7 @@ class Config(BaseModel):
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     test: AppTestConfig = Field(default_factory=AppTestConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     _observers: List = PrivateAttr(default_factory=list)
