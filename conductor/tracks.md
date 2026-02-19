@@ -226,8 +226,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Noise Reduction & Audio Profile Defaulting**
 *Link: [./archive/noise_reduction_20260219/plan.md](./archive/noise_reduction_20260219/plan.md)*
-
----
-
-- [x] **Track: Security Architecture & Concurrency Refinement** [checkpoint: 9c19b9a]
-*Link: [./tracks/security_arch_refinement_20260219/](./tracks/security_arch_refinement_20260219/)*

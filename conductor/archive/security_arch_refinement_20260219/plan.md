@@ -1,0 +1,22 @@
+# Implementation Plan: Security Architecture & Concurrency Refinement
+
+## Phase 1: Constants & Invariants
+- [x] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`. [e5361af]
+- [x] **Task:** Remove insecure config-based trust backdoor and harden `is_url_trusted`. [f1b2c3d]
+- [x] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`. [0c18dd4]
+
+## Phase 2: Engine API Cleanup
+- [x] **Task:** Refactor `AppCoordinator._on_config_changed` to handle "silent" transitions. [40bb322]
+- [x] **Task:** Remove `silent` parameter from public GUI usage and internalize logic. [40bb322]
+
+## Phase 3: Logging & Privacy
+- [x] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`. [c15bc4a]
+- [x] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts. [4528d95]
+
+## Phase 4: Pydantic Optimization
+- [x] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`. [4c87165]
+
+## Phase 5: Concurrency & Stability Audit
+- [x] **Task:** Perform a manual trace of the `reload` and `provider_switch` paths to identify potential deadlocks. [9d64510]
+- [x] **Task:** Implement "Double-Stop Guard" in `ConnectionManager` to prevent rapid transition issues. [9d64510]
+- [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
