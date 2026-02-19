@@ -1,8 +1,0 @@
-{
-  "track_id": "reload_config_20260218",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-02-18T08:55:00Z",
-  "updated_at": "2026-02-18T08:55:00Z",
-  "description": "Implement a manual configuration reload button in the tray menu to sync edits to config.toml without restarting."
-}
