@@ -403,7 +403,7 @@ class AppCoordinator:
             else:
                 await self.stop_listening()
 
-    async def stop_listening(self):
+    async def stop_listening(self, silent: bool = False):
         """Stops the current transcription session."""
         if self.state == AppState.IDLE:
             return
@@ -424,7 +424,8 @@ class AppCoordinator:
         self.pipeline.on_voice_activity = None
         self.connection_manager.start_idle_timer()
 
-        self._play_feedback_sound("stop")
+        if not silent:
+            self._play_feedback_sound("stop")
 
         # Record statistics
         duration = 0.0

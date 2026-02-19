@@ -143,13 +143,13 @@ class AssemblyAIProvider(BaseProvider):
 
                 if event.get("end_of_turn"):
                     # Senior Privacy Implementation: Lower level and use key for redaction
-                    logger.debug(f"AssemblyAI Final (Turn): {{\"text\": \"{text}\"}}")
+                    logger.debug(f'AssemblyAI Final (Turn): {{"text": "{text}"}}')
                     self.on_final(text)
                     self.last_transcript = ""
 
             elif msg_type == "FinalTranscript":
                 # Senior Privacy Implementation: Lower level and use key for redaction
-                logger.debug(f"AssemblyAI Final: {{\"text\": \"{text}\"}}")
+                logger.debug(f'AssemblyAI Final: {{"text": "{text}"}}')
                 self.on_final(text)
             elif msg_type == "PartialTranscript":
                 self.on_partial(text)
