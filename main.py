@@ -462,7 +462,7 @@ class AppCoordinator:
             self.set_state(AppState.IDLE)
 
     async def _refresh_hooks_task(self):
-        """Periodically refreshes hotkey hooks to prevent them from becoming stale/detached by Windows."""
+        """Periodically refreshes hotkey hooks to prevent stale/detached hooks on Windows."""
         # Refresh every 60 minutes
         interval = 3600
         try:
