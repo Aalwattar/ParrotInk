@@ -393,12 +393,12 @@ class TrayApp:
             threading.Thread(target=self.indicator.start, daemon=True).start()
 
         logger.info("UI System fully initialized. Entering wait state.")
-        # Block this thread until stop() is called.
+        # Block this thread until stop() is called. 
         # Since gui_main now runs this in a non-daemon thread, this keeps the process alive
         # while the sidecar threads (icon, bridge, indicator) do the work.
         while not self._stop_event.is_set():
             self._stop_event.wait(timeout=1.0)
-
+        
         logger.info("TrayApp run loop exited.")
 
     def _shutdown_ui(self):
@@ -414,10 +414,10 @@ class TrayApp:
         if self._is_stopped:
             return
         self._is_stopped = True
-
+        
         logger.info("Stopping UI systems...")
         self._stop_event.set()
-
+        
         # Cleanly destroy the hidden master on the UI thread
         if self.ui_root:
             self.ui_root.after(0, self._shutdown_ui)
@@ -430,7 +430,7 @@ class TrayApp:
 
         if self.indicator:
             self.indicator.stop()
-
+            
         if self.on_quit_callback:
             # We wrap in try/except to ensure one failure doesn't block shutdown
             try:

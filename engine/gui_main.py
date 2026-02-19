@@ -243,6 +243,6 @@ async def main_gui(cli_args):
         if ui_thread.is_alive():
             logger.info("Waiting for UI thread to finalize...")
             ui_thread.join(timeout=5.0)
-
+        
         await coordinator.shutdown("Finalizing")
         logger.info("Shutdown complete.")

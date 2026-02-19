@@ -77,7 +77,6 @@ class AppCoordinator:
         self._last_manual_stop_time = 0.0
         self._last_voice_activity = 0.0
         self._inactivity_task: Optional[asyncio.Task] = None
-        self._hook_refresh_task: Optional[asyncio.Task] = None
 
         # Statistics tracking
         self.session_start_time = 0.0
@@ -101,9 +100,6 @@ class AppCoordinator:
         self._loop = value
         if value:
             self.injection_controller.set_loop(value)
-            # Start the periodic hook refresh task
-            if not self._hook_refresh_task or self._hook_refresh_task.done():
-                self._hook_refresh_task = value.create_task(self._refresh_hooks_task())
 
     @property
     def provider(self):
@@ -461,22 +457,6 @@ class AppCoordinator:
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)
 
-    async def _refresh_hooks_task(self):
-        """Periodically refreshes hotkey hooks to prevent stale/detached hooks on Windows."""
-        # Refresh every 60 minutes
-        interval = 3600
-        try:
-            while True:
-                await asyncio.sleep(interval)
-                # Only refresh if NOT currently listening or connecting to avoid disruption
-                if self.state == AppState.IDLE:
-                    logger.info("Performing periodic hotkey hook refresh.")
-                    self.input_monitor.restart()
-                else:
-                    logger.debug("Skipping hook refresh - session active.")
-        except asyncio.CancelledError:
-            pass
-
     async def shutdown(self, reason: Optional[str] = None):
         """Orchestrated shutdown."""
         async with self._shutdown_lock:
@@ -484,9 +464,6 @@ class AppCoordinator:
                 return
             logger.info(f"Shutting down application... Reason: {reason or 'Not specified'}")
             self.set_state(AppState.SHUTTING_DOWN)
-
-            if self._hook_refresh_task:
-                self._hook_refresh_task.cancel()
 
             try:
                 # We wrap the cleanup in a timeout to prevent hanging the system on exit

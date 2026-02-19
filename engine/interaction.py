@@ -189,12 +189,6 @@ class InputMonitor:
                     except Exception:
                         pass
 
-    def restart(self):
-        """Restarts the monitor hooks to prevent stale Windows hooks."""
-        logger.info("Restarting InputMonitor hooks...")
-        self.stop()
-        self.start()
-
     def stop(self):
         """Stops all keyboard hooks tracked by this monitor."""
         with self._lock:

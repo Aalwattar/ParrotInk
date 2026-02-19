@@ -229,5 +229,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Reliability & Shutdown Grace** [checkpoint: cddfc4e]
+- [~] **Track: Reliability & Shutdown Grace**
 *Link: [./tracks/reliability_shutdown_grace_20260219/](./tracks/reliability_shutdown_grace_20260219/)*

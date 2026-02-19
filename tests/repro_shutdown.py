@@ -1,9 +1,9 @@
+import asyncio
 import os
 import signal
 import subprocess
-import sys
 import time
-
+import sys
 
 def test_shutdown_crash():
     """
@@ -15,18 +15,18 @@ def test_shutdown_crash():
     creationflags = 0
     if os.name == "nt":
         creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
-
+        
     process = subprocess.Popen(
         [sys.executable, "main.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        creationflags=creationflags,
+        creationflags=creationflags
     )
-
+    
     # Wait for it to start up
     time.sleep(5)
-
+    
     print("Sending CTRL_C_EVENT (Ctrl+C)...")
     if os.name == "nt":
         # Windows requires creation_flags to handle signals properly in sub-processes
@@ -36,24 +36,23 @@ def test_shutdown_crash():
         process.send_signal(signal.CTRL_C_EVENT)
     else:
         process.send_signal(signal.SIGINT)
-
+    
     try:
         stdout, stderr = process.communicate(timeout=10)
         print("STDOUT:", stdout)
         print("STDERR:", stderr)
-
+        
         if "_enter_buffered_busy" in stderr or "Fatal Python error" in stderr:
             print("\n!!! REPRODUCED CRASH !!!")
             return True
         else:
             print("\nShutdown appeared clean.")
             return False
-
+            
     except subprocess.TimeoutExpired:
         print("Process timed out during shutdown. Killing.")
         process.kill()
         return False
-
 
 if __name__ == "__main__":
     repro = test_shutdown_crash()
