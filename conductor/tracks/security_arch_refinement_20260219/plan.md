@@ -2,7 +2,7 @@
 
 ## Phase 1: Constants & Invariants
 - [x] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`. [e5361af]
-- [~] **Task:** Wire `config.toml` to allow optional user-defined trusted endpoints.
+- [x] **Task:** Wire `config.toml` to allow optional user-defined trusted endpoints. [a1aeec0]
 - [ ] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`.
 
 ## Phase 2: Engine API Cleanup
