@@ -85,6 +85,9 @@ class AppCoordinator:
         # Injection safety
         self.injection_controller = InjectionController()
 
+        # Track provider changes for silent transitions
+        self._last_provider = config.transcription.provider
+
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
 
@@ -125,7 +128,17 @@ class AppCoordinator:
     def _on_config_changed(self, config: Config):
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
-        # 1. Update hotkey capture
+
+        # 1. Detect if provider is changing to handle silent transitions
+        provider_changed = self._last_provider != config.transcription.provider
+        self._last_provider = config.transcription.provider
+
+        if provider_changed and (self.is_listening or self.is_connecting):
+            logger.info("Provider changing during active session. Performing silent stop.")
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
+
+        # 2. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
 
         # 2. Update connection manager config (crucial for provider switching)
