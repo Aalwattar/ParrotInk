@@ -87,6 +87,7 @@ class AppCoordinator:
 
         # v2 Reliability Architecture
         from engine.platform_win.session import SessionMonitor
+
         self.session_monitor = SessionMonitor(on_unlock=self._on_unlock)
         self._hook_watchdog_task: Optional[asyncio.Task] = None
 
@@ -473,7 +474,7 @@ class AppCoordinator:
 
     async def _hook_watchdog_task_run(self):
         """Infrastructure Watchdog: Ensures the native hook is still alive."""
-        interval = 30 # seconds
+        interval = 30  # seconds
         try:
             while True:
                 await asyncio.sleep(interval)

@@ -1,6 +1,12 @@
 import ctypes
 from ctypes import wintypes
 
+# Define types if not in wintypes
+LRESULT = ctypes.c_longlong if ctypes.sizeof(ctypes.c_void_p) == 8 else ctypes.c_long
+HCURSOR = wintypes.HANDLE
+HICON = wintypes.HANDLE
+HBRUSH = wintypes.HANDLE
+
 # Windows Hook Constants
 WH_KEYBOARD_LL = 13
 WM_KEYDOWN = 0x0100
@@ -68,4 +74,4 @@ class INPUT(ctypes.Structure):
     _fields_ = [("type", wintypes.DWORD), ("u", INPUT_UNION)]
 
 # Function Prototype for the Hook Procedure
-HOOKPROC = ctypes.WINFUNCTYPE(ctypes.c_long, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)
+HOOKPROC = ctypes.WINFUNCTYPE(LRESULT, ctypes.c_int, wintypes.WPARAM, wintypes.LPARAM)

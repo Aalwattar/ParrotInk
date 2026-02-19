@@ -56,6 +56,8 @@ async def main_gui(cli_args):
             )
 
     signal.signal(signal.SIGINT, on_sigint)
+    if sys.platform == "win32":
+        signal.signal(signal.SIGBREAK, on_sigint)
 
     def on_provider_change(provider_name):
         def apply():
@@ -248,4 +250,5 @@ async def main_gui(cli_args):
 
         # CRITICAL: Close logging to prevent 'buffered busy' crash
         from engine.logging import close_logging
+
         close_logging()
