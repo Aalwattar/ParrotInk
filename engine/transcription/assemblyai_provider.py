@@ -47,11 +47,20 @@ class AssemblyAIProvider(BaseProvider):
 
     async def start(self):
         """Connect to AssemblyAI and start receiving events."""
+        from engine.security import SecurityManager
+
+        is_trusted = SecurityManager.is_url_trusted(self.url)
+        is_test = self.effective_config.is_test
+
+        if not is_trusted and not is_test:
+            logger.error(f"Refusing to connect to untrusted endpoint: {self.url}")
+            raise ConnectionError(f"Untrusted transcription endpoint: {self.url}")
+
         headers = {"Authorization": self.api_key}
         logger.info(f"Connecting to AssemblyAI at {self.url}...")
         try:
             self.ws = await websockets.connect(
-                self.url, additional_headers=headers if not self.effective_config.is_test else None
+                self.url, additional_headers=headers if not is_test else None
             )
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -133,12 +142,14 @@ class AssemblyAIProvider(BaseProvider):
                     self.last_transcript = text
 
                 if event.get("end_of_turn"):
-                    logger.info(f"AssemblyAI Final (Turn): {text}")
+                    # Senior Privacy Implementation: Lower level and use key for redaction
+                    logger.debug(f"AssemblyAI Final (Turn): {{\"text\": \"{text}\"}}")
                     self.on_final(text)
                     self.last_transcript = ""
 
             elif msg_type == "FinalTranscript":
-                logger.info(f"AssemblyAI Final: {text}")
+                # Senior Privacy Implementation: Lower level and use key for redaction
+                logger.debug(f"AssemblyAI Final: {{\"text\": \"{text}\"}}")
                 self.on_final(text)
             elif msg_type == "PartialTranscript":
                 self.on_partial(text)

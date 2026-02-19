@@ -44,3 +44,32 @@ class SecurityManager:
             return
 
         keyring.set_password(cls.SERVICE_NAME, account_name, key)
+
+    @classmethod
+    def is_url_trusted(cls, url: str) -> bool:
+        """
+        Validates if a URL belongs to a trusted transcription provider domain.
+        Used to prevent credential exfiltration to malicious custom endpoints.
+        """
+        if not url:
+            return False
+
+        # Senior Security Strategy: Only allow established transcription domains
+        # and standard localhost addresses for testing.
+        trusted_domains = [
+            "api.openai.com",
+            "streaming.assemblyai.com",
+            "streaming.eu.assemblyai.com",
+            "localhost",
+            "127.0.0.1",
+        ]
+
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            # hostname handles cases with ports (e.g. localhost:8081)
+            host = (parsed.hostname or "").lower()
+            return host in trusted_domains
+        except Exception:
+            return False

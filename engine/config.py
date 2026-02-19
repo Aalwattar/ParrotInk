@@ -243,15 +243,6 @@ class Config(BaseModel):
     _observers: List = PrivateAttr(default_factory=list)
     _update_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
 
-    def _deep_merge(self, target, source):
-        for key, value in source.items():
-            if isinstance(value, dict) and hasattr(target, key):
-                attr = getattr(target, key)
-                if isinstance(attr, (dict, BaseModel)):
-                    self._deep_merge(attr, value)
-            else:
-                setattr(target, key, value)
-
     def register_observer(self, callback):
         if callback not in self._observers:
             self._observers.append(callback)
@@ -266,7 +257,39 @@ class Config(BaseModel):
     def update_and_save(
         self, updates: dict, path: Optional[Path | str] = None, blocking: bool = False
     ):
-        self._deep_merge(self, updates)
+        """
+        Atomically merges updates into the current configuration after validation.
+        Ensures Pydantic validation is NOT bypassed during partial updates.
+        """
+        with self._update_lock:
+            # 1. Start with current validated state
+            data = self.model_dump(exclude_none=True)
+
+            # 2. Merge updates into data dictionary
+            def merge_dict(target, source):
+                for k, v in source.items():
+                    if isinstance(v, dict) and k in target and isinstance(target[k], dict):
+                        merge_dict(target[k], v)
+                    else:
+                        target[k] = v
+
+            merge_dict(data, updates)
+
+            # 3. Validate entire merged configuration
+            # This will raise ValidationError if 'updates' contains bad data
+            try:
+                new_cfg = type(self).model_validate(data)
+            except ValidationError as e:
+                # Senior Security Architecture: Re-raise as ConfigError to prevent
+                # exposing internal validation details directly to callers,
+                # but keep the descriptive message for debugging.
+                raise ConfigError(f"Update validation failed: {e}") from e
+
+            # 4. Apply to self
+            for field in type(self).model_fields:
+                setattr(self, field, getattr(new_cfg, field))
+
+        # 5. Save and Notify
         self.save(path, blocking=blocking)
         self._notify_observers()
 

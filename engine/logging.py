@@ -19,6 +19,10 @@ REDACT_PATTERNS = [
 AUDIO_PATTERN = re.compile(r'("audio":\s*")[^"]{100,}')
 AUDIO_DATA_PATTERN = re.compile(r'("audio_data":\s*")[^"]{100,}')
 
+# Regex for redacting transcription results (PII protection)
+# We mask the bulk of the transcript while keeping the first few chars for debugging context.
+TRANSCRIPT_PATTERN = re.compile(r'("(?:transcript|text)":\s*")([^"]{0,10})[^"]+')
+
 
 class SanitizingFormatter(logging.Formatter):
     """Formatter that redacts secrets and truncates audio data."""
@@ -34,7 +38,42 @@ class SanitizingFormatter(logging.Formatter):
         msg = AUDIO_PATTERN.sub(r"\1<AUDIO_DATA_TRUNCATED>", msg)
         msg = AUDIO_DATA_PATTERN.sub(r"\1<AUDIO_DATA_TRUNCATED>", msg)
 
+        # Mask transcription PII
+        msg = TRANSCRIPT_PATTERN.sub(r"\1\2<PII_REDACTED>", msg)
+
         return msg
+
+
+def is_path_safe(path: str | Path) -> bool:
+    """
+    Validates if a file path is safe for writing logs.
+    Prevents path traversal and writing to sensitive system directories.
+    """
+    try:
+        import os
+
+        p = os.path.abspath(path)
+
+        # Define allowed root directories (standard on Windows)
+        allowed_roots = [
+            os.path.abspath(os.environ.get("LOCALAPPDATA", "")),
+            os.path.abspath(os.environ.get("APPDATA", "")),
+            os.path.abspath(os.getcwd()),
+            os.path.abspath(os.environ.get("TEMP", "")),
+        ]
+
+        # Senior Security Strategy: Use commonpath to verify p is within an allowed root.
+        # We use .lower() for case-insensitive comparison on Windows.
+        for root in allowed_roots:
+            try:
+                if os.path.commonpath([p, root]).lower() == root.lower():
+                    return True
+            except (ValueError, AttributeError):
+                continue
+
+        return False
+    except Exception:
+        return False
 
 
 def get_default_log_path() -> Path:
@@ -90,6 +129,11 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
     # 2. File Handler
     if config.logging.file_enabled:
         file_path = config.logging.file_path or get_default_log_path()
+
+        # Senior Security Strategy: Validate path safety to prevent traversal
+        if not is_path_safe(file_path):
+            print(f"Warning: Log path {file_path} is unsafe. Falling back to default.")
+            file_path = get_default_log_path()
 
         # Use config level or elevate to DEBUG if -vv is passed
         if verbose_count >= 2:

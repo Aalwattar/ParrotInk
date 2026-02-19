@@ -50,6 +50,17 @@ class OpenAIProvider(BaseProvider):
 
     async def start(self):
         """Connect and configure the session."""
+        from engine.security import SecurityManager
+
+        # Security Strategy: Only send the API key if the URL is trusted.
+        # This prevents credential leak to malicious endpoints in config.
+        is_trusted = SecurityManager.is_url_trusted(self.url)
+        is_test = self.effective_config.is_test
+
+        if not is_trusted and not is_test:
+            logger.error(f"Refusing to connect to untrusted endpoint: {self.url}")
+            raise ConnectionError(f"Untrusted transcription endpoint: {self.url}")
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
         }
@@ -64,7 +75,7 @@ class OpenAIProvider(BaseProvider):
 
         try:
             self.ws = await websockets.connect(
-                self.url, additional_headers=headers if not self.effective_config.is_test else None
+                self.url, additional_headers=headers if not is_test else None
             )
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
@@ -182,7 +193,8 @@ class OpenAIProvider(BaseProvider):
         ):
             transcript = event.get("transcript")
             if transcript:
-                logger.info(f"OpenAI Final Segment: {transcript.strip()}")
+                # Senior Privacy Implementation: Lower level and use key for redaction
+                logger.debug(f"OpenAI Final Segment: {{\"transcript\": \"{transcript.strip()}\"}}")
                 self.on_final(transcript.strip())
             self.current_transcript = ""
 
