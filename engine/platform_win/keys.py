@@ -1,3 +1,7 @@
+"""
+Win32 Low-Level Constants and Structures for Native Input Monitoring and Injection.
+Provides the foundation for 64-bit compatible ctypes mapping to the Windows API.
+"""
 import ctypes
 from ctypes import wintypes
 

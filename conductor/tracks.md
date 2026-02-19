@@ -230,7 +230,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Reliability & Shutdown Grace v2** [checkpoint: f316ecd]
-  *Link: [./tracks/reliability_shutdown_grace_v2/](./tracks/reliability_shutdown_grace_v2/)*
+  *Link: [./archive/reliability_shutdown_grace_v2/](./archive/reliability_shutdown_grace_v2/)*
 
 ---
 

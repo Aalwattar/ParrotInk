@@ -1,3 +1,7 @@
+"""
+Native Input Monitoring and Interaction Layer for Windows.
+Coordinates low-level keyboard hooks and bridge events to the main thread.
+"""
 from __future__ import annotations
 
 import ctypes

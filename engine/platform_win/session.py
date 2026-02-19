@@ -1,3 +1,7 @@
+"""
+Win32 Session Monitoring using a Hidden Notification Window.
+Detects desktop switches (Lock/Unlock) to refresh input hooks in dynamic environments.
+"""
 import ctypes
 import threading
 from ctypes import wintypes
