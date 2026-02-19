@@ -59,19 +59,17 @@ async def main_gui(cli_args):
 
     def on_provider_change(provider_name):
         def apply():
-            # Notify UI of switching immediately
-            msg = f"Switching to {provider_name}..."
-            ui_bridge.update_status_message(msg)
-
+            # Senior Architecture: Simplify provider switching.
+            # We stop any active recording session first, then update config.
+            # The AppCoordinator._on_config_changed observer will handle
+            # resetting the connection manager and stopping idle providers.
             if coordinator.is_listening or coordinator.is_connecting:
                 logger.info(f"Stopping active session before changing provider to {provider_name}")
+                # Notify UI of switching immediately
+                ui_bridge.update_status_message(f"Switching to {provider_name}...")
                 asyncio.run_coroutine_threadsafe(
                     coordinator.stop_listening(silent=True), coordinator.loop
                 )
-            elif coordinator.provider:
-                logger.info(f"Stopping idle provider before changing to {provider_name}")
-                asyncio.run_coroutine_threadsafe(coordinator.provider.stop(), coordinator.loop)
-                coordinator.provider = None
 
             config.update_and_save({"transcription": {"provider": provider_name}})
             logger.info(f"Provider changed to: {provider_name}")
