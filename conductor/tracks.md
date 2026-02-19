@@ -221,3 +221,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Implement a manual configuration reload button in the tray menu**
 *Link: [./archive/reload_config_20260218/](./archive/reload_config_20260218/)*
+
+---
+
+- [ ] **Track: Noise Reduction & Audio Profile Defaulting**
+*Link: [./tracks/noise_reduction_20260219/plan.md](./tracks/noise_reduction_20260219/plan.md)*

@@ -131,7 +131,11 @@ class AppCoordinator:
         # 2. Update connection manager config (crucial for provider switching)
         self.connection_manager.config = config
 
-        # 3. Notify UI to refresh menu/labels
+        # 3. Force provider reset to apply new settings (e.g. prompt, thresholds)
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
+
+        # 4. Notify UI to refresh menu/labels
         self.ui_bridge.update_settings({})
         self.ui_bridge.refresh_hud()
 
@@ -178,7 +182,9 @@ class AppCoordinator:
                 # Senior Architecture: Include CONNECTING in the toggle-stop logic.
                 # This prevents rapid re-entrancy and inconsistent state transitions.
                 if self.state in (AppState.LISTENING, AppState.CONNECTING):
-                    logger.debug(f"Toggle Mode: Hotkey pressed while {self.state.name}. Stopping...")
+                    logger.debug(
+                        f"Toggle Mode: Hotkey pressed while {self.state.name}. Stopping..."
+                    )
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
                 else:
                     # Intent Lockout: If we just stopped, ignore this trigger
