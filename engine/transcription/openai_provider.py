@@ -195,8 +195,8 @@ class OpenAIProvider(BaseProvider):
         ):
             transcript = event.get("transcript")
             if transcript:
-                # Senior Privacy Implementation: Lower level and use key for redaction
-                logger.debug(f'OpenAI Final Segment: {{"transcript": "{transcript.strip()}"}}')
+                # Senior Privacy Implementation: Use structured metadata for automatic redaction
+                logger.debug("OpenAI Final Segment", extra={"transcript": transcript.strip()})
                 self.on_final(transcript.strip())
             self.current_transcript = ""
 
