@@ -48,12 +48,11 @@ class SecurityManager:
     @classmethod
     def is_url_trusted(cls, url: str) -> bool:
         """
-                        Validates if a URL belongs to a trusted transcription provider domain.
-                        Used to prevent credential exfiltration to malicious custom endpoints.
-                
-                        This check is strictly hardcoded in engine/constants.py to prevent
-                        manipulation via the local config file.
-                
+        Validates if a URL belongs to a trusted transcription provider domain.
+        Used to prevent credential exfiltration to malicious custom endpoints.
+
+        This check is strictly hardcoded in engine/constants.py to prevent
+        manipulation via the local config file.
         """
         if not url:
             return False
