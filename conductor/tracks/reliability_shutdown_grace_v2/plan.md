@@ -7,9 +7,9 @@
 - [x] **Task:** Add `repro_shutdown_v2.py` to verify clean exit. [1f2028f]
 
 ## Phase 2: Session Monitoring (Fixing Lock/Unlock)
-- [ ] **Task:** Implement `SessionMonitor` in `engine/platform_win/session.py`.
-- [ ] **Task:** Connect `SessionMonitor` to `AppCoordinator` to trigger hook re-initialization on Unlock.
-- [ ] **Task:** Add `repro_lock_unlock.py` to simulate/verify desktop switch recovery.
+- [x] **Task:** Implement `SessionMonitor` in `engine/platform_win/session.py`. [1f2028f]
+- [x] **Task:** Connect `SessionMonitor` to `AppCoordinator` to trigger hook re-initialization on Unlock. [1f2028f]
+- [~] **Task:** Add `repro_lock_unlock.py` to simulate/verify desktop switch recovery.
 
 ## Phase 3: Validation
 - [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
