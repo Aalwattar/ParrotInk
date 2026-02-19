@@ -7,7 +7,7 @@
 
 ## Phase 2: Engine API Cleanup
 - [x] **Task:** Refactor `AppCoordinator._on_config_changed` to handle "silent" transitions. [40bb322]
-- [~] **Task:** Remove `silent` parameter from `stop_listening` and update all callers.
+- [x] **Task:** Remove `silent` parameter from public GUI usage and internalize logic. [40bb322]
 
 ## Phase 3: Logging & Privacy
 - [ ] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`.
