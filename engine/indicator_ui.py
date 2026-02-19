@@ -151,7 +151,13 @@ class IndicatorWindow:
         self._last_status_msg = status
         if hasattr(self.impl, "update_status_icon"):
             self.impl.update_status_icon(status)
-        self._render_preview()
+
+        if status and status.lower() not in ("listening", "finalized"):
+            self.show()
+            self._render_preview()
+            self._start_linger_timer(duration=3.0)
+        else:
+            self._render_preview()
 
     def update_provider(self, provider: str):
         self._current_provider = provider

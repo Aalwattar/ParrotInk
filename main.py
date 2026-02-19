@@ -118,6 +118,10 @@ class AppCoordinator:
     def is_listening(self) -> bool:
         return self.state == AppState.LISTENING
 
+    @property
+    def is_connecting(self) -> bool:
+        return self.state == AppState.CONNECTING
+
     def _on_config_changed(self, config: Config):
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
