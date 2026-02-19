@@ -14,7 +14,7 @@
 - [x] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts. [4528d95]
 
 ## Phase 4: Pydantic Optimization
-- [ ] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`.
+- [~] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`.
 
 ## Phase 5: Concurrency & Stability Audit
 - [ ] **Task:** Perform a manual trace of the `reload` and `provider_switch` paths to identify potential deadlocks.

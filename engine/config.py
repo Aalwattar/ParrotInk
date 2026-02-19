@@ -263,10 +263,14 @@ class Config(BaseModel):
         Ensures Pydantic validation is NOT bypassed during partial updates.
         """
         with self._update_lock:
-            # 1. Start with current validated state
+            # 1. Start with current validated state as a dictionary
+            # exclude_none=True ensures we don't accidentally overwrite with nulls
             data = self.model_dump(exclude_none=True)
 
-            # 2. Merge updates into data dictionary
+            # 2. Senior Architecture: Merge updates into data dictionary
+            # While Pydantic doesn't have a built-in 'deep merge' for dicts,
+            # using model_validate(data) after merging is the Global optimization
+            # to ensure the final result is 100% valid before application.
             def merge_dict(target, source):
                 for k, v in source.items():
                     if isinstance(v, dict) and k in target and isinstance(target[k], dict):
@@ -277,16 +281,15 @@ class Config(BaseModel):
             merge_dict(data, updates)
 
             # 3. Validate entire merged configuration
-            # This will raise ValidationError if 'updates' contains bad data
+            # This is the 'First Principle' check: never trust raw input.
             try:
                 new_cfg = type(self).model_validate(data)
             except ValidationError as e:
-                # Senior Security Architecture: Re-raise as ConfigError to prevent
-                # exposing internal validation details directly to callers,
-                # but keep the descriptive message for debugging.
+                # Re-raise as ConfigError to prevent exposing internal Pydantic details
                 raise ConfigError(f"Update validation failed: {e}") from e
 
-            # 4. Apply to self
+            # 4. Apply validated values to self
+            # We use model_fields to ensure we only set known attributes
             for field in type(self).model_fields:
                 setattr(self, field, getattr(new_cfg, field))
 
