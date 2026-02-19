@@ -41,6 +41,7 @@ class ConnectionManager:
         self._last_fail_time = 0.0
         self._last_activity_time = 0.0
         self._idle_timer_task: Optional[asyncio.Task] = None
+        self._stop_lock = asyncio.Lock()
 
     @property
     def config(self) -> Config:
@@ -196,22 +197,23 @@ class ConnectionManager:
 
     async def stop_provider(self):
         """Stops the current provider and cleans up adapters."""
-        if self._idle_timer_task:
-            self._idle_timer_task.cancel()
-            self._idle_timer_task = None
+        async with self._stop_lock:
+            if self._idle_timer_task:
+                self._idle_timer_task.cancel()
+                self._idle_timer_task = None
 
-        if self.provider:
-            try:
-                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
-                    await self.provider.stop()
-            except Exception as e:
-                logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
+            if self.provider:
+                try:
+                    async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
+                        await self.provider.stop()
+                except Exception as e:
+                    logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
 
-            if self.audio_adapter:
-                self.audio_adapter.close()
+                if self.audio_adapter:
+                    self.audio_adapter.close()
 
-            self.provider = None
-            self.audio_adapter = None
+                self.provider = None
+                self.audio_adapter = None
 
     def start_idle_timer(self):
         """Starts the idle timeout timer if configured."""

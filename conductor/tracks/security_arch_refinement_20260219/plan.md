@@ -17,6 +17,6 @@
 - [x] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`. [4c87165]
 
 ## Phase 5: Concurrency & Stability Audit
-- [ ] **Task:** Perform a manual trace of the `reload` and `provider_switch` paths to identify potential deadlocks.
+- [~] **Task:** Perform a manual trace of the `reload` and `provider_switch` paths to identify potential deadlocks.
 - [ ] **Task:** Implement "Double-Stop Guard" in `ConnectionManager` to prevent rapid transition issues.
 - [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
