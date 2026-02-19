@@ -224,5 +224,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Noise Reduction & Audio Profile Defaulting**
+- [x] **Track: Noise Reduction & Audio Profile Defaulting**
 *Link: [./tracks/noise_reduction_20260219/plan.md](./tracks/noise_reduction_20260219/plan.md)*
