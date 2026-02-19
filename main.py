@@ -85,6 +85,11 @@ class AppCoordinator:
         # Injection safety
         self.injection_controller = InjectionController()
 
+        # v2 Reliability Architecture
+        from engine.platform_win.session import SessionMonitor
+        self.session_monitor = SessionMonitor(on_unlock=self._on_unlock)
+        self._hook_watchdog_task: Optional[asyncio.Task] = None
+
         # Track provider changes for silent transitions
         self._last_provider = config.transcription.provider
 
@@ -100,6 +105,10 @@ class AppCoordinator:
         self._loop = value
         if value:
             self.injection_controller.set_loop(value)
+            # Start v2 reliability monitors
+            self.session_monitor.start()
+            if not self._hook_watchdog_task or self._hook_watchdog_task.done():
+                self._hook_watchdog_task = value.create_task(self._hook_watchdog_task_run())
 
     @property
     def provider(self):
@@ -457,6 +466,24 @@ class AppCoordinator:
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)
 
+    def _on_unlock(self):
+        """Callback from SessionMonitor when Windows is unlocked."""
+        logger.info("Session Unlock detected. Refreshing hotkey hooks...")
+        self.input_monitor.restart()
+
+    async def _hook_watchdog_task_run(self):
+        """Infrastructure Watchdog: Ensures the native hook is still alive."""
+        interval = 30 # seconds
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                # If hook is dead or has disappeared (WH_KEYBOARD_LL can be fickle)
+                if not getattr(self.input_monitor, "_hook", None) and self.input_monitor.is_running:
+                    logger.warning("Watchdog detected dead hook. Restarting interaction layer...")
+                    self.input_monitor.restart()
+        except asyncio.CancelledError:
+            pass
+
     async def shutdown(self, reason: Optional[str] = None):
         """Orchestrated shutdown."""
         async with self._shutdown_lock:
@@ -464,6 +491,11 @@ class AppCoordinator:
                 return
             logger.info(f"Shutting down application... Reason: {reason or 'Not specified'}")
             self.set_state(AppState.SHUTTING_DOWN)
+
+            # Stop v2 monitors
+            self.session_monitor.stop()
+            if self._hook_watchdog_task:
+                self._hook_watchdog_task.cancel()
 
             try:
                 # We wrap the cleanup in a timeout to prevent hanging the system on exit
