@@ -278,7 +278,11 @@ class TrayApp:
                     ),
                     pystray.Menu.SEPARATOR,
                     pystray.MenuItem("Open Configuration File", self._open_config),
-                    pystray.MenuItem("Reload Configuration", self._on_reload_config_clicked),
+                    pystray.MenuItem(
+                        "Reload Configuration",
+                        self._on_reload_config_clicked,
+                        enabled=lambda it: self.state in (AppState.IDLE, AppState.ERROR),
+                    ),
                 ),
             ),
             pystray.Menu.SEPARATOR,

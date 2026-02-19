@@ -175,9 +175,10 @@ class AppCoordinator:
                 asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
             else:
                 # Toggle Mode: Toggle listening
-                # We check the actual state machine for reliable toggling
-                if self.state == AppState.LISTENING:
-                    logger.debug("Toggle Mode: Hotkey pressed while listening. Stopping...")
+                # Senior Architecture: Include CONNECTING in the toggle-stop logic.
+                # This prevents rapid re-entrancy and inconsistent state transitions.
+                if self.state in (AppState.LISTENING, AppState.CONNECTING):
+                    logger.debug(f"Toggle Mode: Hotkey pressed while {self.state.name}. Stopping...")
                     asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
                 else:
                     # Intent Lockout: If we just stopped, ignore this trigger
@@ -359,6 +360,13 @@ class AppCoordinator:
             # Use a timeout for the overall start operation
             async with asyncio.timeout(self.config.audio.connection_timeout_seconds + 10.0):
                 await self.connection_manager.ensure_connected(is_listening=True)
+
+                # Senior Architecture: Ghost Session Guard
+                # If stop_listening was called while we were awaiting connection,
+                # we must abort here to prevent background recording.
+                if self.state != AppState.CONNECTING:
+                    logger.info("Session cancelled during connection. Aborting pipeline start.")
+                    return
 
                 # 3. Start pipeline with the resolved connection components
                 await self.pipeline.start(

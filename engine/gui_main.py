@@ -179,7 +179,10 @@ async def main_gui(cli_args):
                 # Clear status after a short delay
                 if coordinator.loop:
                     coordinator.loop.call_later(
-                        3.0, lambda: ui_bridge.update_status_message("Ready")
+                        3.0,
+                        lambda: ui_bridge.update_status_message(
+                            coordinator.state.name.capitalize()
+                        ),
                     )
             except ConfigError as e:
                 logger.error(f"Failed to reload config: {e}")
@@ -187,7 +190,10 @@ async def main_gui(cli_args):
                 # Clear status after a short delay
                 if coordinator.loop:
                     coordinator.loop.call_later(
-                        5.0, lambda: ui_bridge.update_status_message("Ready")
+                        5.0,
+                        lambda: ui_bridge.update_status_message(
+                            coordinator.state.name.capitalize()
+                        ),
                     )
                 import ctypes
 

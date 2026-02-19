@@ -246,7 +246,9 @@ class Config(BaseModel):
     def _deep_merge(self, target, source):
         for key, value in source.items():
             if isinstance(value, dict) and hasattr(target, key):
-                self._deep_merge(getattr(target, key), value)
+                attr = getattr(target, key)
+                if isinstance(attr, (dict, BaseModel)):
+                    self._deep_merge(attr, value)
             else:
                 setattr(target, key, value)
 
@@ -288,10 +290,11 @@ class Config(BaseModel):
 
         # Apply updates in-place atomically
         with self._update_lock:
-            # We dump the new config and load it into the current one
-            # using model_dump() and deep_merge logic
-            updates = new_cfg.model_dump(exclude_none=True)
-            self._deep_merge(self, updates)
+            # Senior Architecture: We iterate public fields only.
+            # This preserves private internal state like _observers and _update_lock
+            # while ensuring all live settings are synced to the current instance.
+            for field in type(self).model_fields:
+                setattr(self, field, getattr(new_cfg, field))
 
         logger.info(f"Configuration reloaded from {path}")
         self._notify_observers()
