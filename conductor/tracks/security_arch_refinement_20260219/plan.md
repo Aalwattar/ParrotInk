@@ -10,8 +10,8 @@
 - [x] **Task:** Remove `silent` parameter from public GUI usage and internalize logic. [40bb322]
 
 ## Phase 3: Logging & Privacy
-- [~] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`.
-- [ ] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts.
+- [x] **Task:** Refactor `SanitizingFormatter` to process `LogRecord.extra`. [c15bc4a]
+- [~] **Task:** Update `OpenAIProvider` and `AssemblyAIProvider` to use structured logging for transcripts.
 
 ## Phase 4: Pydantic Optimization
 - [ ] **Task:** Replace `merge_dict` with Pydantic-native update logic in `Config`.
