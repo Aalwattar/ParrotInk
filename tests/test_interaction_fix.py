@@ -19,7 +19,8 @@ def mock_config():
     config.hotkeys.hold_mode = True  # Set to Hold Mode
     config.test = MagicMock()
     config.test.enabled = True
-    config.default_provider = "openai"
+    config.transcription = MagicMock()
+    config.transcription.provider = "openai"
     return config
 
 
