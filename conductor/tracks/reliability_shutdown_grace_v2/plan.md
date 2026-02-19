@@ -9,7 +9,7 @@
 ## Phase 2: Session Monitoring (Fixing Lock/Unlock)
 - [x] **Task:** Implement `SessionMonitor` in `engine/platform_win/session.py`. [1f2028f]
 - [x] **Task:** Connect `SessionMonitor` to `AppCoordinator` to trigger hook re-initialization on Unlock. [1f2028f]
-- [~] **Task:** Add `repro_lock_unlock.py` to simulate/verify desktop switch recovery.
+- [x] **Task:** Add `repro_lock_unlock.py` to simulate/verify desktop switch recovery. [72274e3]
 
 ## Phase 3: Validation
 - [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
