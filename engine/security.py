@@ -54,22 +54,14 @@ class SecurityManager:
         if not url:
             return False
 
-        # Senior Security Strategy: Only allow established transcription domains
-        # and standard localhost addresses for testing.
-        trusted_domains = [
-            "api.openai.com",
-            "streaming.assemblyai.com",
-            "streaming.eu.assemblyai.com",
-            "localhost",
-            "127.0.0.1",
-        ]
-
         try:
             from urllib.parse import urlparse
+
+            from engine.constants import TRUSTED_DOMAINS
 
             parsed = urlparse(url)
             # hostname handles cases with ports (e.g. localhost:8081)
             host = (parsed.hostname or "").lower()
-            return host in trusted_domains
+            return host in TRUSTED_DOMAINS
         except Exception:
             return False

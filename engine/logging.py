@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .platform_win.paths import get_log_path
+from .constants import PII_REDACTION_LENGTH
 
 # Regex for redacting sensitive information
 # Redacts things like: authorization: Bearer sk-..., "api_key": "...", etc.
@@ -21,7 +22,9 @@ AUDIO_DATA_PATTERN = re.compile(r'("audio_data":\s*")[^"]{100,}')
 
 # Regex for redacting transcription results (PII protection)
 # We mask the bulk of the transcript while keeping the first few chars for debugging context.
-TRANSCRIPT_PATTERN = re.compile(r'("(?:transcript|text)":\s*")([^"]{0,10})[^"]+')
+TRANSCRIPT_PATTERN = re.compile(
+    rf'("(?:transcript|text)":\s*")([^"]{{0,{PII_REDACTION_LENGTH}}})[^"]+'
+)
 
 
 class SanitizingFormatter(logging.Formatter):

@@ -1,7 +1,7 @@
 # Implementation Plan: Security Architecture & Concurrency Refinement
 
 ## Phase 1: Constants & Invariants
-- [ ] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`.
+- [~] **Task:** Create `engine/constants.py` and migrate `TRUSTED_DOMAINS`.
 - [ ] **Task:** Wire `config.toml` to allow optional user-defined trusted endpoints.
 - [ ] **Task:** De-hardcode provider stop timeout from `base.py` and increase to 7.0s in `AudioConfig`.
 
