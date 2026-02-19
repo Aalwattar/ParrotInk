@@ -3,6 +3,7 @@ import threading
 from ctypes import wintypes
 from typing import Callable, Optional
 
+from engine.constants import SESSION_QUIT_TIMEOUT
 from engine.logging import get_logger
 
 from .keys import HBRUSH, HCURSOR, HICON, LRESULT
@@ -145,5 +146,5 @@ class SessionMonitor:
             logger.debug("Stopping SessionMonitor...")
             user32.PostThreadMessageW(self._thread_id, 0x0012, 0, 0)  # WM_QUIT
             if self._thread:
-                self._thread.join(timeout=2.0)
+                self._thread.join(timeout=SESSION_QUIT_TIMEOUT)
             self._thread_id = None

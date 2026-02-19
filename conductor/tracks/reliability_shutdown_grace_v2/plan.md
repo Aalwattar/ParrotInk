@@ -12,5 +12,5 @@
 - [x] **Task:** Add `repro_lock_unlock.py` to simulate/verify desktop switch recovery. [72274e3]
 
 ## Phase 3: Validation
-- [ ] **Task:** Run DoD Gate (ruff, mypy, pytest).
-- [ ] **Task:** Manual verification of Toggle/Hold mode hotkey suppression.
+- [x] **Task:** Run DoD Gate (ruff, mypy, pytest). [f316ecd]
+- [x] **Task:** Manual verification of Toggle/Hold mode hotkey suppression. [f316ecd]

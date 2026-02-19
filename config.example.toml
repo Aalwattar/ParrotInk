@@ -18,6 +18,9 @@
 # Options: "control", "window"
 # anchor_scope = "control"
 
+# If true, any key press (other than the hotkey) while in 'Toggle Mode' will stop recording.
+# stop_on_any_key = true
+
 # If true, the app will automatically start when Windows boots up.
 # run_at_startup = false
 

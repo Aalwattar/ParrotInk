@@ -12,6 +12,12 @@ from engine.audio.streamer import AudioStreamer
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.connection import ConnectionManager
+from engine.constants import (
+    COOLDOWN_INJECTION,
+    COOLDOWN_MANUAL_STOP,
+    HOOK_WATCHDOG_INTERVAL,
+    INTENT_LOCKOUT_DURATION,
+)
 from engine.credential_ui import ask_key
 from engine.injection import InjectionController
 from engine.interaction import InputMonitor
@@ -25,10 +31,6 @@ from engine.ui_bridge import UIBridge
 from engine.ui_utils import show_startup_toast
 
 logger = get_logger("App")
-
-# Constants
-COOLDOWN_MANUAL_STOP = 0.5
-COOLDOWN_INJECTION = 0.5
 
 
 class AppCoordinator:
@@ -64,6 +66,7 @@ class AppCoordinator:
         )
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
         self.input_monitor.set_any_key_callback(self._on_manual_stop)
+        self.input_monitor.enable_any_key_monitoring(config.interaction.stop_on_any_key)
 
         # Register for config changes
         self.config.register_observer(self._on_config_changed)
@@ -150,6 +153,7 @@ class AppCoordinator:
 
         # 2. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
+        self.input_monitor.enable_any_key_monitoring(config.interaction.stop_on_any_key)
 
         # 2. Update connection manager config (crucial for provider switching)
         self.connection_manager.config = config
@@ -212,15 +216,17 @@ class AppCoordinator:
                 else:
                     # Intent Lockout: If we just stopped, ignore this trigger
                     # to prevent rapid Stop -> Start oscillation.
-                    if time.time() - self._last_manual_stop_time < 0.3:
+                    if time.time() - self._last_manual_stop_time < INTENT_LOCKOUT_DURATION:
                         logger.info("Ignoring rapid Toggle START trigger (lockout active).")
                         return
                     asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
 
     def _on_hotkey_release(self):
         """Callback from InputMonitor when the hotkey is released."""
-        if self.config.hotkeys.hold_mode and self.loop:
-            # Only stop in hold mode
+        if self.loop:
+            # Senior Architecture: We always call stop_listening here.
+            # In Hold Mode, this is the trigger. In Toggle Mode, this is only
+            # called when the monitor explicitly sends a 'stop' event.
             asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     def _on_manual_stop(self, key=None):
@@ -407,8 +413,7 @@ class AppCoordinator:
 
             # 4. Start mouse monitoring
             self.mouse_monitor.start()
-            # Enable any-key monitoring for cancellation
-            self.input_monitor.enable_any_key_monitoring(True)
+            self.input_monitor.enable_any_key_monitoring(self.config.interaction.stop_on_any_key)
 
             # 5. Start listening monitor (inactivity + health)
             if self._inactivity_task:
@@ -432,7 +437,6 @@ class AppCoordinator:
             return
 
         logger.debug("Stopping transcription session...")
-        self.input_monitor.enable_any_key_monitoring(False)
         self.input_monitor.reset_state()
         self.mouse_monitor.stop()
         self.anchor = None
@@ -474,7 +478,7 @@ class AppCoordinator:
 
     async def _hook_watchdog_task_run(self):
         """Infrastructure Watchdog: Ensures the native hook is still alive."""
-        interval = 30  # seconds
+        interval = HOOK_WATCHDOG_INTERVAL
         try:
             while True:
                 await asyncio.sleep(interval)

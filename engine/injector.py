@@ -1,68 +1,22 @@
 import ctypes
 import time
-from ctypes import wintypes
 
 from engine.logging import get_logger
 from engine.platform_win.constants import BACKSPACE_SAFETY_CAP
+
+from .platform_win.keys import (
+    INPUT,
+    INPUT_KEYBOARD,
+    KEYBDINPUT,
+    KEYEVENTF_KEYUP,
+    KEYEVENTF_UNICODE,
+    VK_BACK,
+)
 
 logger = get_logger("Injector")
 
 # Windows API Constants & Structures
 USER32 = ctypes.WinDLL("user32", use_last_error=True)
-
-INPUT_KEYBOARD = 1
-KEYEVENTF_UNICODE = 0x0004
-KEYEVENTF_KEYUP = 0x0002
-VK_BACK = 0x08
-
-# Define ULONG_PTR for 64-bit compatibility
-IS_64_BIT = ctypes.sizeof(ctypes.c_void_p) == 8
-ULONG_PTR = ctypes.c_ulonglong if IS_64_BIT else ctypes.c_ulong
-
-
-class MOUSEINPUT(ctypes.Structure):  # noqa: N801
-    _fields_ = [
-        ("dx", ctypes.c_long),
-        ("dy", ctypes.c_long),
-        ("mouseData", wintypes.DWORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", ULONG_PTR),
-    ]
-
-
-class KEYBDINPUT(ctypes.Structure):  # noqa: N801
-    _fields_ = [
-        ("wVk", wintypes.WORD),
-        ("wScan", wintypes.WORD),
-        ("dwFlags", wintypes.DWORD),
-        ("time", wintypes.DWORD),
-        ("dwExtraInfo", ULONG_PTR),
-    ]
-
-
-class HARDWAREINPUT(ctypes.Structure):  # noqa: N801
-    _fields_ = [
-        ("uMsg", wintypes.DWORD),
-        ("wParamL", wintypes.WORD),
-        ("wParamH", wintypes.WORD),
-    ]
-
-
-class INPUT_UNION(ctypes.Union):  # noqa: N801
-    _fields_ = [
-        ("mi", MOUSEINPUT),
-        ("ki", KEYBDINPUT),
-        ("hi", HARDWAREINPUT),
-    ]
-
-
-class INPUT(ctypes.Structure):  # noqa: N801
-    _fields_ = [
-        ("type", wintypes.DWORD),
-        # On 64-bit, this union will be padded to start at 8 bytes
-        ("union", INPUT_UNION),
-    ]
 
 
 def inject_text(text: str):

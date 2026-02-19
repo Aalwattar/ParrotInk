@@ -229,10 +229,16 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Reliability & Shutdown Grace v2**
-*Link: [./tracks/reliability_shutdown_grace_v2/](./tracks/reliability_shutdown_grace_v2/)*
+- [x] **Track: Reliability & Shutdown Grace v2** [checkpoint: f316ecd]
+  *Link: [./tracks/reliability_shutdown_grace_v2/](./tracks/reliability_shutdown_grace_v2/)*
 
 ---
 
-- [~] **Track: Reliability & Shutdown Grace**
-*Link: [./tracks/reliability_shutdown_grace_20260219/](./tracks/reliability_shutdown_grace_20260219/)*
+- [x] **Track: Reliability & Shutdown Grace** (Superseded by v2)
+  *Link: [./tracks/reliability_shutdown_grace_20260219/](./tracks/reliability_shutdown_grace_20260219/)*
+
+---
+
+- [x] **Track: Input Monitor Teardown Cleanup** (Resolved by Native Hook)
+  *Link: [./tracks/fix_input_monitor_teardown/](./tracks/fix_input_monitor_teardown/)*
+

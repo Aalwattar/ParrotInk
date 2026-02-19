@@ -7,15 +7,16 @@ import time
 from ctypes import wintypes
 from typing import Callable, Optional, Set
 
+from engine.constants import SESSION_QUIT_TIMEOUT, TOGGLE_DEBOUNCE_COOLDOWN
 from engine.logging import get_logger
 
 from .platform_win.keys import (
     HOOKPROC,
     INPUT,
-    INPUT_UNION,
     KBDLLHOOKSTRUCT,
     KEYBDINPUT,
     KEYEVENTF_KEYUP,
+    LLKHF_EXTENDED,
     LLKHF_INJECTED,
     VK_CONTROL,
     VK_LCONTROL,
@@ -31,6 +32,7 @@ from .platform_win.keys import (
     WM_KEYUP,
     WM_SYSKEYDOWN,
     WM_SYSKEYUP,
+    InputUnion,
 )
 
 logger = get_logger("Interaction")
@@ -48,6 +50,9 @@ user32.SetWindowsHookExW.restype = wintypes.HHOOK
 
 user32.UnhookWindowsHookEx.argtypes = [wintypes.HHOOK]
 user32.UnhookWindowsHookEx.restype = wintypes.BOOL
+
+user32.GetKeyNameTextW.argtypes = [wintypes.LONG, wintypes.LPWSTR, ctypes.c_int]
+user32.GetKeyNameTextW.restype = ctypes.c_int
 
 # State Constants
 STATE_IDLE = 0
@@ -76,7 +81,7 @@ class Win32InputMonitor:
         self._state = STATE_IDLE
         self._last_event_ts = time.time()
         self._last_toggle_ts = 0.0  # Cooldown for toggle mode
-        self._toggle_cooldown = 0.4  # seconds
+        self._toggle_cooldown = TOGGLE_DEBOUNCE_COOLDOWN
 
         # Hook Management
         self._hook = None
@@ -168,10 +173,30 @@ class Win32InputMonitor:
         for vk in list(self._pressed_modifiers):
             inp = INPUT(
                 type=1,  # INPUT_KEYBOARD
-                u=INPUT_UNION(ki=KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP)),
+                union=InputUnion(ki=KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP)),
             )
             user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
             logger.debug(f"Released stuck modifier vk=0x{vk:02X}")
+
+    def _get_key_name(self, vk: int, scan_code: int, is_extended: bool) -> str:
+        """Retrieves a human-readable name for a VK code."""
+        # 1. Check common overrides for consistency with hotkey parsing
+        overrides = {
+            VK_CONTROL: "ctrl",
+            VK_SHIFT: "shift",
+            VK_MENU: "alt",
+            0x20: "space",
+        }
+        if vk in overrides:
+            return overrides[vk]
+
+        # 2. Use Win32 API for others
+        l_param = (scan_code << 16) | (1 << 24 if is_extended else 0)
+        buf = ctypes.create_unicode_buffer(32)
+        if user32.GetKeyNameTextW(l_param, buf, 32) > 0:
+            return buf.value.lower()
+
+        return f"key_{vk}"
 
     def _ll_keyboard_handler(self, n_code, w_param, l_param):
         """Native Keyboard Hook Procedure."""
@@ -246,13 +271,20 @@ class Win32InputMonitor:
                 return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
 
             else:  # STATE_DICTATING
-                # Any non-modifier KeyDown stops dictation
-                if is_down and base_vk not in modifier_keys:
-                    self._state = STATE_IDLE
-                    self._event_queue.put("stop")
-                    return 1  # Suppress stop key
+                # Any KeyDown stops dictation (including modifiers)
+                if is_down:
+                    # 1. If it's the hotkey combo, trigger toggle stop (via start event)
+                    if combo_fired:
+                        self._event_queue.put("start")
+                        return 1
 
-                return 1  # Suppress everything else while dictating
+                    # 2. If 'any key' is enabled, notify the coordinator
+                    if self._is_any_key_enabled:
+                        name = self._get_key_name(vk, kb.scanCode, bool(flags & LLKHF_EXTENDED))
+                        self._event_queue.put(f"any_key:{name}")
+                        return 1
+
+                    return 1  # Suppress everything else while dictating
 
         else:  # HOLD MODE
             if self._state == STATE_IDLE:
@@ -313,6 +345,9 @@ class Win32InputMonitor:
                     self._on_press_callback()
                 elif event == "stop":
                     self._on_release_callback()
+                elif isinstance(event, str) and event.startswith("any_key:"):
+                    if self._any_key_callback:
+                        self._any_key_callback(event.split(":", 1)[1])
             except queue.Empty:
                 continue
 
@@ -340,7 +375,7 @@ class Win32InputMonitor:
             logger.debug("Posting WM_QUIT to hook thread...")
             user32.PostThreadMessageW(self._thread_id, 0x0012, 0, 0)  # WM_QUIT
             if self._thread:
-                self._thread.join(timeout=2.0)
+                self._thread.join(timeout=SESSION_QUIT_TIMEOUT)
             self._thread_id = None
 
         # Final cleanup for the queue
