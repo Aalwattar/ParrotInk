@@ -90,6 +90,7 @@ class TrayApp:
 
         # Lazy-load indicator
         self.indicator = None
+        self._is_stopped = False
         if self.config.ui.floating_indicator.enabled:
             try:
                 from .indicator_ui import IndicatorWindow
@@ -391,9 +392,14 @@ class TrayApp:
         if self.indicator:
             threading.Thread(target=self.indicator.start, daemon=True).start()
 
-        # Note: In this baseline, the main thread is owned by asyncio (AppCoordinator),
-        # so this method must return to keep the main thread unblocked.
-        logger.info("UI System fully initialized and running in sidecar threads.")
+        logger.info("UI System fully initialized. Entering wait state.")
+        # Block this thread until stop() is called. 
+        # Since gui_main now runs this in a non-daemon thread, this keeps the process alive
+        # while the sidecar threads (icon, bridge, indicator) do the work.
+        while not self._stop_event.is_set():
+            self._stop_event.wait(timeout=1.0)
+        
+        logger.info("TrayApp run loop exited.")
 
     def _shutdown_ui(self):
         """Runs on the UI thread to stop the mainloop and cleanup."""
@@ -405,14 +411,29 @@ class TrayApp:
                 pass
 
     def stop(self) -> None:
-        print("\nShutting down UI...", flush=True)
+        if self._is_stopped:
+            return
+        self._is_stopped = True
+        
+        logger.info("Stopping UI systems...")
         self._stop_event.set()
+        
         # Cleanly destroy the hidden master on the UI thread
         if self.ui_root:
             self.ui_root.after(0, self._shutdown_ui)
 
-        self.icon.stop()
+        # Pystray stop is idempotent but we check to be safe
+        try:
+            self.icon.stop()
+        except Exception:
+            pass
+
         if self.indicator:
             self.indicator.stop()
+            
         if self.on_quit_callback:
-            self.on_quit_callback()
+            # We wrap in try/except to ensure one failure doesn't block shutdown
+            try:
+                self.on_quit_callback()
+            except Exception:
+                pass

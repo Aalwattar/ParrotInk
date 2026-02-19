@@ -218,7 +218,7 @@ async def main_gui(cli_args):
         availability=coordinator.get_provider_availability(),
     )
 
-    ui_thread = threading.Thread(target=app.run, daemon=True)
+    ui_thread = threading.Thread(target=app.run, daemon=False)
     ui_thread.start()
 
     # The monitor is configured during coordinator init, but we start it here
@@ -235,5 +235,14 @@ async def main_gui(cli_args):
     except asyncio.CancelledError:
         pass
     finally:
+        logger.info("Main loop exited. Starting cleanup...")
         coordinator.input_monitor.stop()
+        # Explicitly stop the UI app to break its internal loops
+        app.stop()
+        # Wait for UI thread to finish
+        if ui_thread.is_alive():
+            logger.info("Waiting for UI thread to finalize...")
+            ui_thread.join(timeout=5.0)
+        
         await coordinator.shutdown("Finalizing")
+        logger.info("Shutdown complete.")

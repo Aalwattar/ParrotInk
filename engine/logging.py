@@ -37,11 +37,15 @@ class SanitizingFormatter(logging.Formatter):
         # 1. Process metadata redaction (First Principles: Data handling before string formatting)
         # We redact in a copy of the record or handle it during string assembly.
         # Here we'll append redacted metadata to the message if present.
+        
+        # Shutdown Safety: During interpreter finalization, constants or globals might be None
+        redaction_len = globals().get("PII_REDACTION_LENGTH", 10)
+        
         extra_info = []
         for key in self.SENSITIVE_METADATA_KEYS:
             val = getattr(record, key, None)
             if val and isinstance(val, str):
-                safe_val = f"{val[:PII_REDACTION_LENGTH]}<PII_REDACTED>"
+                safe_val = f"{val[:redaction_len]}<PII_REDACTED>"
                 extra_info.append(f"{key}={safe_val}")
 
         # 2. Standard formatting

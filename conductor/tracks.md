@@ -226,3 +226,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Noise Reduction & Audio Profile Defaulting**
 *Link: [./archive/noise_reduction_20260219/plan.md](./archive/noise_reduction_20260219/plan.md)*
+
+---
+
+- [~] **Track: Reliability & Shutdown Grace**
+*Link: [./tracks/reliability_shutdown_grace_20260219/](./tracks/reliability_shutdown_grace_20260219/)*
