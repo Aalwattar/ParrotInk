@@ -51,8 +51,10 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Diagnostics:** A new `app config --explain` CLI command provides a clear report of how high-level profiles map to specific technical timings and thresholds.
     - **Live Configuration Refresh:** The application supports an in-place reload mechanism that validates and applies manual edits to the `config.toml` file without requiring a process restart.
     - **Hold to Talk:** A toggle in the Tray menu to switch between "Hold to Talk" and "Smart Toggle" modes.
+    - **Hardened Security:** The application strictly validates transcription provider URLs against a hardcoded list of trusted domains. This prevents "Silent Key Theft" by refusing to connect to unauthorized custom endpoints defined in the configuration file.
+    - **Optimized Connection Management:** Transcription provider connections are managed with a graceful 7.0-second shutdown timeout, significantly reducing lag and ensuring reliable session finalization.
+    - **Advanced Configuration:** Power users can still provide custom API endpoints (URLs) for transcription providers to support local mock servers, provided they adhere to the application's strict domain trust policies.
     - Transcription language.
-    - **Advanced Configuration:** Custom API endpoints (URLs) for transcription providers to support local mock servers or proxies.
 
 ### 2.8. Headless Evaluation Mode
 - A dedicated CLI mode (`eval`) for deterministic accuracy testing and regression monitoring.
