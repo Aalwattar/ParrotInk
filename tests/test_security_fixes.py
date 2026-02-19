@@ -48,12 +48,12 @@ async def test_provider_refuses_untrusted_url():
         silence_duration_ms=500,
         prefix_padding_ms=300,
                     noise_reduction_type=None,
-                    language="en",
-                    trusted_domains=[],
-                    is_test=False, # Production mode
-                )
-        
-
+                                language="en",
+                                trusted_domains=[],
+                                stop_timeout=7.0,
+                                is_test=False, # Production mode
+                            )
+                    
     provider = OpenAIProvider(
         api_key="sk-test",
         on_partial=lambda x: None,
@@ -79,12 +79,12 @@ async def test_provider_allows_untrusted_url_in_test_mode(mocker):
         silence_duration_ms=500,
         prefix_padding_ms=300,
                     noise_reduction_type=None,
-                    language="en",
-                    trusted_domains=[],
-                    is_test=True, # Test mode
-                )
-        
-
+                                language="en",
+                                trusted_domains=[],
+                                stop_timeout=7.0,
+                                is_test=True, # Test mode
+                            )
+                    
     # Mock websockets.connect to prevent actual network calls
     mock_connect = mocker.patch("websockets.connect", side_effect=Exception("Mock connected"))
 

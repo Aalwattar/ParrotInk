@@ -26,7 +26,9 @@ class OpenAIProvider(BaseProvider):
         on_final: Callable[[str], None],
         effective_config: EffectiveOpenAIConfig,
     ):
-        super().__init__(api_key, on_partial, on_final, "")
+        super().__init__(
+            api_key, on_partial, on_final, "", stop_timeout=effective_config.stop_timeout
+        )
         self.effective_config = effective_config
         self.url = effective_config.url
         self.ws: Optional[ClientConnection] = None

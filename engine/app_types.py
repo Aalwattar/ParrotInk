@@ -31,6 +31,7 @@ class EffectiveOpenAIConfig:
     noise_reduction_type: Optional[str]
     language: str
     trusted_domains: List[str]
+    stop_timeout: float
     is_test: bool
 
 
@@ -50,6 +51,7 @@ class EffectiveAssemblyAIConfig:
     format_text: bool
     language_detection: bool
     trusted_domains: List[str]
+    stop_timeout: float
     is_test: bool
 
 

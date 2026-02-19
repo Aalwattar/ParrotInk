@@ -109,6 +109,7 @@ class AudioConfig(BaseModel):
     inactivity_timeout_seconds: int = Field(default=30, ge=5, le=3600)
     connection_timeout_seconds: float = 20.0
     shutdown_timeout_seconds: float = 10.0
+    provider_stop_timeout_seconds: float = 7.0
     voice_activity_threshold: float = 0.005
     max_retries: int = 3
     initial_backoff_seconds: float = 1.0

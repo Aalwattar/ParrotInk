@@ -13,11 +13,13 @@ class BaseProvider(ABC):
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         base_url: str,
+        stop_timeout: float = 2.0,
     ):
         self.api_key = api_key
         self.on_partial = on_partial
         self.on_final = on_final
         self.base_url = base_url
+        self.stop_timeout = stop_timeout
 
     @property
     @abstractmethod
@@ -50,8 +52,7 @@ class BaseProvider(ABC):
 
         logger = get_logger("Provider")
         try:
-            # Hardcoded 2.0s safety timeout for all providers
-            async with asyncio.timeout(2.0):
+            async with asyncio.timeout(self.stop_timeout):
                 await self._do_stop()
         except TimeoutError:
             logger.warning(f"{self.get_type()} provider stop timed out (force killed).")

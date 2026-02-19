@@ -48,6 +48,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         noise_reduction_type=noise_reduction,
         language=openai_core.language,
         trusted_domains=config.security.trusted_domains,
+        stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
     )
 
@@ -134,6 +135,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         format_text=aai_adv.format_text,
         language_detection=aai_adv.language_detection,
         trusted_domains=config.security.trusted_domains,
+        stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
     )
 
