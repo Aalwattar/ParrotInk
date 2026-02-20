@@ -208,8 +208,11 @@
 # Override the default log file path. If empty, uses %APPDATA%\ParrotInk\parrotink.log.
 # file_path = ""
 
-# Logging detail level. 1 = INFO (Normal), 2 = DEBUG (Verbose).
-# file_level = 1
+# Logging detail level.
+# "error" - Only show critical failures and errors.
+# "info"  - Show normal app activity (status changes, connection success).
+# "debug" - Show everything including low-level technical details.
+# file_level = "info"
 
 # Maximum size of the log file in bytes (default 5MB).
 # file_max_bytes = 5242880

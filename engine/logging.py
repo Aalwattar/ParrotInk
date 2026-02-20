@@ -182,7 +182,12 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
         if verbose_count >= 2:
             file_level = logging.DEBUG
         else:
-            file_level = logging.INFO if config.logging.file_level == 1 else logging.DEBUG
+            level_map = {
+                "error": logging.ERROR,
+                "info": logging.INFO,
+                "debug": logging.DEBUG,
+            }
+            file_level = level_map.get(config.logging.file_level, logging.INFO)
 
         try:
             file_handler = logging.handlers.RotatingFileHandler(
