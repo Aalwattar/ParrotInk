@@ -239,8 +239,11 @@ async def main_gui(cli_args):
     finally:
         logger.info("Main loop exited. Starting cleanup...")
         coordinator.input_monitor.stop()
+
         # Explicitly stop the UI app to break its internal loops
+        # Senior Architecture: Check if it's already stopping to avoid double-call races
         app.stop()
+
         # Wait for UI thread to finish
         if ui_thread.is_alive():
             logger.info("Waiting for UI thread to finalize...")

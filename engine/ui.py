@@ -393,36 +393,50 @@ class TrayApp:
             threading.Thread(target=self.indicator.start, daemon=True).start()
 
         logger.info("UI System fully initialized. Entering wait state.")
-        # Block this thread until stop() is called. 
+        # Block this thread until stop() is called.
         # Since gui_main now runs this in a non-daemon thread, this keeps the process alive
         # while the sidecar threads (icon, bridge, indicator) do the work.
         while not self._stop_event.is_set():
             self._stop_event.wait(timeout=1.0)
-        
+
         logger.info("TrayApp run loop exited.")
 
     def _shutdown_ui(self):
         """Runs on the UI thread to stop the mainloop and cleanup."""
+        global _master_root
         if self.ui_root:
             try:
-                self.ui_root.quit()  # Stop mainloop
-                self.ui_root.destroy()  # Destroy master window
-            except Exception:
-                pass
+                # Stop the mainloop first
+                self.ui_root.quit()
+                # Destroy the window
+                self.ui_root.destroy()
+                self.ui_root = None
+                _master_root = None
+            except Exception as e:
+                logger.debug(f"Error during Tcl shutdown: {e}")
 
-    def stop(self) -> None:
+    def stop(self, *args) -> None:
+        """
+        Thread-safe stop signal.
+        Can be called from any thread (Tray, Main, or Bridge).
+        """
         if self._is_stopped:
             return
         self._is_stopped = True
-        
+
         logger.info("Stopping UI systems...")
         self._stop_event.set()
-        
-        # Cleanly destroy the hidden master on the UI thread
-        if self.ui_root:
-            self.ui_root.after(0, self._shutdown_ui)
 
-        # Pystray stop is idempotent but we check to be safe
+        # Cleanly destroy the hidden master on its OWN (UI) thread
+        # This prevents "async handler deleted by the wrong thread"
+        if self.ui_root:
+            try:
+                self.ui_root.after(0, self._shutdown_ui)
+            except Exception:
+                # If the loop is already dead, _shutdown_ui isn't needed
+                pass
+
+        # Pystray stop is idempotent
         try:
             self.icon.stop()
         except Exception:
@@ -430,9 +444,9 @@ class TrayApp:
 
         if self.indicator:
             self.indicator.stop()
-            
+
         if self.on_quit_callback:
-            # We wrap in try/except to ensure one failure doesn't block shutdown
+            # We call this to notify the coordinator/main loop to exit
             try:
                 self.on_quit_callback()
             except Exception:
