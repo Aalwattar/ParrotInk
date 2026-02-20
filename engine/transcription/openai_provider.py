@@ -25,9 +25,15 @@ class OpenAIProvider(BaseProvider):
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         effective_config: EffectiveOpenAIConfig,
+        on_status: Optional[Callable[[str], None]] = None,
     ):
         super().__init__(
-            api_key, on_partial, on_final, "", stop_timeout=effective_config.stop_timeout
+            api_key,
+            on_partial,
+            on_final,
+            effective_config.url,
+            stop_timeout=effective_config.stop_timeout,
+            on_status=on_status,
         )
         self.effective_config = effective_config
         self.url = effective_config.url
@@ -205,3 +211,5 @@ class OpenAIProvider(BaseProvider):
 
         elif ev_type == "session.updated":
             logger.info("OpenAI: Transcription session updated successfully.")
+            if self.on_status:
+                self.on_status("Ready")

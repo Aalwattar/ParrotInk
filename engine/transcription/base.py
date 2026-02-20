@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 from engine.audio.adapter import ProviderAudioSpec
 
@@ -14,12 +14,14 @@ class BaseProvider(ABC):
         on_final: Callable[[str], None],
         base_url: str,
         stop_timeout: float = 2.0,
+        on_status: Optional[Callable[[str], None]] = None,
     ):
         self.api_key = api_key
         self.on_partial = on_partial
         self.on_final = on_final
         self.base_url = base_url
         self.stop_timeout = stop_timeout
+        self.on_status = on_status
 
     @property
     @abstractmethod

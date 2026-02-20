@@ -116,7 +116,10 @@ class ConnectionManager:
         # Initialize provider if not exists
         if not self.provider:
             self.provider = TranscriptionFactory.create(
-                self.config, on_partial=self.on_partial, on_final=self.on_final
+                self.config,
+                on_partial=self.on_partial,
+                on_final=self.on_final,
+                on_status=self.on_status,
             )
             self.audio_adapter = AudioAdapter(
                 capture_rate_hz=self.config.audio.capture_sample_rate,

@@ -23,9 +23,15 @@ class AssemblyAIProvider(BaseProvider):
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         effective_config: EffectiveAssemblyAIConfig,
+        on_status: Optional[Callable[[str], None]] = None,
     ):
         super().__init__(
-            api_key, on_partial, on_final, "", stop_timeout=effective_config.stop_timeout
+            api_key,
+            on_partial,
+            on_final,
+            effective_config.url,
+            stop_timeout=effective_config.stop_timeout,
+            on_status=on_status,
         )
         self.effective_config = effective_config
         self.url = effective_config.url
@@ -160,3 +166,5 @@ class AssemblyAIProvider(BaseProvider):
             logger.error(f"AssemblyAI API Error: {event.get('error')}")
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
+            if self.on_status:
+                self.on_status("Ready")
