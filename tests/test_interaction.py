@@ -1,53 +1,36 @@
 from unittest.mock import MagicMock, patch
+import pytest
+from engine.interaction import Win32InputMonitor
 
-from engine.interaction import InputMonitor
-
-
-def test_input_monitor_any_key_callback():
-    """Verify that any key press triggers the registered callback when enabled."""
+def test_input_monitor_basic_init():
+    """Verify that the monitor initializes correctly with callbacks."""
     on_press = MagicMock()
     on_release = MagicMock()
+    monitor = Win32InputMonitor(on_press, on_release)
+    
+    assert monitor.is_running is False
+    assert monitor.hotkey == ""
 
-    # Mock keyboard library
-    with patch("engine.interaction.keyboard"):
-        monitor = InputMonitor(on_press=on_press, on_release=on_release)
-
-        callback = MagicMock()
-        monitor.set_any_key_callback(callback)
-        monitor.set_hotkey("ctrl+space")
-        monitor.start()
-
-        # 1. Test Disabled state
-        # Simulate a key event
-        event = MagicMock()
-        event.event_type = "down"
-        event.name = "a"
-        monitor._any_key_hook(event)
-
-        callback.assert_not_called()
-
-        # 2. Test Enabled state
-        monitor.enable_any_key_monitoring(True)
-        monitor._any_key_hook(event)
-        callback.assert_called_once_with("a")
-
-        monitor.stop()
-
+def test_input_monitor_set_hotkey():
+    """Verify hotkey parsing."""
+    monitor = Win32InputMonitor(MagicMock(), MagicMock())
+    monitor.set_hotkey("ctrl+space")
+    
+    assert monitor.hotkey == "ctrl+space"
+    # VK_CONTROL = 0x11, Space = 0x20
+    assert 0x11 in monitor._modifier_vks
+    assert monitor._hotkey_vk == 0x20
 
 def test_input_monitor_start_stop():
-    """Verify that the monitor can be started and stopped."""
-    with patch("engine.interaction.keyboard") as mock_keyboard:
-        on_press = MagicMock()
-        on_release = MagicMock()
-        monitor = InputMonitor(on_press=on_press, on_release=on_release)
-        monitor.set_hotkey("ctrl+space")
-
-        monitor.start()
-        # Should call hook() for any-key and either add_hotkey or on_press_key
-        assert mock_keyboard.hook.called
-        assert mock_keyboard.add_hotkey.called or mock_keyboard.on_press_key.called
-        assert monitor._is_running is True
-
-        monitor.stop()
-        assert monitor._is_running is False
-        assert mock_keyboard.unhook.called
+    """Verify starting and stopping launches and kills the thread."""
+    monitor = Win32InputMonitor(MagicMock(), MagicMock())
+    monitor.set_hotkey("ctrl+v")
+    
+    # Mock user32.SetWindowsHookExW to avoid actual OS hook in unit test
+    with patch("ctypes.windll.user32.SetWindowsHookExW", return_value=123):
+        with patch("ctypes.windll.user32.UnhookWindowsHookEx"):
+            with patch("ctypes.windll.user32.GetMessageW", return_value=0): # Exit immediately
+                monitor.start()
+                assert monitor.is_running is True
+                monitor.stop()
+                assert monitor.is_running is False

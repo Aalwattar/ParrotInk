@@ -12,6 +12,12 @@ from engine.audio.streamer import AudioStreamer
 from engine.audio_feedback import play_sound
 from engine.config import Config, ConfigError, load_config
 from engine.connection import ConnectionManager
+from engine.constants import (
+    COOLDOWN_INJECTION,
+    COOLDOWN_MANUAL_STOP,
+    HOOK_WATCHDOG_INTERVAL,
+    INTENT_LOCKOUT_DURATION,
+)
 from engine.credential_ui import ask_key
 from engine.injection import InjectionController
 from engine.interaction import InputMonitor
@@ -25,10 +31,6 @@ from engine.ui_bridge import UIBridge
 from engine.ui_utils import show_startup_toast
 
 logger = get_logger("App")
-
-# Constants
-COOLDOWN_MANUAL_STOP = 0.5
-COOLDOWN_INJECTION = 0.5
 
 
 class AppCoordinator:
@@ -64,6 +66,7 @@ class AppCoordinator:
         )
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
         self.input_monitor.set_any_key_callback(self._on_manual_stop)
+        self.input_monitor.enable_any_key_monitoring(config.interaction.stop_on_any_key)
 
         # Register for config changes
         self.config.register_observer(self._on_config_changed)
@@ -85,6 +88,12 @@ class AppCoordinator:
         # Injection safety
         self.injection_controller = InjectionController()
 
+        # v2 Reliability Architecture
+        from engine.platform_win.session import SessionMonitor
+
+        self.session_monitor = SessionMonitor(on_unlock=self._on_unlock)
+        self._hook_watchdog_task: Optional[asyncio.Task] = None
+
         # Track provider changes for silent transitions
         self._last_provider = config.transcription.provider
 
@@ -100,6 +109,10 @@ class AppCoordinator:
         self._loop = value
         if value:
             self.injection_controller.set_loop(value)
+            # Start v2 reliability monitors
+            self.session_monitor.start()
+            if not self._hook_watchdog_task or self._hook_watchdog_task.done():
+                self._hook_watchdog_task = value.create_task(self._hook_watchdog_task_run())
 
     @property
     def provider(self):
@@ -140,6 +153,7 @@ class AppCoordinator:
 
         # 2. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
+        self.input_monitor.enable_any_key_monitoring(config.interaction.stop_on_any_key)
 
         # 2. Update connection manager config (crucial for provider switching)
         self.connection_manager.config = config
@@ -202,15 +216,17 @@ class AppCoordinator:
                 else:
                     # Intent Lockout: If we just stopped, ignore this trigger
                     # to prevent rapid Stop -> Start oscillation.
-                    if time.time() - self._last_manual_stop_time < 0.3:
+                    if time.time() - self._last_manual_stop_time < INTENT_LOCKOUT_DURATION:
                         logger.info("Ignoring rapid Toggle START trigger (lockout active).")
                         return
                     asyncio.run_coroutine_threadsafe(self.start_listening(), self.loop)
 
     def _on_hotkey_release(self):
         """Callback from InputMonitor when the hotkey is released."""
-        if self.config.hotkeys.hold_mode and self.loop:
-            # Only stop in hold mode
+        if self.loop:
+            # Senior Architecture: We always call stop_listening here.
+            # In Hold Mode, this is the trigger. In Toggle Mode, this is only
+            # called when the monitor explicitly sends a 'stop' event.
             asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     def _on_manual_stop(self, key=None):
@@ -397,8 +413,7 @@ class AppCoordinator:
 
             # 4. Start mouse monitoring
             self.mouse_monitor.start()
-            # Enable any-key monitoring for cancellation
-            self.input_monitor.enable_any_key_monitoring(True)
+            self.input_monitor.enable_any_key_monitoring(self.config.interaction.stop_on_any_key)
 
             # 5. Start listening monitor (inactivity + health)
             if self._inactivity_task:
@@ -422,7 +437,6 @@ class AppCoordinator:
             return
 
         logger.debug("Stopping transcription session...")
-        self.input_monitor.enable_any_key_monitoring(False)
         self.input_monitor.reset_state()
         self.mouse_monitor.stop()
         self.anchor = None
@@ -457,6 +471,24 @@ class AppCoordinator:
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)
 
+    def _on_unlock(self):
+        """Callback from SessionMonitor when Windows is unlocked."""
+        logger.info("Session Unlock detected. Refreshing hotkey hooks...")
+        self.input_monitor.restart()
+
+    async def _hook_watchdog_task_run(self):
+        """Infrastructure Watchdog: Ensures the native hook is still alive."""
+        interval = HOOK_WATCHDOG_INTERVAL
+        try:
+            while True:
+                await asyncio.sleep(interval)
+                # If hook is dead or has disappeared (WH_KEYBOARD_LL can be fickle)
+                if not getattr(self.input_monitor, "_hook", None) and self.input_monitor.is_running:
+                    logger.warning("Watchdog detected dead hook. Restarting interaction layer...")
+                    self.input_monitor.restart()
+        except asyncio.CancelledError:
+            pass
+
     async def shutdown(self, reason: Optional[str] = None):
         """Orchestrated shutdown."""
         async with self._shutdown_lock:
@@ -464,6 +496,11 @@ class AppCoordinator:
                 return
             logger.info(f"Shutting down application... Reason: {reason or 'Not specified'}")
             self.set_state(AppState.SHUTTING_DOWN)
+
+            # Stop v2 monitors
+            self.session_monitor.stop()
+            if self._hook_watchdog_task:
+                self._hook_watchdog_task.cancel()
 
             try:
                 # We wrap the cleanup in a timeout to prevent hanging the system on exit

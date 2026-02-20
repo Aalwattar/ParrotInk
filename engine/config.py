@@ -91,6 +91,7 @@ class InteractionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     cancel_on_click_outside_anchor: bool = True
     anchor_scope: Literal["control", "window"] = "control"
+    stop_on_any_key: bool = True
     sounds: SoundsConfig = Field(default_factory=SoundsConfig)
     run_at_startup: bool = False
 

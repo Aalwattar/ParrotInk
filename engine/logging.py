@@ -69,6 +69,24 @@ class SanitizingFormatter(logging.Formatter):
         return msg
 
 
+def close_logging():
+    """
+    Surgical shutdown of the logging system.
+    Flushes and closes all handlers to prevent 'buffered busy' errors
+    during interpreter finalization.
+    """
+    import logging
+
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        try:
+            handler.flush()
+            handler.close()
+            root_logger.removeHandler(handler)
+        except Exception:
+            pass
+
+
 def is_path_safe(path: str | Path) -> bool:
     """
     Validates if a file path is safe for writing logs.
