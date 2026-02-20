@@ -209,10 +209,10 @@
 # file_path = ""
 
 # Logging detail level.
-# "error" - Only show critical failures and errors.
-# "info"  - Show normal app activity (status changes, connection success).
-# "debug" - Show everything including low-level technical details.
-# file_level = "info"
+# "error"   - Only show critical failures and errors. (Recommended for production)
+# "info"    - Show normal app activity (status changes, connection success).
+# "verbose" - Show everything including low-level technical details.
+# file_level = "error"
 
 # Maximum size of the log file in bytes (default 5MB).
 # file_max_bytes = 5242880

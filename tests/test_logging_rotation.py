@@ -22,7 +22,7 @@ def test_logging_rotation_creation(temp_log_dir):
     mock_config = MagicMock()
     mock_config.logging.file_enabled = True
     mock_config.logging.file_path = str(log_file)
-    mock_config.logging.file_level = "debug"
+    mock_config.logging.file_level = "verbose"
     mock_config.logging.file_max_bytes = 100  # 100 bytes
     mock_config.logging.file_backup_count = 2
     
