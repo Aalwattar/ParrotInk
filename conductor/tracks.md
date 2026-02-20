@@ -234,8 +234,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [~] **Track: Rotational Logging & AppData Storage**
-  *Link: [./tracks/logging_rotation/](./tracks/logging_rotation/)*
+- [x] **Track: Rotational Logging & AppData Storage**
+  *Link: [./archive/logging_rotation/](./archive/logging_rotation/)*
 
 ---
 

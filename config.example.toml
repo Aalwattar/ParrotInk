@@ -1,37 +1,52 @@
-# ParrotInk Configuration Template
-# All values shown below are the factory defaults.
-# To customize a setting, uncomment the line (remove the '#') and change the value.
+# ==============================================================================
+# ParrotInk - Professional Voice-to-Text Configuration
+# ==============================================================================
+# This is the main configuration file for ParrotInk.
+#
+# HOW TO USE THIS FILE:
+# 1. Commented-out lines (starting with '#') show the application DEFAULT values.
+# 2. To change a setting, remove the '#' and modify the value to your preference.
+# 3. Save the file and ParrotInk will automatically reload the new settings.
+# ==============================================================================
 
 [hotkeys]
-# The key combination used to trigger dictation.
+# The key combination used to trigger dictation. 
+# Supports modifiers: ctrl, alt, shift, win.
+# Examples: "ctrl+alt+v", "shift+f2", "win+v"
 # hotkey = "ctrl+alt+v"
 
-# If true, you must hold the key to talk. If false, it's a toggle (click to start, click to stop).
+# If true, you must HOLD the hotkey while talking.
+# If false (Toggle Mode), click once to start and click again to stop.
 # hold_mode = false
 
 [interaction]
-# Automatically cancel and discard transcription if you click away from the active input field.
+# Automatically cancel and discard transcription if you click away from the active 
+# input field (anchor) while recording.
 # cancel_on_click_outside_anchor = true
 
-# 'control' triggers cancellation only when clicking a different UI element. 
-# 'window' triggers cancellation when clicking anywhere outside the active application window.
+# Defines what is considered 'outside' for cancellation:
+# 'control' - Cancel only if you click a DIFFERENT text box or UI element.
+# 'window'  - Cancel if you click ANYWHERE outside the active application window.
 # Options: "control", "window"
 # anchor_scope = "control"
 
-# If true, any key press (other than the hotkey) while in 'Toggle Mode' will stop recording.
+# Only applies to Toggle Mode (hold_mode = false).
+# If true, pressing ANY key (other than the hotkey) while recording will stop it.
 # stop_on_any_key = true
 
-# If true, the app will automatically start when Windows boots up.
+# If true, ParrotInk will automatically launch when Windows starts.
 # run_at_startup = false
 
 [interaction.sounds]
 # Enable auditory feedback (beeps) when recording starts or stops.
 # enabled = true
 
-# Volume of the feedback sounds. Range: 0 (silent) to 100 (max).
+# Volume of the feedback sounds. 
+# Range: 0 (silent) to 100 (max volume).
 # volume = 30
 
 # Paths to custom WAV files for start/stop sounds.
+# Ensure the path uses double backslashes (\\) or forward slashes (/).
 # start_sound_path = "C:\\Windows\\Media\\Speech On.wav"
 # stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
@@ -39,13 +54,15 @@
 # Enable the floating Acrylic HUD that shows real-time transcription progress.
 # enabled = true
 
-# If true, the HUD will ignore mouse clicks and let them pass through to windows behind it.
+# If true, the HUD ignores mouse clicks (allowing you to click through it).
 # click_through = true
 
-# Opacity of the HUD background when the app is idle. Range: 0.0 to 1.0.
+# Transparency level of the HUD background when the app is idle. 
+# Range: 0.0 (transparent) to 1.0 (opaque).
 # opacity_idle = 0.3
 
-# Opacity of the HUD background when actively recording speech. Range: 0.0 to 1.0.
+# Transparency level of the HUD background when actively recording speech. 
+# Range: 0.0 (transparent) to 1.0 (opaque).
 # opacity_active = 0.8
 
 # Distance in pixels from the bottom of the screen to position the HUD.
@@ -54,20 +71,23 @@
 # Maximum number of characters to display in the HUD preview before truncating.
 # max_characters = 180
 
-# How often the HUD UI redraws itself in milliseconds. Range: 5 to 500.
+# UI refresh frequency in milliseconds. Lower is smoother but uses more CPU.
+# Range: 5 to 500.
 # refresh_rate_ms = 50
 
 [audio]
-# Internal sample rate for microphone capture. 16000 is recommended for most ASR models.
+# Internal sample rate for microphone capture. 
+# 16000 is the industry standard for most ASR models.
 # capture_sample_rate = 16000
 
-# Duration of each audio buffer chunk in milliseconds. Low values reduce latency but increase CPU.
+# Duration of each audio buffer chunk in milliseconds. 
+# Lower values reduce latency but increase CPU usage.
 # Range: 50 to 500.
 # chunk_ms = 100
 
 # Connection management strategy:
-# 'warm' (recommended): Keeps connection ready but idle to eliminate handshake lag on first press.
-# 'on_demand': Connects only when hotkey is pressed (saves bandwidth, higher initial lag).
+# 'warm' (recommended): Keeps connection ready but idle to eliminate handshake lag.
+# 'on_demand': Connects only when hotkey is pressed (saves bandwidth, adds initial lag).
 # 'always_on': Connection never closes (highest resource usage).
 # connection_mode = "warm"
 
@@ -75,21 +95,22 @@
 # Range: 30 to 1800.
 # warm_idle_timeout_seconds = 300
 
-# Timeout for the initial WebSocket handshake in seconds.
-# connection_timeout_seconds = 20.0
-
-# Timeout for the application cleanup during shutdown in seconds.
-# shutdown_timeout_seconds = 10.0
-
-# Sensitivity for local voice activity detection. Lower is more sensitive.
-# Range: 0.001 to 0.05.
-# voice_activity_threshold = 0.005
-
 # Automatically stop recording in 'Toggle Mode' after this many seconds of silence.
 # Range: 5 to 3600.
 # inactivity_timeout_seconds = 30
 
-# Maximum number of retry attempts for a failed connection.
+# Sensitivity for local voice activity detection. 
+# Lower values are more sensitive (detect quiet speech).
+# Range: 0.001 to 0.05.
+# voice_activity_threshold = 0.005
+
+# Timeout for the initial server handshake in seconds.
+# connection_timeout_seconds = 20.0
+
+# Timeout for application cleanup during shutdown in seconds.
+# shutdown_timeout_seconds = 10.0
+
+# Maximum number of retry attempts for a failed network connection.
 # max_retries = 3
 
 # Initial delay in seconds before the first connection retry.
@@ -103,12 +124,18 @@
 # Options: "openai", "assemblyai"
 # provider = "openai"
 
-# High-level performance profile. 'Fast' prioritizes speed, 'Accurate' waits longer for silence.
+# Performance profile. 
+# 'fast'     - Prioritizes speed (faster finalization).
+# 'balanced' - Good balance between speed and sentence completion.
+# 'accurate' - Waits longer for natural pauses to ensure better context.
 # Options: "fast", "balanced", "accurate"
 # latency_profile = "balanced"
 
 # Microphone environment optimization.
-# Options: "headset" (close-mic), "laptop" (room ambient), "none" (raw)
+# 'headset' - Optimized for close-proximity microphones.
+# 'laptop'  - Optimized for built-in or room microphones (far-field).
+# 'none'    - Raw audio signal.
+# Options: "headset", "laptop", "none"
 # mic_profile = "headset"
 
 # --- OpenAI Configuration ---
@@ -120,31 +147,26 @@
 # BCP-47 language code (e.g., "en", "es", "fr", "ja").
 # language = "en"
 
-# How long to keep a single OpenAI session open before forcing a refresh (in seconds).
+# How long to keep a single OpenAI session open before refreshing (in seconds).
 # session_rotation_seconds = 3300
 
-# --- OpenAI Advanced ---
 [providers.openai.advanced]
-# If true, all profile-based timings below will be ignored in favor of these manual values.
+# If true, the manual values below will override the 'latency_profile' settings.
 # override = false
 
-# Contextual instructions to improve ASR accuracy.
-# Use this to provide the model with technical terms, acronyms, or specific formatting rules.
-# Examples:
-# prompt = "The user is discussing Python programming. Use terms like 'decorator' and 'dunder method'."
-# prompt = "Act as a medical scribe. Transcribe medical terminology accurately."
+# Contextual instructions to improve ASR accuracy (jargon, names, etc.).
 # prompt = ""
 
-# Noise reduction filter applied by the server. Options: "near_field", "far_field", "off".
+# Noise reduction filter level. Options: "near_field", "far_field", "off".
 # noise_reduction = "off"
 
-# Threshold for server-side Voice Activity Detection. Range: 0.0 to 1.0.
+# Server-side VAD sensitivity. Range: 0.0 to 1.0.
 # vad_threshold = 0.6
 
-# Amount of audio to include BEFORE speech was detected (in milliseconds).
+# Audio padding included BEFORE speech detection (in milliseconds).
 # prefix_padding_ms = 300
 
-# How much silence to wait for before finalizing a segment (in milliseconds).
+# Silence duration required to finalize a segment (in milliseconds).
 # silence_duration_ms = 500
 
 # --- AssemblyAI Configuration ---
@@ -153,69 +175,66 @@
 # Region host for AssemblyAI. Options: "us", "eu".
 # region = "us"
 
-# Language code for multilingual streaming (e.g., "es", "fr"). Defaults to "en".
+# Language code for multilingual streaming.
 # language_code = "en"
 
 # The transcription model to use.
 # Use "universal-streaming-english" for English.
-# Use "universal-streaming-multilingual" for other languages.
 # speech_model = "universal-streaming-english"
 
 # Server-side VAD sensitivity. Range: 0.0 to 1.0.
 # vad_threshold = 0.4
 
-# Time in seconds of inactivity before the session is auto-terminated. 0 means disabled.
+# Time in seconds of inactivity before session auto-termination. 0 = disabled.
 # Range: 0 or 5 to 3600.
 # inactivity_timeout_seconds = 0
 
-# --- AssemblyAI Advanced ---
 [providers.assemblyai.advanced]
-# If true, profile-based turn detection values below will be used instead of the profile defaults.
+# If true, the manual values below will override the 'latency_profile' settings.
 # override = false
 
-# If true, the provider will attempt to add punctuation and capitalization to final text.
+# If true, the provider adds punctuation and capitalization to final text.
 # format_text = false
 
-# A list of up to 100 terms to boost the recognition of. Max 50 characters per term.
-# Best for rare names, unique product brands, or specific jargon.
-# Example: keyterms_prompt = ["ParrotInk", "Gemini", "AssemblyAI"]
+# List of terms to boost recognition for (max 100 terms, 50 chars each).
+# Example: keyterms_prompt = ["ParrotInk", "Gemini"]
 # keyterms_prompt = []
 
-# Confidence threshold for detecting the end of a sentence. Range: 0.0 to 1.0.
+# Confidence threshold for detecting end of sentence. Range: 0.0 to 1.0.
 # end_of_turn_confidence_threshold = 0.4
 
-# Minimum silence needed to finalize a turn when the model is confident. (in milliseconds).
+# Minimum silence needed to finalize a turn (in milliseconds).
 # min_end_of_turn_silence_when_confident_ms = 400
 
 # Maximum silence allowed before a turn is forced to finalize (in milliseconds).
 # max_turn_silence_ms = 1000
 
-# If true, detects the spoken language and returns metadata. (Requires multilingual model).
+# If true, detects spoken language (Requires multilingual model).
 # language_detection = false
 
-# --- Debugging & Testing ---
+[logging]
+# Enable logging to a local file in %LOCALAPPDATA%\ParrotInk.
+# This is highly recommended for troubleshooting as the app has no console window.
+# file_enabled = true
+
+# Detail level for the log file.
+# "error"   - Only log critical failures (Recommended for production).
+# "info"    - Log major application events.
+# "verbose" - Log everything for deep debugging.
+# Options: "error", "info", "verbose"
+# file_level = "error"
+
+# Maximum size of a single log file in bytes. Default is 5MB.
+# file_max_bytes = 5242880
+
+# Number of archived log files to keep before deleting the oldest.
+# file_backup_count = 5
+
+# Custom path for the log file. If empty, uses the default AppData location.
+# file_path = ""
 
 [test]
-# Enable test mode to use local mock servers instead of real API endpoints.
+# FOR DEVELOPERS ONLY: Use local mock servers instead of real API endpoints.
 # enabled = false
 # openai_mock_url = "ws://localhost:8081"
 # assemblyai_mock_url = "ws://localhost:8081"
-
-[logging]
-# Enable logging to a local file.
-# file_enabled = false
-
-# Override the default log file path. If empty, uses %APPDATA%\ParrotInk\parrotink.log.
-# file_path = ""
-
-# Logging detail level.
-# "error"   - Only show critical failures and errors. (Recommended for production)
-# "info"    - Show normal app activity (status changes, connection success).
-# "verbose" - Show everything including low-level technical details.
-# file_level = "error"
-
-# Maximum size of the log file in bytes (default 5MB).
-# file_max_bytes = 5242880
-
-# Number of old log files to keep.
-# file_backup_count = 5

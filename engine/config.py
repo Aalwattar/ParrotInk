@@ -130,7 +130,7 @@ class AppTestConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    file_enabled: bool = False
+    file_enabled: bool = True
     file_path: Optional[str] = None
     file_level: Literal["error", "info", "verbose"] = "error"
     file_max_bytes: int = Field(default=5242880, ge=1024)  # Default 5MB
@@ -389,9 +389,21 @@ def load_config(path: Optional[str | Path] = None) -> Config:
         path = get_config_path()
     config_path = Path(path)
     if not config_path.exists():
-        config = Config()
-        config.save(path, blocking=True)
-        return config
+        # Senior Architecture: Use config.example.toml as a template to provide 
+        # a documented experience for the user on first launch.
+        import shutil
+        
+        example_path = Path(__file__).parent.parent / "config.example.toml"
+        if example_path.exists():
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(example_path, config_path)
+            logger.info(f"Initialized new configuration from template: {config_path}")
+        else:
+            # Fallback to programmatic default if example is missing (e.g. in some builds)
+            config = Config()
+            config.save(path, blocking=True)
+            logger.warning(f"Template not found. Initialized bare configuration: {config_path}")
+            
     return Config.from_file(path)
 
 
