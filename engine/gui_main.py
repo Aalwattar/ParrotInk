@@ -42,7 +42,6 @@ async def main_gui(cli_args):
         exit_event.set()
 
     def on_quit():
-        logger.info("Tray 'Quit' selected.")
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(
                 lambda: asyncio.create_task(trigger_shutdown("Tray Exit"))

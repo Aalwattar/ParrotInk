@@ -287,8 +287,16 @@ class TrayApp:
                 ),
             ),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Quit", self.stop),
+            pystray.MenuItem("Quit", self._on_tray_quit),
         )
+
+    def _on_tray_quit(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        """Triggered only when the user explicitly clicks 'Quit' in the menu."""
+        logger.info("Tray 'Quit' selected.")
+        if self.on_quit_callback:
+            self.on_quit_callback()
+        else:
+            self.stop()
 
     def _on_reload_config_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_reload_config:
@@ -445,9 +453,3 @@ class TrayApp:
         if self.indicator:
             self.indicator.stop()
 
-        if self.on_quit_callback:
-            # We call this to notify the coordinator/main loop to exit
-            try:
-                self.on_quit_callback()
-            except Exception:
-                pass
