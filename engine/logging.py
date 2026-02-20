@@ -37,10 +37,10 @@ class SanitizingFormatter(logging.Formatter):
         # 1. Process metadata redaction (First Principles: Data handling before string formatting)
         # We redact in a copy of the record or handle it during string assembly.
         # Here we'll append redacted metadata to the message if present.
-        
+
         # Shutdown Safety: During interpreter finalization, constants or globals might be None
         redaction_len = globals().get("PII_REDACTION_LENGTH", 10)
-        
+
         extra_info = []
         for key in self.SENSITIVE_METADATA_KEYS:
             val = getattr(record, key, None)
@@ -185,7 +185,12 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
             file_level = logging.INFO if config.logging.file_level == 1 else logging.DEBUG
 
         try:
-            file_handler = logging.FileHandler(file_path, encoding="utf-8")
+            file_handler = logging.handlers.RotatingFileHandler(
+                file_path,
+                maxBytes=config.logging.file_max_bytes,
+                backupCount=config.logging.file_backup_count,
+                encoding="utf-8",
+            )
             file_handler.setLevel(file_level)
             fmt = "%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
             file_handler.setFormatter(SanitizingFormatter(fmt))

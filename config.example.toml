@@ -210,3 +210,9 @@
 
 # Logging detail level. 1 = INFO (Normal), 2 = DEBUG (Verbose).
 # file_level = 1
+
+# Maximum size of the log file in bytes (default 5MB).
+# file_max_bytes = 5242880
+
+# Number of old log files to keep.
+# file_backup_count = 5

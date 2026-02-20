@@ -133,6 +133,8 @@ class LoggingConfig(BaseModel):
     file_enabled: bool = False
     file_path: Optional[str] = None
     file_level: int = 1
+    file_max_bytes: int = Field(default=5242880, ge=1024)  # Default 5MB
+    file_backup_count: int = Field(default=5, ge=0, le=50)
 
 
 class OpenAICoreConfig(BaseModel):
