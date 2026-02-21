@@ -83,7 +83,7 @@ No. To get the world's most accurate transcription, ParrotInk streams your audio
 Yes. We never save your audio to your hard drive. It is streamed via encrypted WebSockets directly to the provider (OpenAI or AssemblyAI) and is processed in real-time. API keys are stored in the **Windows Credential Manager**, meaning they are encrypted at the OS level.
 
 **Q: Where are my settings and logs?**
-- **Settings:** `%APPDATA%\ParrotInk\config.toml` (accessible via the tray menu).
+- **Settings:** `%APPDATA%\ParrotInk\config.toml` (accessible via the tray menu). For a full explanation of all available settings, see the [config.example.toml](./config.example.toml) file.
 - **Logs:** `%LOCALAPPDATA%\ParrotInk\`. We use a rotational system that **never exceeds 30MB**, so it won't bloat your drive.
 
 ---
@@ -91,6 +91,6 @@ Yes. We never save your audio to your hard drive. It is streamed via encrypted W
 ## 🛡️ Technical Deep-Dive
 - **HUD:** A Skia-powered Acrylic HUD provides real-time visual feedback of your transcription.
 - **Acoustic Profiles:** Optimized settings in the config file allow you to switch between **Headset** (near-field) and **Laptop Mic** (far-field) profiles.
-- **Latency Tuning:** Choose between `Fast`, `Balanced`, or `Accurate` profiles in the configuration to match your speaking pace.
+- **Latency Tuning:** Choose between `Fast`, `Balanced`, or `Accurate` profiles in the configuration to match your speaking pace. Detailed documentation on these modes can be found in [config.example.toml](./config.example.toml).
 
 **MIT License.** Built for speed. Built for Windows. Built for you.
