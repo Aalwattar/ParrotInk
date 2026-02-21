@@ -1,77 +1,79 @@
-# ✨ ParrotInk: Professional Real-Time Voice-to-Text for Windows
+# 🎙️ Stop Typing. Start Thinking. 
+### The world’s fastest, real-time open-source voice-to-text for Windows.
 
-**ParrotInk** is a powerful, low-latency system tray application that lets you type with your voice into **any** Windows application. Whether you are coding in VS Code, writing emails in Outlook, or chatting in Slack, ParrotInk injects your words instantly where your cursor is.
+**ParrotInk** isn't just another dictation tool—it’s a productivity superpower. While most voice-to-text apps make you wait seconds for a "batch" of text to appear, ParrotInk streams your words **instantly** into any application, exactly where your cursor is. 
 
----
-
-## 🚀 Why ParrotInk?
-
-- **Type Anywhere:** Works globally across Windows. Just press a hotkey and start talking.
-- **Pro-Grade Accuracy:** Powered by the latest **OpenAI Realtime** and **AssemblyAI Streaming V3** models.
-- **Privacy First:** Your API keys are stored in the encrypted **Windows Credential Manager**, never in plain text.
-- **Distraction-Free:** Runs quietly in your system tray. A beautiful, acrylic HUD (Heads-Up Display) shows your words in real-time.
-- **Smart Interaction:** Automatically stops listening if you start typing manually—no more text collisions.
+Unleash your thoughts at 150+ words per minute and eliminate the friction of the keyboard.
 
 ---
 
-## 🛠️ Quick Start (Get up and running in 2 minutes)
+## ⚡ The 3-Step "Quick-Start" Plan
 
-### 1. Installation
-Download the latest [ParrotInk.exe](https://github.com/Aalwattar/ParrotInk/releases) or run from source:
-```powershell
-uv sync
-uv run python main.py
-```
-
-### 2. Connect Your Voice (API Keys)
-Right-click the **ParrotInk** icon in your system tray and select **Settings > Setup API Keys**.
-
-#### **Option A: OpenAI (Fastest)**
-1. Go to the [OpenAI Dashboard](https://platform.openai.com/api-keys).
-2. Create a new Secret Key.
-3. Paste it into ParrotInk under **Set OpenAI Key...**.
-
-#### **Option B: AssemblyAI (Accurate)**
-1. Go to the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/).
-2. Copy your **API Key** from the sidebar.
-3. Paste it into ParrotInk under **Set AssemblyAI Key...**.
+1. **Download & Run**: Grab the [latest release](https://github.com/Aalwattar/ParrotInk/releases) and launch `ParrotInk.exe`.
+2. **Connect your Brain**: Right-click the tray icon and select **Settings > Setup API Keys**.
+3. **Speak Naturally**: Press `Ctrl + Alt + V` and watch your words appear in real-time.
 
 ---
 
-## ⌨️ Global Controls
+## 💎 Why ParrotInk is Different
 
-- **Default Hotkey:** `Ctrl + Alt + V` (Customizable in settings)
-- **Hold to Talk:** (Default) Press and hold to dictate; release to stop.
-- **Toggle Mode:** Click once to start recording; click any key to stop.
+I built ParrotInk because I was frustrated. Existing tools were either expensive, closed-source, or used "batch processing"—where you speak, wait 3 seconds, and then a block of text dumps onto the screen. It felt clunky and broken.
 
-### 🎨 Visual Feedback (Tray Icon)
-The icon color tells you exactly what ParrotInk is doing:
-- 🔵 **Blue:** **Listening.** Your voice is being transcribed.
-- 🟡 **Yellow:** **Connecting.** Handshaking with the provider.
-- 🔴 **Red:** **Error.** Check your internet or API key.
-- ⚪ **Grey:** **Idle.** Ready and waiting for your command.
+**ParrotInk is the solution:**
+- **Zero-Latency Streaming:** Powered by the most advanced ASR (Automatic Speech Recognition) models on Earth. You see your text as you say it.
+- **Works Everywhere:** From VS Code and Slack to Excel and Outlook. If you can type in it, you can speak in it.
+- **Professional Grade:** Uses the same tech that powers world-class AI agents, optimized for your desktop.
 
 ---
 
-## ⚙️ Advanced Customization
+## 🛠️ Choose Your Engine (Provider Setup)
 
-ParrotInk is highly configurable via `%APPDATA%\ParrotInk\config.toml`. 
+ParrotInk gives you access to the "Big Two" of AI transcription. Setup is easy and takes less than 60 seconds.
 
-- **Custom Hotkeys:** Use `win`, `ctrl`, `alt`, `shift` combinations.
-- **Acoustic Profiles:** Optimized settings for **Headsets** vs. **Laptop Microphones**.
-- **Latency Profiles:** Choose between `Fast` (speed) or `Accurate` (better pauses).
-- **Sound Feedback:** Enable or disable the "Start/Stop" beeps.
+### 🟢 OpenAI (The Global Standard)
+*Fast, versatile, and supports almost every major language.*
+1. **Get your Key:** Log in to [OpenAI API Keys](https://platform.openai.com/api-keys).
+2. **Create Key:** Click **"+ Create new secret key"**, name it "ParrotInk", and copy it.
+3. **Paste:** Enter it into the ParrotInk tray menu.
+4. **Languages:** Supports 50+ languages (English, Spanish, French, German, Japanese, Chinese, etc.).
+
+### 🟣 AssemblyAI (The Accuracy Leader)
+*Incredible accuracy and the industry-leading V3 Streaming API.*
+1. **Get your Key:** Copy your API Key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/).
+2. **Paste:** Enter it into the ParrotInk tray menu.
+3. **Languages:** Optimized for English, with expanding support for Spanish, French, German, and more.
 
 ---
 
-## 🛡️ Security & Privacy
+## 💰 What does it cost?
+ParrotInk is open-source and free, but the AI models you use cost a tiny fraction of a cent per minute. 
 
-ParrotInk is designed for professionals who value their data:
-- **Zero Local Storage:** We never save your audio or transcripts to disk.
-- **Encrypted Secrets:** We use the `keyring` library to leverage Windows' native security for your API keys.
-- **Open Source:** Auditable code that puts you in control.
+**Real-world Example:**
+- **The Casual User:** A few quick emails and Slack replies a day? You’ll likely spend **less than $0.50 a month**.
+- **The Heavy User:** Dictating 2 hours of deep-work brainstorming every single day? Your monthly bill will be roughly **$5.00 to $7.00**.
+- **Comparison:** It’s cheaper than a single cup of coffee to gain hours of your life back.
 
 ---
 
-## 📝 License
-MIT License. Created with ❤️ for productive humans.
+## 🎨 Icon Status Guide
+Stay in control with simple visual feedback in your tray:
+- ⚪ **Grey:** Idle. ParrotInk is ready and waiting.
+- 🟡 **Yellow:** Connecting. Handshaking with the AI servers.
+- 🔵 **Blue:** **Listening.** Everything you say is being typed.
+- 🔴 **Red:** Error. (Usually a missing API key or no internet).
+
+---
+
+## 🛡️ Technical Details & Security
+For the developers and the privacy-conscious:
+- **Security:** Keys are stored in the **Windows Credential Manager** (encrypted at the OS level). We never see your keys.
+- **Privacy:** Audio is streamed via secure WebSockets and is never stored locally.
+- **HUD:** High-performance **Skia-based Acrylic HUD** for real-time visual confirmation.
+- **Stack:** Python 3.11+, `uv` for lightning-fast dependency management, and native Win32 hooks for global interaction.
+
+---
+
+## 🤝 Contributing
+ParrotInk is a community project. If you're a developer who wants to help build the future of human-computer interaction, check out our `architecture.md`.
+
+**MIT License.** Built for speed. Built for you.
