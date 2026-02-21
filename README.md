@@ -1,77 +1,77 @@
-# ParrotInk
+# ✨ ParrotInk: Professional Real-Time Voice-to-Text for Windows
 
-A real-time voice-to-text system tray application for Windows. It allows you to inject transcribed text directly into any application via simulated typing using a global hotkey.
+**ParrotInk** is a powerful, low-latency system tray application that lets you type with your voice into **any** Windows application. Whether you are coding in VS Code, writing emails in Outlook, or chatting in Slack, ParrotInk injects your words instantly where your cursor is.
 
-## Features
+---
 
-- **Real-time Transcription:** Supports OpenAI and AssemblyAI.
-- **System Tray Integration:** Discrete background operation with visual status feedback.
-- **Secure Credentials:** API keys are stored in the Windows Credential Manager (`keyring`), never in plain text.
-- **Smart Toggle:** Use "Hold mode" to listen only while the hotkey is pressed, or "Toggle mode" for a press-to-start/press-to-stop experience.
-- **Interaction Safety:** Automatically stops transcription if you start typing manually to prevent text collisions.
-- **Dynamic UI:** Menu options are automatically enabled or disabled based on your available API keys.
-- **Test Mode:** Built-in mock support for development without consuming API credits.
+## 🚀 Why ParrotInk?
 
-## Installation
+- **Type Anywhere:** Works globally across Windows. Just press a hotkey and start talking.
+- **Pro-Grade Accuracy:** Powered by the latest **OpenAI Realtime** and **AssemblyAI Streaming V3** models.
+- **Privacy First:** Your API keys are stored in the encrypted **Windows Credential Manager**, never in plain text.
+- **Distraction-Free:** Runs quietly in your system tray. A beautiful, acrylic HUD (Heads-Up Display) shows your words in real-time.
+- **Smart Interaction:** Automatically stops listening if you start typing manually—no more text collisions.
 
-1. Clone the repository.
-2. Ensure you have Python 3.10+ installed.
-3. Install dependencies:
-   ```bash
-   uv sync
-   ```
-   *(Or use `pip install -e .` if not using `uv`)*
+---
 
-## Usage
+## 🛠️ Quick Start (Get up and running in 2 minutes)
 
-### Starting the Application
-
-Run the main script to start the tray icon:
-```bash
-python main.py
+### 1. Installation
+Download the latest [ParrotInk.exe](https://github.com/Aalwattar/ParrotInk/releases) or run from source:
+```powershell
+uv sync
+uv run python main.py
 ```
 
-### CLI Commands
+### 2. Connect Your Voice (API Keys)
+Right-click the **ParrotInk** icon in your system tray and select **Settings > Setup API Keys**.
 
-You can use the CLI to manage your API keys securely:
+#### **Option A: OpenAI (Fastest)**
+1. Go to the [OpenAI Dashboard](https://platform.openai.com/api-keys).
+2. Create a new Secret Key.
+3. Paste it into ParrotInk under **Set OpenAI Key...**.
 
-- **Display Help:**
-  ```bash
-  python main.py --help
-  ```
+#### **Option B: AssemblyAI (Accurate)**
+1. Go to the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/).
+2. Copy your **API Key** from the sidebar.
+3. Paste it into ParrotInk under **Set AssemblyAI Key...**.
 
-- **Set OpenAI API Key:**
-  ```bash
-  python main.py set-key openai
-  ```
+---
 
-- **Set AssemblyAI API Key:**
-  ```bash
-  python main.py set-key assemblyai
-  ```
+## ⌨️ Global Controls
 
-### Tray Icon Interaction
+- **Default Hotkey:** `Ctrl + Alt + V` (Customizable in settings)
+- **Hold to Talk:** (Default) Press and hold to dictate; release to stop.
+- **Toggle Mode:** Click once to start recording; click any key to stop.
 
-- **Left-click/Right-click:** Access the menu to switch providers, update credentials, or open the configuration file.
-- **Icon Colors:**
-  - ⚫ **Black:** Idle / Ready.
-  - 🔴 **Red:** Listening...
-  - 🟠 **Orange:** Error (check console or notifications).
+### 🎨 Visual Feedback (Tray Icon)
+The icon color tells you exactly what ParrotInk is doing:
+- 🔵 **Blue:** **Listening.** Your voice is being transcribed.
+- 🟡 **Yellow:** **Connecting.** Handshaking with the provider.
+- 🔴 **Red:** **Error.** Check your internet or API key.
+- ⚪ **Grey:** **Idle.** Ready and waiting for your command.
 
-## Configuration
+---
 
-The application uses `config.toml` for settings. See `config.example.toml` for a detailed template.
+## ⚙️ Advanced Customization
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `default_provider` | `openai` | Initial provider (`openai` or `assemblyai`). |
-| `hotkeys.hotkey` | `ctrl+alt+v` | Global hotkey. |
-| `hotkeys.hold_mode` | `true` | Hold to talk vs. Press to toggle. |
-| `audio.chunk_ms` | `100` | Audio chunk size in milliseconds. |
-| `providers.openai.core` | - | OpenAI model and language settings. |
-| `providers.assemblyai.core`| - | AssemblyAI V3 settings and model. |
-| `test.enabled` | `false` | Enable/disable mock mode. |
+ParrotInk is highly configurable via `%APPDATA%\ParrotInk\config.toml`. 
 
-## License
+- **Custom Hotkeys:** Use `win`, `ctrl`, `alt`, `shift` combinations.
+- **Acoustic Profiles:** Optimized settings for **Headsets** vs. **Laptop Microphones**.
+- **Latency Profiles:** Choose between `Fast` (speed) or `Accurate` (better pauses).
+- **Sound Feedback:** Enable or disable the "Start/Stop" beeps.
 
-MIT
+---
+
+## 🛡️ Security & Privacy
+
+ParrotInk is designed for professionals who value their data:
+- **Zero Local Storage:** We never save your audio or transcripts to disk.
+- **Encrypted Secrets:** We use the `keyring` library to leverage Windows' native security for your API keys.
+- **Open Source:** Auditable code that puts you in control.
+
+---
+
+## 📝 License
+MIT License. Created with ❤️ for productive humans.
