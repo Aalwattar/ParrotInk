@@ -20,65 +20,73 @@ I built ParrotInk because existing open-source tools were frustrating. Most use 
 
 ---
 
-## 💎 Choose Your Engine (Provider Setup)
+## 💎 Choose Your Engine
 
 ### 🏆 AssemblyAI (Recommended)
-**Faster. More Accurate. Better Value.**
-AssemblyAI’s Streaming V3 is our top recommendation for the best ParrotInk experience.
-- **Get Started for Free:** Currently, AssemblyAI offers **$50 in free credit** to new users. You can start dictating immediately without spending a penny. *(Note: Check their dashboard for current terms).*
-- **Setup:** Copy your API Key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/) and paste it into the ParrotInk tray menu.
-- **Languages:** Best-in-class English accuracy, with robust support for Spanish, French, German, and more.
+**Superior Accuracy for English & $50 Free Credit.**
+- **Best For:** Users who want the highest possible accuracy in English and a generous starting point.
+- **Get Started for Free:** New users currently receive **$50 in free credit**. You can start dictating immediately without paying a penny.
+- **Language Support:** Incredible performance for English. Robust and growing support for major languages like Spanish, French, and German.
 
 ### 🟢 OpenAI (The Global Standard)
-*Versatile and supports 50+ languages natively.*
-- **Setup:** Get a key from the [OpenAI Platform](https://platform.openai.com/api-keys). Note that OpenAI requires a small pre-paid balance (e.g., $5) to activate the Realtime API.
-- **Languages:** Massive global support (Japanese, Chinese, Arabic, etc.).
+**The Multilingual Powerhouse.**
+- **Best For:** Users who need to dictate in a wide variety of global languages.
+- **Language Support:** Supports **50+ languages** natively (Japanese, Chinese, Arabic, Portuguese, etc.).
+- **Setup:** Note that OpenAI requires a small pre-paid balance (e.g., $5) to activate their Realtime API.
+
+---
+
+## 🔍 User Manual: How to Dictate
+
+ParrotInk adapts to the way you work. You can switch between two distinct modes via the tray menu (**Settings > Hold to Talk**):
+
+### 1. Hold to Talk (The "Walkie-Talkie")
+*Perfect for short bursts, messages, and quick commands.*
+- **How it works:** Press and **hold** your hotkey. Speak. **Release** the key when you are finished.
+- **Result:** The dictation stops the moment you let go.
+
+### 2. Toggle Mode (The "Hands-Free")
+*Perfect for long-form writing, emails, and coding sessions.*
+- **How it works:** Press the hotkey **once** to start recording. You can now take your hands off the keyboard.
+- **How to stop:** Press the hotkey again, **OR press ANY other key** on your keyboard. ParrotInk detects your manual input and gracefully ends the session.
+
+### ⌨️ Customizing your Hotkey
+Don't like `Ctrl + Alt + V`? No problem.
+1. Right-click the tray icon.
+2. Select **Settings > Change Hotkey...**.
+3. A window will appear—simply press the new key combination you want to use. ParrotInk will save it instantly.
 
 ---
 
 ## 💰 What does it cost?
-ParrotInk is open-source and free. You only pay the AI providers for the raw processing time you use.
+ParrotInk is open-source and free. You only pay the AI providers for what you use.
 
 **Real-world Example:**
-- **The Casual User:** A few quick emails and Slack replies? You’ll likely spend **less than $0.50 a month**.
-- **The Power User:** Dictating 2 hours of deep-work every day? Your monthly bill will be roughly **$5.00 to $7.00**.
+- **Casual User:** A few emails a day? Spend **less than $0.50 a month**.
+- **Power User:** 2 hours of dictation every day? Roughly **$5.00 to $7.00 a month**.
 - **The Verdict:** It’s cheaper than one cup of coffee to gain dozens of hours of your life back.
 
 ---
 
-## 🔍 The Deep Dive (User Manual)
+## ❓ FAQ
 
-### 🎛️ Tray Icon Controls
-The tray icon is your command center. Right-click it to:
-- **Switch Providers:** Instantly toggle between OpenAI and AssemblyAI.
-- **Toggle "Hold to Talk":** Choose between holding the key while speaking or a simple "click-to-start / click-to-stop" mode.
-- **Audio Feedback:** Enable/Disable the start/stop beeps.
-- **HUD Settings:** Show or hide the real-time transcription overlay (the Acrylic HUD).
-- **Statistics:** View your daily, monthly, and lifetime dictation stats (word counts and time saved).
+**Q: Does it work on Mac or Linux?**
+No. ParrotInk is built specifically for **Windows 10 and 11** to leverage native Win32 hooks and the Windows Credential Manager for maximum performance and security.
 
-### 📝 Advanced Configuration (`config.toml`)
-For total control, select **Settings > Open Configuration File**. 
-- **Storage Location:** Your settings are stored safely in `%APPDATA%\ParrotInk\config.toml`.
-- **Manual Tuning:** In this file, you can change your global hotkey, adjust microphone sensitivity (VAD), and set "Acoustic Profiles" (optimizing for a **Headset** vs. a **Laptop Mic**).
-- **Self-Documenting:** The config file contains detailed comments explaining every single setting.
+**Q: Can I use it offline?**
+No. ParrotInk uses world-class AI models that require a secure internet connection to stream your audio to the providers and get text back in real-time.
 
-### 🛡️ Reliability & Logging
-ParrotInk is built for "always-on" reliability:
-- **Rotational Logs:** Technical logs are stored in `%LOCALAPPDATA%\ParrotInk\`. We use a smart rotation system that **never exceeds 30MB**, so it will never bloat your hard drive.
+**Q: Is my voice recorded?**
+We never save your audio to your hard drive. Your voice is streamed via encrypted WebSockets directly to your chosen provider (OpenAI or AssemblyAI) and then discarded.
+
+**Q: Where is the configuration file?**
+Your settings are stored in `%APPDATA%\ParrotInk\config.toml`. You can open it directly from the tray menu under **Settings > Open Configuration File**.
+
+---
+
+## 🛡️ Reliability & Logging
+- **Space-Efficient:** Technical logs are stored in `%LOCALAPPDATA%\ParrotInk\`. Our rotational system **never exceeds 30MB**.
 - **Security:** API keys are stored in the **Windows Credential Manager** (encrypted at the OS level).
-- **Auto-Update:** If you modify your `config.toml`, ParrotInk detects the change and reloads your settings instantly—no restart required.
-
----
-
-## 🎨 Icon Status Guide
-- ⚪ **Grey:** Idle. Ready and waiting.
-- 🟡 **Yellow:** Connecting. Handshaking with the AI servers.
-- 🔵 **Blue:** **Listening.** Everything you say is being typed.
-- 🔴 **Red:** Error. (Usually a missing API key or no internet).
-
----
-
-## 🤝 Contributing & Support
-ParrotInk is a community project. If you're a developer or a user with feedback, check out our `architecture.md` or open an issue.
+- **HUD:** A beautiful, Skia-powered Acrylic HUD provides real-time visual feedback of your transcription.
 
 **MIT License.** Built for speed. Built for Windows. Built for you.
