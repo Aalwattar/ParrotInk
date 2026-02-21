@@ -84,7 +84,7 @@ Yes. We never save your audio to your hard drive. It is streamed via encrypted W
 
 **Q: Where are my settings and logs?**
 - **Settings:** `%APPDATA%\ParrotInk\config.toml` (accessible via the tray menu). For a full explanation of all available settings, see the [config.example.toml](./config.example.toml) file.
-- **Logs:** `%LOCALAPPDATA%\ParrotInk\`. We use a rotational system that **never exceeds 30MB**, so it won't bloat your drive.
+- **Logs:** `%LOCALAPPDATA%\ParrotInk\Logs\`. We use a rotational system that **never exceeds 30MB**, so it won't bloat your drive.
 
 ---
 

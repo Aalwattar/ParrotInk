@@ -15,12 +15,12 @@ async def test_shutdown_idempotency():
     coordinator = AppCoordinator(config)
     coordinator.streamer = MagicMock()
     coordinator.ui_bridge = MagicMock()
-    
+
     # Mock monitors to avoid real Win32 threads in tests
     coordinator.session_monitor = MagicMock()
     coordinator.input_monitor = MagicMock()
     coordinator.mouse_monitor = MagicMock()
-    
+
     coordinator.loop = asyncio.get_running_loop()
     print("Coordinator initialized with mocked monitors.")
 
@@ -46,12 +46,12 @@ async def test_shutdown_deadline_exceeded():
     coordinator = AppCoordinator(config)
     coordinator.streamer = MagicMock()
     coordinator.ui_bridge = MagicMock()
-    
+
     # Mock monitors
     coordinator.session_monitor = MagicMock()
     coordinator.input_monitor = MagicMock()
     coordinator.mouse_monitor = MagicMock()
-    
+
     coordinator.loop = asyncio.get_running_loop()
     print("Coordinator initialized.")
 
@@ -65,7 +65,9 @@ async def test_shutdown_deadline_exceeded():
         async def __aenter__(self):
             print("MockTimeout enter: raising TimeoutError")
             raise asyncio.TimeoutError()
-        async def __aexit__(self, exc_type, exc_val, exc_tb): pass
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
 
     with (
         patch.object(coordinator.connection_manager, "stop_provider", hung_stop),

@@ -213,7 +213,7 @@
 # language_detection = false
 
 [logging]
-# Enable logging to a local file in %LOCALAPPDATA%\ParrotInk.
+# Enable logging to a local file in %LOCALAPPDATA%\ParrotInk\Logs.
 # This is highly recommended for troubleshooting as the app has no console window.
 # file_enabled = true
 

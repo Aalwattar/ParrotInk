@@ -21,6 +21,9 @@ def mock_config():
     config.test.enabled = True
     config.transcription = MagicMock()
     config.transcription.provider = "openai"
+    config.interaction = MagicMock()
+    config.interaction.stop_on_any_key = True
+    config.interaction.sounds.enabled = False
     return config
 
 
@@ -30,8 +33,16 @@ def test_hold_mode_interruption_bug(mock_config):
     Current behavior (Bug): It STOPS listening.
     Expected behavior (Fix): It ignores the key.
     """
-    # Mock AudioStreamer to avoid sounddevice init
-    with patch("main.AudioStreamer"):
+    # Mock AudioStreamer and Monitors to avoid sounddevice/hook init
+    with (
+        patch("main.AudioStreamer"),
+        patch("main.InputMonitor"),
+        patch("main.MouseMonitor"),
+        patch("main.ConnectionManager"),
+        patch("main.UIBridge"),
+        patch("main.InjectionController"),
+        patch("engine.platform_win.session.SessionMonitor"),
+    ):
         coordinator = AppCoordinator(mock_config)
 
         # Setup active listening state

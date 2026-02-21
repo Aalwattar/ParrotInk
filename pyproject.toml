@@ -1,6 +1,6 @@
 [project]
 name = "parrotink"
-version = "0.2.11"
+version = "0.2.12"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"

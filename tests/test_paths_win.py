@@ -18,4 +18,8 @@ def test_get_config_path():
 def test_get_log_path():
     log_path = get_log_path()
     assert log_path.endswith("parrotink.log")
-    assert get_app_dir() in log_path
+    # Log path should be in AppData\Local (not Roaming)
+    assert "AppData" in log_path
+    assert "Local" in log_path
+    # Should be in a 'Logs' subdirectory (platform-specific capitalization)
+    assert "Logs" in log_path or "logs" in log_path

@@ -389,10 +389,10 @@ def load_config(path: Optional[str | Path] = None) -> Config:
         path = get_config_path()
     config_path = Path(path)
     if not config_path.exists():
-        # Senior Architecture: Use config.example.toml as a template to provide 
+        # Senior Architecture: Use config.example.toml as a template to provide
         # a documented experience for the user on first launch.
         import shutil
-        
+
         example_path = Path(__file__).parent.parent / "config.example.toml"
         if example_path.exists():
             config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -403,7 +403,7 @@ def load_config(path: Optional[str | Path] = None) -> Config:
             config = Config()
             config.save(path, blocking=True)
             logger.warning(f"Template not found. Initialized bare configuration: {config_path}")
-            
+
     return Config.from_file(path)
 
 

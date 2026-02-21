@@ -2,6 +2,7 @@
 Win32 Session Monitoring using a Hidden Notification Window.
 Detects desktop switches (Lock/Unlock) to refresh input hooks in dynamic environments.
 """
+
 import ctypes
 import threading
 from ctypes import wintypes
@@ -71,7 +72,7 @@ class SessionMonitor:
             return
 
         self._stop_event.clear()
-        self._thread = threading.Thread(target=self._run, name="SessionMonitorThread", daemon=False)
+        self._thread = threading.Thread(target=self._run, name="SessionMonitorThread", daemon=True)
         self._thread.start()
         logger.debug("SessionMonitor thread started.")
 

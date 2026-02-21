@@ -18,7 +18,7 @@ def test_stats_initialization_defaults(temp_stats_file):
     assert stats["lifetime"]["total_transcriptions"] == 0
     assert stats["lifetime"]["total_duration_seconds"] == 0
     assert stats["lifetime"]["total_words"] == 0
-    assert stats["schema_version"] == 1
+    assert stats["schema_version"] == 2
 
 
 def test_stats_atomic_save(temp_stats_file):

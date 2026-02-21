@@ -513,6 +513,7 @@ class AppCoordinator:
                     # 2. Stop connection and pipeline
                     await self.connection_manager.stop_provider()
                     await self.pipeline.stop()
+                    self.streamer.stop()
 
                     # 3. Final cleanup
                     self.ui_bridge.stop()

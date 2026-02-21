@@ -379,7 +379,6 @@ class TrayApp:
                 self.stats_manager.record_session(
                     data["duration"], data["words"], data["provider"], data["error"]
                 )
-                self.stats_manager.save()
             elif msg_type == UIEvent.QUIT:
                 self.stop()
 
@@ -435,6 +434,10 @@ class TrayApp:
         logger.info("Stopping UI systems...")
         self._stop_event.set()
 
+        # Ensure stats are flushed before we kill the process
+        if hasattr(self, "stats_manager"):
+            self.stats_manager.stop()
+
         # Cleanly destroy the hidden master on its OWN (UI) thread
         # This prevents "async handler deleted by the wrong thread"
         if self.ui_root:
@@ -452,4 +455,3 @@ class TrayApp:
 
         if self.indicator:
             self.indicator.stop()
-
