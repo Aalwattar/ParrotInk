@@ -1,9 +1,14 @@
 # 🎙️ Stop Typing. Start Thinking. 
-### The world’s fastest, real-time open-source voice-to-text for Windows.
+### Professional, Real-Time Voice-to-Text — Native for Windows.
 
-**ParrotInk** isn't just another dictation tool—it’s a productivity superpower. While most voice-to-text apps make you wait seconds for a "batch" of text to appear, ParrotInk streams your words **instantly** into any application, exactly where your cursor is. 
+**ParrotInk** is a high-performance system tray application that lets you type with your voice into **any** Windows application. Whether you are coding in VS Code, writing emails in Outlook, or chatting in Slack, ParrotInk streams your words **instantly** to your cursor.
 
-Unleash your thoughts at 150+ words per minute and eliminate the friction of the keyboard.
+---
+
+## 🚀 The Real-Time Advantage
+I built ParrotInk because existing open-source tools were frustrating. Most use "batch processing"—you speak, wait several seconds (sometimes up to a **full minute**), and then a block of text dumps onto the screen. It’s clunky, breaks your flow, and feels like the past.
+
+**ParrotInk is the future:** It streams your words **as you say them**. No waiting. No blocks of text. Just natural, fluid creation at 150+ words per minute.
 
 ---
 
@@ -15,65 +20,65 @@ Unleash your thoughts at 150+ words per minute and eliminate the friction of the
 
 ---
 
-## 💎 Why ParrotInk is Different
+## 💎 Choose Your Engine (Provider Setup)
 
-I built ParrotInk because I was frustrated. Existing tools were either expensive, closed-source, or used "batch processing"—where you speak, wait 3 seconds, and then a block of text dumps onto the screen. It felt clunky and broken.
-
-**ParrotInk is the solution:**
-- **Zero-Latency Streaming:** Powered by the most advanced ASR (Automatic Speech Recognition) models on Earth. You see your text as you say it.
-- **Works Everywhere:** From VS Code and Slack to Excel and Outlook. If you can type in it, you can speak in it.
-- **Professional Grade:** Uses the same tech that powers world-class AI agents, optimized for your desktop.
-
----
-
-## 🛠️ Choose Your Engine (Provider Setup)
-
-ParrotInk gives you access to the "Big Two" of AI transcription. Setup is easy and takes less than 60 seconds.
+### 🏆 AssemblyAI (Recommended)
+**Faster. More Accurate. Better Value.**
+AssemblyAI’s Streaming V3 is our top recommendation for the best ParrotInk experience.
+- **Get Started for Free:** Currently, AssemblyAI offers **$50 in free credit** to new users. You can start dictating immediately without spending a penny. *(Note: Check their dashboard for current terms).*
+- **Setup:** Copy your API Key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/) and paste it into the ParrotInk tray menu.
+- **Languages:** Best-in-class English accuracy, with robust support for Spanish, French, German, and more.
 
 ### 🟢 OpenAI (The Global Standard)
-*Fast, versatile, and supports almost every major language.*
-1. **Get your Key:** Log in to [OpenAI API Keys](https://platform.openai.com/api-keys).
-2. **Create Key:** Click **"+ Create new secret key"**, name it "ParrotInk", and copy it.
-3. **Paste:** Enter it into the ParrotInk tray menu.
-4. **Languages:** Supports 50+ languages (English, Spanish, French, German, Japanese, Chinese, etc.).
-
-### 🟣 AssemblyAI (The Accuracy Leader)
-*Incredible accuracy and the industry-leading V3 Streaming API.*
-1. **Get your Key:** Copy your API Key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/).
-2. **Paste:** Enter it into the ParrotInk tray menu.
-3. **Languages:** Optimized for English, with expanding support for Spanish, French, German, and more.
+*Versatile and supports 50+ languages natively.*
+- **Setup:** Get a key from the [OpenAI Platform](https://platform.openai.com/api-keys). Note that OpenAI requires a small pre-paid balance (e.g., $5) to activate the Realtime API.
+- **Languages:** Massive global support (Japanese, Chinese, Arabic, etc.).
 
 ---
 
 ## 💰 What does it cost?
-ParrotInk is open-source and free, but the AI models you use cost a tiny fraction of a cent per minute. 
+ParrotInk is open-source and free. You only pay the AI providers for the raw processing time you use.
 
 **Real-world Example:**
-- **The Casual User:** A few quick emails and Slack replies a day? You’ll likely spend **less than $0.50 a month**.
-- **The Heavy User:** Dictating 2 hours of deep-work brainstorming every single day? Your monthly bill will be roughly **$5.00 to $7.00**.
-- **Comparison:** It’s cheaper than a single cup of coffee to gain hours of your life back.
+- **The Casual User:** A few quick emails and Slack replies? You’ll likely spend **less than $0.50 a month**.
+- **The Power User:** Dictating 2 hours of deep-work every day? Your monthly bill will be roughly **$5.00 to $7.00**.
+- **The Verdict:** It’s cheaper than one cup of coffee to gain dozens of hours of your life back.
+
+---
+
+## 🔍 The Deep Dive (User Manual)
+
+### 🎛️ Tray Icon Controls
+The tray icon is your command center. Right-click it to:
+- **Switch Providers:** Instantly toggle between OpenAI and AssemblyAI.
+- **Toggle "Hold to Talk":** Choose between holding the key while speaking or a simple "click-to-start / click-to-stop" mode.
+- **Audio Feedback:** Enable/Disable the start/stop beeps.
+- **HUD Settings:** Show or hide the real-time transcription overlay (the Acrylic HUD).
+- **Statistics:** View your daily, monthly, and lifetime dictation stats (word counts and time saved).
+
+### 📝 Advanced Configuration (`config.toml`)
+For total control, select **Settings > Open Configuration File**. 
+- **Storage Location:** Your settings are stored safely in `%APPDATA%\ParrotInk\config.toml`.
+- **Manual Tuning:** In this file, you can change your global hotkey, adjust microphone sensitivity (VAD), and set "Acoustic Profiles" (optimizing for a **Headset** vs. a **Laptop Mic**).
+- **Self-Documenting:** The config file contains detailed comments explaining every single setting.
+
+### 🛡️ Reliability & Logging
+ParrotInk is built for "always-on" reliability:
+- **Rotational Logs:** Technical logs are stored in `%LOCALAPPDATA%\ParrotInk\`. We use a smart rotation system that **never exceeds 30MB**, so it will never bloat your hard drive.
+- **Security:** API keys are stored in the **Windows Credential Manager** (encrypted at the OS level).
+- **Auto-Update:** If you modify your `config.toml`, ParrotInk detects the change and reloads your settings instantly—no restart required.
 
 ---
 
 ## 🎨 Icon Status Guide
-Stay in control with simple visual feedback in your tray:
-- ⚪ **Grey:** Idle. ParrotInk is ready and waiting.
+- ⚪ **Grey:** Idle. Ready and waiting.
 - 🟡 **Yellow:** Connecting. Handshaking with the AI servers.
 - 🔵 **Blue:** **Listening.** Everything you say is being typed.
 - 🔴 **Red:** Error. (Usually a missing API key or no internet).
 
 ---
 
-## 🛡️ Technical Details & Security
-For the developers and the privacy-conscious:
-- **Security:** Keys are stored in the **Windows Credential Manager** (encrypted at the OS level). We never see your keys.
-- **Privacy:** Audio is streamed via secure WebSockets and is never stored locally.
-- **HUD:** High-performance **Skia-based Acrylic HUD** for real-time visual confirmation.
-- **Stack:** Python 3.11+, `uv` for lightning-fast dependency management, and native Win32 hooks for global interaction.
+## 🤝 Contributing & Support
+ParrotInk is a community project. If you're a developer or a user with feedback, check out our `architecture.md` or open an issue.
 
----
-
-## 🤝 Contributing
-ParrotInk is a community project. If you're a developer who wants to help build the future of human-computer interaction, check out our `architecture.md`.
-
-**MIT License.** Built for speed. Built for you.
+**MIT License.** Built for speed. Built for Windows. Built for you.
