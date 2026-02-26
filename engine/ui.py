@@ -23,6 +23,7 @@ from .ui_utils import get_app_version
 
 if TYPE_CHECKING:
     from .config import Config
+    from .indicator_ui import IndicatorWindow
     from .ui_bridge import UIBridge
 
 logger = get_logger("UI")
@@ -89,7 +90,7 @@ class TrayApp:
         self.stats_manager = StatsManager()
 
         # Lazy-load indicator
-        self.indicator = None
+        self.indicator: Optional["IndicatorWindow"] = None
         self._is_stopped = False
         self._ensure_indicator()
 
@@ -131,8 +132,13 @@ class TrayApp:
                 if not self._is_stopped:
                     self.indicator.start()
                 return True
+            except (ImportError, RuntimeError) as e:
+                # Catching specific setup/dependency failures
+                logger.error(f"Failed to initialize indicator (dependency issue): {e}")
+                return False
             except Exception as e:
-                logger.error(f"Failed to initialize indicator: {e}", exc_info=True)
+                # Catch-all for unexpected HUD creation failures
+                logger.error(f"Unexpected HUD creation failure: {e}", exc_info=True)
                 return False
 
         return True

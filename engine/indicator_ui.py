@@ -88,8 +88,13 @@ class IndicatorWindow:
                 self.impl: Any = HudOverlay(
                     config=config, click_through=config.ui.floating_indicator.click_through
                 )
-            except Exception as e:
+            except (ImportError, RuntimeError, AttributeError) as e:
+                # Catching specific startup/import failures from Skia or Win32
                 logger.error(f"HudOverlay instantiation failed: {e}", exc_info=True)
+                self.impl = GdiFallbackWindow(config=config)
+            except Exception as e:
+                # Catch-all for unexpected HUD failures during creation
+                logger.error(f"Unexpected HUD initialization error: {e}", exc_info=True)
                 self.impl = GdiFallbackWindow(config=config)
         else:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")

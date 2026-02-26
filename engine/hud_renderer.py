@@ -1,6 +1,7 @@
 import ctypes
 import queue
 import threading
+import time
 from ctypes import wintypes
 from typing import Any, Optional
 
@@ -162,132 +163,139 @@ class HudOverlay:
             return HTTRANSPARENT if self._click_through else HTCAPTION
         return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
-        def run(self):
-            if not HUD_AVAILABLE:
-                logger.error("HUD not available (import failure)")
-                return
-    
+    def run(self):
+        """
+        Main window thread logic. Includes retry logic for startup robustness.
+        """
+        if not HUD_AVAILABLE:
+            logger.error("HUD not available (import failure)")
+            return
+
+        try:
+            hinst = GetModuleHandle(None)
+            class_name = "ParrotInkSkiaHUD"
+            wcex = win32gui.WNDCLASS()
+            wcex.lpfnWndProc = self._wnd_proc
+            wcex.lpszClassName = class_name
+            wcex.hInstance = hinst
+            wcex.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
             try:
-                hinst = GetModuleHandle(None)
-                class_name = "ParrotInkSkiaHUD"
-                wcex = win32gui.WNDCLASS()
-                wcex.lpfnWndProc = self._wnd_proc
-                wcex.lpszClassName = class_name
-                wcex.hInstance = hinst
-                wcex.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
-                try:
-                    win32gui.RegisterClass(wcex)
-                except Exception as e:
-                    # Registration might fail if already registered, which is fine
-                    logger.debug(f"HUD Window class registration skipped: {e}")
-    
-                # Robust Bottom-Center Position
-                screen_w = user32.GetSystemMetrics(0)
-                screen_h = user32.GetSystemMetrics(1)
-    
-                if screen_w == 0 or screen_h == 0:
-                    logger.error("Screen metrics returned 0. Display might not be ready.")
-    
-                y_offset = DEFAULT_Y_OFFSET
-                refresh_rate = DEFAULT_REFRESH_RATE_MS
-                if self.config:
-                    y_offset = getattr(self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET)
-                    refresh_rate = getattr(
-                        self.config.ui.floating_indicator, "refresh_rate_ms", DEFAULT_REFRESH_RATE_MS
-                    )
-    
-                x_pos = (screen_w - self.win_width) // 2
-                y_pos = screen_h - self.win_height - y_offset
-    
-                            # Extended styles
-                            ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
-                            if self._click_through:
-                                ex_style |= WS_EX_TRANSPARENT
-                
-                            # Senior Architecture: Startup Robustness Retry Loop
-                            # Windows may not be "ready" to create a topmost layered window
-                            # immediately after a system restart or crash recovery.
-                            MAX_RETRIES = 5
-                            RETRY_DELAY = 1.0
-                            
-                            for attempt in range(MAX_RETRIES):
-                                self._hwnd = win32gui.CreateWindowEx(
-                                    ex_style,
-                                    class_name,
-                                    "V2T HUD",
-                                    win32con.WS_POPUP,
-                                    x_pos,
-                                    y_pos,
-                                    self.win_width,
-                                    self.win_height,
-                                    0,
-                                    0,
-                                    hinst,
-                                    None,
-                                )
-                                if self._hwnd:
-                                    logger.info(f"HUD Window Created: {self._hwnd} at ({x_pos}, {y_pos}) (Attempt {attempt+1})")
-                                    break
-                                
-                                error_code = win32gui.GetLastError()
-                                logger.warning(f"HUD window creation failed (Attempt {attempt+1}/{MAX_RETRIES}): {error_code}")
-                                if attempt < MAX_RETRIES - 1:
-                                    time.sleep(RETRY_DELAY)
-                            
-                            if not self._hwnd:
-                                logger.error(f"Failed to create HUD window after {MAX_RETRIES} attempts.")
-                                return
-                
-                            # Setup GDI DIB Section
-                
-                hdc_screen = user32.GetDC(0)
-                self._hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
-                bmi = BITMAPINFO()
-                bmi.bmiHeader.biSize = ctypes.sizeof(BITMAPINFOHEADER)
-                bmi.bmiHeader.biWidth = self.win_width
-                bmi.bmiHeader.biHeight = -self.win_height
-                bmi.bmiHeader.biPlanes = 1
-                bmi.bmiHeader.biBitCount = 32
-                bmi.bmiHeader.biCompression = 0
-                self._pixel_ptr = ctypes.c_void_p()
-                self._hbmp = gdi32.CreateDIBSection(
-                    self._hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(self._pixel_ptr), None, 0
-                )
-                if not self._hbmp:
-                    logger.error(f"Failed to create DIB section: {win32gui.GetLastError()}")
-                    user32.ReleaseDC(0, hdc_screen)
-                    return
-    
-                gdi32.SelectObject(self._hdc_mem, self._hbmp)
-                user32.ReleaseDC(0, hdc_screen)
-    
-                # Skia surface wrapping the DIB section directly
-                info = skia.ImageInfo.Make(
-                    self.win_width, self.win_height, skia.kBGRA_8888_ColorType, skia.kPremul_AlphaType
-                )
-    
-                # Create a buffer that points to the DIB section memory
-                size_in_bytes = self.win_width * self.win_height * 4
-                pixel_data = (ctypes.c_byte * size_in_bytes).from_address(self._pixel_ptr.value)
-    
-                self._surface = skia.Surface.MakeRasterDirect(info, pixel_data, self.win_width * 4)
-                if not self._surface:
-                    logger.error("Failed to create Skia surface.")
-                    return
-    
-                self._canvas = self._surface.getCanvas()
-    
-                user32.SetTimer(self._hwnd, 1, refresh_rate, None)
-                self._ready_event.set()
-    
-                win32gui.PumpMessages()
+                win32gui.RegisterClass(wcex)
             except Exception as e:
-                logger.error(f"HUD Run loop failed with exception: {e}", exc_info=True)
-            finally:
-                self._hwnd = None
-                self._ready_event.clear()
-                logger.info("HUD Run loop exited.")
-    
+                # Registration might fail if already registered, which is fine
+                logger.debug(f"HUD Window class registration skipped: {e}")
+
+            # Robust Bottom-Center Position
+            screen_w = user32.GetSystemMetrics(0)
+            screen_h = user32.GetSystemMetrics(1)
+
+            if screen_w == 0 or screen_h == 0:
+                logger.error("Screen metrics returned 0. Display might not be ready.")
+
+            y_offset = DEFAULT_Y_OFFSET
+            refresh_rate = DEFAULT_REFRESH_RATE_MS
+            if self.config:
+                y_offset = getattr(self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET)
+                refresh_rate = getattr(
+                    self.config.ui.floating_indicator, "refresh_rate_ms", DEFAULT_REFRESH_RATE_MS
+                )
+
+            x_pos = (screen_w - self.win_width) // 2
+            y_pos = screen_h - self.win_height - y_offset
+
+            # Extended styles
+            ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
+            if self._click_through:
+                ex_style |= WS_EX_TRANSPARENT
+
+            # Senior Architecture: Startup Robustness Retry Loop
+            # Windows may not be "ready" to create a topmost layered window
+            # immediately after a system restart or crash recovery.
+            max_retries = 5
+            retry_delay = 1.0
+
+            for attempt in range(max_retries):
+                self._hwnd = win32gui.CreateWindowEx(
+                    ex_style,
+                    class_name,
+                    "V2T HUD",
+                    win32con.WS_POPUP,
+                    x_pos,
+                    y_pos,
+                    self.win_width,
+                    self.win_height,
+                    0,
+                    0,
+                    hinst,
+                    None,
+                )
+                if self._hwnd:
+                    logger.info(
+                        f"HUD Window Created: {self._hwnd} at ({x_pos}, {y_pos}) "
+                        f"(Attempt {attempt + 1})"
+                    )
+                    break
+
+                error_code = win32gui.GetLastError()
+                logger.warning(
+                    f"HUD window creation failed (Attempt {attempt + 1}/{max_retries}): "
+                    f"{error_code}"
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+
+            if not self._hwnd:
+                logger.error(f"Failed to create HUD window after {max_retries} attempts.")
+                return
+
+            # Setup GDI DIB Section
+            hdc_screen = user32.GetDC(0)
+            self._hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
+            bmi = BITMAPINFO()
+            bmi.bmiHeader.biSize = ctypes.sizeof(BITMAPINFOHEADER)
+            bmi.bmiHeader.biWidth = self.win_width
+            bmi.bmiHeader.biHeight = -self.win_height
+            bmi.bmiHeader.biPlanes = 1
+            bmi.bmiHeader.biBitCount = 32
+            bmi.bmiHeader.biCompression = 0
+            self._pixel_ptr = ctypes.c_void_p()
+            self._hbmp = gdi32.CreateDIBSection(
+                self._hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(self._pixel_ptr), None, 0
+            )
+            if not self._hbmp:
+                logger.error(f"Failed to create DIB section: {win32gui.GetLastError()}")
+                user32.ReleaseDC(0, hdc_screen)
+                return
+
+            gdi32.SelectObject(self._hdc_mem, self._hbmp)
+            user32.ReleaseDC(0, hdc_screen)
+
+            # Skia surface wrapping the DIB section directly
+            info = skia.ImageInfo.Make(
+                self.win_width, self.win_height, skia.kBGRA_8888_ColorType, skia.kPremul_AlphaType
+            )
+
+            # Create a buffer that points to the DIB section memory
+            size_in_bytes = self.win_width * self.win_height * 4
+            pixel_data = (ctypes.c_byte * size_in_bytes).from_address(self._pixel_ptr.value)
+
+            self._surface = skia.Surface.MakeRasterDirect(info, pixel_data, self.win_width * 4)
+            if not self._surface:
+                logger.error("Failed to create Skia surface.")
+                return
+
+            self._canvas = self._surface.getCanvas()
+
+            user32.SetTimer(self._hwnd, 1, refresh_rate, None)
+            self._ready_event.set()
+
+            win32gui.PumpMessages()
+        except Exception as e:
+            logger.error(f"HUD Run loop failed with exception: {e}", exc_info=True)
+        finally:
+            self._hwnd = None
+            self._ready_event.clear()
+            logger.info("HUD Run loop exited.")
 
     def show(self):
         if self._hwnd:
