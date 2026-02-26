@@ -76,6 +76,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
 ### 2.10 Visual Feedback & HUD
 - **Acrylic HUD:** A floating, minimalist "Acrylic" indicator appears during recording to show live transcription progress.
+- **Startup Robustness:** The HUD features built-in recovery logic with automated retries and health monitoring. If it fails to initialize during system startup or crashes unexpectedly, it can automatically re-initialize or be recovered manually by toggling its display in the tray menu.
 - **Startup Confirmation:** A native Windows toast notification appears when the application starts (unless launched with `--background`), confirming readiness and reminding the user of their configured hotkey.
 - **Modern Typography:** The HUD uses the Windows system font (**Segoe UI**) at a high-readability size (16pt) for a professional, integrated look.
 - **Dynamic Status:** The HUD indicator pulses or changes color based on voice activity and finalization state.
