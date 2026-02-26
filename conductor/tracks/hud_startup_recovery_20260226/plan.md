@@ -17,8 +17,8 @@ Ensure the floating HUD (IndicatorWindow) correctly initializes and recovers if 
 - [x] Add enhanced logging to `HudOverlay.run()` and `IndicatorWindow.__init__` to capture specific Win32 errors (e.g., `CreateWindowEx` failures). e81240d
 
 ### Phase 2: Lazy Re-initialization
-- [ ] Refactor `TrayApp` to support lazy re-initialization of `self.indicator`.
-- [ ] Update `on_toggle_hud` to attempt creating the `IndicatorWindow` if it's currently `None` and being enabled.
+- [x] Refactor `TrayApp` to support lazy re-initialization of `self.indicator`. c53326d
+- [x] Update `on_toggle_hud` to attempt creating the `IndicatorWindow` if it's currently `None` and being enabled. c53326d
 
 ### Phase 3: Startup Robustness
 - [ ] Implement a "Desktop Ready" check or a short delay/retry mechanism for `HudOverlay.run()`.
