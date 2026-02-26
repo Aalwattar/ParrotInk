@@ -21,8 +21,8 @@ Ensure the floating HUD (IndicatorWindow) correctly initializes and recovers if 
 - [x] Update `on_toggle_hud` to attempt creating the `IndicatorWindow` if it's currently `None` and being enabled. c53326d
 
 ### Phase 3: Startup Robustness
-- [ ] Implement a "Desktop Ready" check or a short delay/retry mechanism for `HudOverlay.run()`.
-- [ ] Ensure that if `HudOverlay.run()` exits unexpectedly, it logs the error and allows for a manual restart via the UI toggle.
+- [x] Implement a "Desktop Ready" check or a short delay/retry mechanism for `HudOverlay.run()`. a125d14
+- [x] Ensure that if `HudOverlay.run()` exits unexpectedly, it logs the error and allows for a manual restart via the UI toggle. a125d14
 
 ## 4. Verification
 - [ ] Verify that disabling/enabling the HUD via the tray menu can recover a missing HUD.
