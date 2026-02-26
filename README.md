@@ -94,3 +94,5 @@ Yes. We never save your audio to your hard drive. It is streamed via encrypted W
 - **Latency Tuning:** Choose between `Fast`, `Balanced`, or `Accurate` profiles in the configuration to match your speaking pace. Detailed documentation on these modes can be found in [config.example.toml](./config.example.toml).
 
 **MIT License.** Built for speed. Built for Windows. Built for you.
+
+
