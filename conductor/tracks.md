@@ -250,12 +250,11 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: HUD Startup Recovery & Error Handling** [checkpoint: a125d14]
-*Link: [./tracks/hud_startup_recovery_20260226/plan.md](./tracks/hud_startup_recovery_20260226/plan.md)*
+- [x] **Track: HUD Startup Recovery & Error Handling** [checkpoint: 433ebb4]
+*Link: [./archive/hud_startup_recovery_20260226/plan.md](./archive/hud_startup_recovery_20260226/plan.md)*
 
 
 ---
 
 - [ ] **Track: RTL & Arabic Shaping Support in HUD**
 *Link: [./tracks/hud_rtl_arabic_support_20260226/plan.md](./tracks/hud_rtl_arabic_support_20260226/plan.md)*
-
