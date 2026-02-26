@@ -83,10 +83,16 @@ class IndicatorWindow:
 
         # Use globals check to respect test patches
         if globals().get("HUD_AVAILABLE", True):
-            self.impl: Any = HudOverlay(
-                config=config, click_through=config.ui.floating_indicator.click_through
-            )
+            try:
+                logger.debug("Initializing HudOverlay implementation.")
+                self.impl: Any = HudOverlay(
+                    config=config, click_through=config.ui.floating_indicator.click_through
+                )
+            except Exception as e:
+                logger.error(f"HudOverlay instantiation failed: {e}", exc_info=True)
+                self.impl = GdiFallbackWindow(config=config)
         else:
+            logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")
             self.impl = GdiFallbackWindow(config=config)
 
     def refresh_settings(self):
