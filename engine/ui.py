@@ -108,16 +108,28 @@ class TrayApp:
                 self.indicator = None
             return False
 
-        # If enabled but not created, try to create it
+        # If we have an indicator, check if it's still alive/healthy
+        if self.indicator:
+            if getattr(self.indicator, "is_alive", True):
+                return True
+            else:
+                logger.warning("Indicator detected as dead. Re-initializing.")
+                try:
+                    self.indicator.stop()
+                except Exception:
+                    pass
+                self.indicator = None
+
+        # If enabled but not created (or just died), try to create it
         if not self.indicator:
             try:
                 from .indicator_ui import IndicatorWindow
 
                 logger.info("Lazily initializing IndicatorWindow.")
                 self.indicator = IndicatorWindow(config=self.config)
-                # If we are already running, we need to start its thread
+                # Start its thread
                 if not self._is_stopped:
-                    threading.Thread(target=self.indicator.start, daemon=True).start()
+                    self.indicator.start()
                 return True
             except Exception as e:
                 logger.error(f"Failed to initialize indicator: {e}", exc_info=True)

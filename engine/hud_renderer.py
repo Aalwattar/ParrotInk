@@ -199,33 +199,47 @@ class HudOverlay:
                 x_pos = (screen_w - self.win_width) // 2
                 y_pos = screen_h - self.win_height - y_offset
     
-                # Extended styles
-                ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
-                if self._click_through:
-                    ex_style |= WS_EX_TRANSPARENT
-    
-                self._hwnd = win32gui.CreateWindowEx(
-                    ex_style,
-                    class_name,
-                    "V2T HUD",
-                    win32con.WS_POPUP,
-                    x_pos,
-                    y_pos,
-                    self.win_width,
-                    self.win_height,
-                    0,
-                    0,
-                    hinst,
-                    None,
-                )
-                if self._hwnd:
-                    logger.info(f"HUD Window Created: {self._hwnd} at ({x_pos}, {y_pos})")
-                else:
-                    error_code = win32gui.GetLastError()
-                    logger.error(f"Failed to create HUD window: {error_code}")
-                    return
-    
-                # Setup GDI DIB Section
+                            # Extended styles
+                            ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
+                            if self._click_through:
+                                ex_style |= WS_EX_TRANSPARENT
+                
+                            # Senior Architecture: Startup Robustness Retry Loop
+                            # Windows may not be "ready" to create a topmost layered window
+                            # immediately after a system restart or crash recovery.
+                            MAX_RETRIES = 5
+                            RETRY_DELAY = 1.0
+                            
+                            for attempt in range(MAX_RETRIES):
+                                self._hwnd = win32gui.CreateWindowEx(
+                                    ex_style,
+                                    class_name,
+                                    "V2T HUD",
+                                    win32con.WS_POPUP,
+                                    x_pos,
+                                    y_pos,
+                                    self.win_width,
+                                    self.win_height,
+                                    0,
+                                    0,
+                                    hinst,
+                                    None,
+                                )
+                                if self._hwnd:
+                                    logger.info(f"HUD Window Created: {self._hwnd} at ({x_pos}, {y_pos}) (Attempt {attempt+1})")
+                                    break
+                                
+                                error_code = win32gui.GetLastError()
+                                logger.warning(f"HUD window creation failed (Attempt {attempt+1}/{MAX_RETRIES}): {error_code}")
+                                if attempt < MAX_RETRIES - 1:
+                                    time.sleep(RETRY_DELAY)
+                            
+                            if not self._hwnd:
+                                logger.error(f"Failed to create HUD window after {MAX_RETRIES} attempts.")
+                                return
+                
+                            # Setup GDI DIB Section
+                
                 hdc_screen = user32.GetDC(0)
                 self._hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
                 bmi = BITMAPINFO()

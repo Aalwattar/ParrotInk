@@ -95,6 +95,8 @@ class IndicatorWindow:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")
             self.impl = GdiFallbackWindow(config=config)
 
+        self._thread: Optional[threading.Thread] = None
+
     def refresh_settings(self):
         """Safely signals the UI thread to refresh settings."""
         if hasattr(self.impl, "apply_click_through"):
@@ -119,11 +121,25 @@ class IndicatorWindow:
             return True
         return getattr(self.impl, "visible", False)
 
+    @property
+    def is_alive(self):
+        """Returns True if the underlying HUD thread is active and responsive."""
+        if isinstance(self.impl, GdiFallbackWindow):
+            return True
+        if self._thread and not self._thread.is_alive():
+            return False
+        # Check window handle
+        if hasattr(self.impl, "_hwnd") and self.impl._hwnd is None:
+            # It might still be starting, but if it has exited (hwnd set back to None), it's dead
+            return False
+        return True
+
     def start(self):
         if hasattr(self.impl, "start"):
             self.impl.start()
         elif hasattr(self.impl, "run"):
-            threading.Thread(target=self.impl.run, daemon=True).start()
+            self._thread = threading.Thread(target=self.impl.run, daemon=True)
+            self._thread.start()
 
     def stop(self):
         self.impl.stop()
