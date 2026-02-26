@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Any, Optional
+import unicodedata
 
 import skia
 
@@ -13,6 +15,46 @@ TEXT_MAX_LENGTH = 100
 DOT_BASE_RADIUS = 3.0
 DOT_GLOW_RADIUS_OFFSET = 1.5
 
+# Global Text Layout Resources (Lazy Loaded)
+_FONT_COLLECTION: Optional[skia.textlayout_FontCollection] = None
+_UNICODE_MGR: Optional[skia.Unicode] = None
+
+
+def _ensure_text_resources():
+    """Lazily initializes Skia text layout resources with ICU support."""
+    global _FONT_COLLECTION, _UNICODE_MGR
+    if _FONT_COLLECTION is not None:
+        return
+
+    import os
+
+    # 1. Attempt to locate icudtl.dat for Arabic/RTL shaping
+    try:
+        import skia as sk_mod
+
+        skia_dir = os.path.dirname(sk_mod.__file__)
+        icu_path = os.path.join(skia_dir, "icudtl.dat")
+        if os.path.exists(icu_path):
+            # On Windows, setting SKIA_ICU_DIR might help before first Unicode call
+            os.environ["SKIA_ICU_DIR"] = skia_dir
+    except Exception:
+        pass
+
+    _UNICODE_MGR = skia.Unicode.ICU_Make()
+    _FONT_COLLECTION = skia.textlayout_FontCollection()
+    _FONT_COLLECTION.setDefaultFontManager(skia.FontMgr.RefDefault())
+
+
+def is_rtl(text: str) -> bool:
+    """Returns True if the text contains any RTL characters."""
+    for char in text:
+        try:
+            if unicodedata.bidirectional(char) in ("R", "AL", "AN"):
+                return True
+        except ValueError:
+            continue
+    return False
+
 
 class HudStyle(ABC):
     @abstractmethod
@@ -23,9 +65,9 @@ class HudStyle(ABC):
         height: int,
         text: str,
         is_recording: bool,
-        status_override: str | None = None,
+        status_override: Optional[str] = None,
         voice_active: bool = False,
-        provider: str | None = None,
+        provider: Optional[str] = None,
     ):
         pass
 
@@ -33,7 +75,7 @@ class HudStyle(ABC):
 class GlassStyle(HudStyle):
     def __init__(self):
         self.radius = CAPSULE_RADIUS
-        self.capsule_height = CAPSULE_HEIGHT  # Increased for larger 16pt font
+        self.capsule_height = CAPSULE_HEIGHT
         self.max_capsule_width = MAX_CAPSULE_WIDTH
         self.padding = CAPSULE_PADDING
 
@@ -44,21 +86,14 @@ class GlassStyle(HudStyle):
         height: int,
         text: str,
         is_recording: bool,
-        status_override: str | None = None,
+        status_override: Optional[str] = None,
         voice_active: bool = False,
-        provider: str | None = None,
+        provider: Optional[str] = None,
     ):
         canvas.clear(skia.ColorTRANSPARENT)
+        _ensure_text_resources()
 
-        # 1. Setup Fonts - Increased to 16pt for top-tier readability
-        try:
-            tf_reg = skia.Typeface.MakeFromName("Segoe UI", skia.FontStyle.Normal())
-        except Exception:
-            tf_reg = skia.Typeface.MakeDefault()
-
-        font_text = skia.Font(tf_reg, TEXT_SIZE)
-
-        # 2. Content Preparation
+        # 1. Content Preparation
         is_listening_placeholder = False
         if not text and is_recording:
             display_text = "Listening..."
@@ -69,16 +104,38 @@ class GlassStyle(HudStyle):
         if len(display_text) > TEXT_MAX_LENGTH:
             display_text = "…" + display_text[-(TEXT_MAX_LENGTH - 1) :]
 
-        # Use slightly more transparent paint for placeholder
-        if is_listening_placeholder:
-            text_paint = skia.Paint(Color=skia.ColorSetARGB(180, 255, 255, 255), AntiAlias=True)
+        rtl = is_rtl(display_text)
+
+        # 2. Modern Text Layout (Handles RTL/Shaping)
+        para_style = skia.textlayout_ParagraphStyle()
+        # Use kStart/kEnd or explicit kLeft/kRight based on detected direction
+        if rtl:
+            para_style.setTextAlign(skia.textlayout_TextAlign.kRight)
         else:
-            text_paint = skia.Paint(Color=skia.ColorWHITE, AntiAlias=True)
+            para_style.setTextAlign(skia.textlayout_TextAlign.kLeft)
 
-        content_blob = skia.TextBlob.MakeFromString(display_text, font_text)
-        text_width = font_text.measureText(display_text)
+        builder = skia.textlayout_ParagraphBuilder(para_style, _FONT_COLLECTION, _UNICODE_MGR)
 
-        # 3. Minimalist Layout Math (Dot Only + Text)
+        text_style = skia.textlayout_TextStyle()
+        if is_listening_placeholder:
+            text_style.setColor(skia.ColorSetARGB(180, 255, 255, 255))
+        else:
+            text_style.setColor(skia.ColorWHITE)
+
+        text_style.setFontSize(TEXT_SIZE)
+        # Segoe UI is excellent for Arabic on Windows
+        text_style.setFontFamilies(["Segoe UI", "Arial", "sans-serif"])
+
+        builder.pushStyle(text_style)
+        builder.addText(display_text)
+        builder.pop()
+
+        paragraph = builder.Build()
+        # Layout with a fixed width to get intrinsic width
+        paragraph.layout(self.max_capsule_width)
+        text_width = paragraph.MaxIntrinsicWidth
+
+        # 3. Minimalist Layout Math
         h_padding = 18.0
         dot_section_w = 8.0 + 10.0  # Dot Space + Gap
 
@@ -107,16 +164,14 @@ class GlassStyle(HudStyle):
         canvas.drawRRect(rrect, glass_paint)
 
         # 5. Drawing content
-        baseline_y = rect.fTop + (self.capsule_height / 2.0) + 6.0
-
         # Dot Position
         dot_x = rect.fLeft + h_padding + 4.0
         dot_y = rect.fTop + (self.capsule_height / 2.0)
 
-        # Dot Visuals (Dynamic based on voice_active)
+        # Dot Visuals
         base_radius = DOT_BASE_RADIUS
         if voice_active:
-            dot_radius = base_radius + 1.0  # Subtle grow
+            dot_radius = base_radius + 1.0
             glow_alpha = 180
             blur_sigma = 3.0
         else:
@@ -124,7 +179,6 @@ class GlassStyle(HudStyle):
             glow_alpha = 100
             blur_sigma = 1.5
 
-        # Determine Color
         status_label = (status_override or "LISTENING").upper() if is_recording else "STANDBY"
         dot_color = skia.ColorCYAN
         if status_label == "FINALIZED":
@@ -152,4 +206,18 @@ class GlassStyle(HudStyle):
         )
 
         # Transcription Text
-        canvas.drawTextBlob(content_blob, dot_x + 14.0, baseline_y - 1.0, text_paint)
+        # text_y = rect.fTop + (self.capsule_height - paragraph.Height) / 2.0
+        # For Paragraph, paint draws from top-left.
+        # If RTL and TextAlign.kRight, the text will be aligned to the RIGHT of the layout width.
+        # We laid out with self.max_capsule_width.
+        # We need to offset it so it starts after the dot.
+        
+        text_x = dot_x + 14.0
+        text_y = rect.fTop + (self.capsule_height - paragraph.Height) / 2.0
+        
+        # If RTL, paragraph.layout(max_capsule_width) with TextAlign.kRight 
+        # means the text is at the far right of that max width.
+        # We should layout with the ACTUAL text_width instead.
+        paragraph.layout(text_width + 1.0) # Add a tiny buffer
+        
+        paragraph.paint(canvas, text_x, text_y)

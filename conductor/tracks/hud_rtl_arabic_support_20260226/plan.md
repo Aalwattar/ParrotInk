@@ -14,9 +14,9 @@ Enable correct rendering of Right-to-Left (RTL) text and Arabic character shapin
 - [x] Create a standalone Skia script to test Arabic rendering (`Ø§Ù„Ø³Ù„Ø§Ù… Ø¹Ù„ÙŠÙƒÙ…`) with different Skia APIs. (Done: `tests/test_arabic_rendering.py` created and tested)
 
 ### Phase 2: Refactor Drawing Logic
-- [ ] Replace `skia.TextBlob` with a more robust text layout engine (e.g., `skia.Shaper` or `skia.textlayout.ParagraphBuilder`).
-- [ ] Update `GlassStyle.draw` to handle RTL alignment and shaping.
-- [ ] Ensure the capsule width calculation correctly accounts for shaped text width.
+- [x] Replace `skia.TextBlob` with a more robust text layout engine (e.g., `skia.textlayout.ParagraphBuilder`).
+- [x] Update `GlassStyle.draw` to handle RTL alignment and shaping.
+- [x] Ensure the capsule width calculation correctly accounts for shaped text width.
 
 ### Phase 3: Verification
 - [ ] Test with Arabic, English, and Mixed-direction text.
