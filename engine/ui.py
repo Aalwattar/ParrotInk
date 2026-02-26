@@ -91,13 +91,39 @@ class TrayApp:
         # Lazy-load indicator
         self.indicator = None
         self._is_stopped = False
-        if self.config.ui.floating_indicator.enabled:
+        self._ensure_indicator()
+
+    def _ensure_indicator(self) -> bool:
+        """
+        Safely creates or verifies the floating indicator.
+        Returns True if indicator exists and is ready, False otherwise.
+        """
+        # If disabled in config, ensure we don't have one
+        if not self.config.ui.floating_indicator.enabled:
+            if self.indicator:
+                try:
+                    self.indicator.stop()
+                except Exception:
+                    pass
+                self.indicator = None
+            return False
+
+        # If enabled but not created, try to create it
+        if not self.indicator:
             try:
                 from .indicator_ui import IndicatorWindow
 
+                logger.info("Lazily initializing IndicatorWindow.")
                 self.indicator = IndicatorWindow(config=self.config)
+                # If we are already running, we need to start its thread
+                if not self._is_stopped:
+                    threading.Thread(target=self.indicator.start, daemon=True).start()
+                return True
             except Exception as e:
-                logger.error(f"Failed to initialize indicator: {e}")
+                logger.error(f"Failed to initialize indicator: {e}", exc_info=True)
+                return False
+
+        return True
 
     def _run_ui_loop(self):
         """Dedicated background thread for the Tcl/Tk interpreter."""
@@ -346,34 +372,35 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_AVAILABILITY:
                 self.update_availability(data)
             elif msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.update_partial_text(data)
             elif msg_type == UIEvent.UPDATE_VOICE_ACTIVITY:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.update_voice_activity(data)
             elif msg_type == UIEvent.UPDATE_FINAL_TEXT:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.on_final(data)
             elif msg_type == UIEvent.UPDATE_STATUS_MESSAGE:
                 # Update Tray Tooltip
                 self.icon.title = f"ParrotInk: {data}"
                 # Forward to HUD
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.update_status_icon(data)
             elif msg_type == UIEvent.UPDATE_PROVIDER:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.update_provider(data)
                 # Refresh tooltip with new provider
                 self.set_state(self.state)
             elif msg_type == UIEvent.UPDATE_SETTINGS:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.update_settings(data)
                 self._refresh_menu()
             elif msg_type == UIEvent.REFRESH_HUD:
-                if self.indicator:
+                # If it was enabled/disabled, we attempt re-initialization
+                if self._ensure_indicator():
                     self.indicator.refresh_settings()
             elif msg_type == UIEvent.CLEAR_HUD:
-                if self.indicator:
+                if self._ensure_indicator():
                     self.indicator.clear()
             elif msg_type == UIEvent.RECORD_STATS:
                 self.stats_manager.record_session(
