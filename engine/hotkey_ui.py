@@ -46,6 +46,10 @@ class HotkeyRecorder:
         self._width, self._height = 400, 100
         self._class_name = f"V2THotkeyRecorder_{id(self)}"
 
+        # Explicitly define UnregisterClassW to prevent OverflowError on 64-bit
+        user32.UnregisterClassW.argtypes = [wintypes.LPCWSTR, wintypes.HINSTANCE]
+        user32.UnregisterClassW.restype = wintypes.BOOL
+
         from engine.platform_win.api import WNDPROC
 
         self._wnd_proc_ptr = WNDPROC(self._wnd_proc)
@@ -79,7 +83,8 @@ class HotkeyRecorder:
     def _cancel(self):
         """Aborts recording without saving anything."""
         self.final_hotkey = None
-        user32.PostMessageW(self._hwnd, WM_CLOSE, 0, 0)
+        if self._hwnd:
+            user32.PostMessageW(self._hwnd, WM_CLOSE, 0, 0)
 
     def _handle_key_down(self, vk: int, lparam: int):
         # Escape key (0x1B) cancels recording
@@ -98,7 +103,8 @@ class HotkeyRecorder:
             keys_list = sorted(list(self.current_keys))
             if self._is_valid(keys_list):
                 self.final_hotkey = "+".join(keys_list)
-                user32.PostMessageW(self._hwnd, WM_CLOSE, 0, 0)
+                if self._hwnd:
+                    user32.PostMessageW(self._hwnd, WM_CLOSE, 0, 0)
             else:
                 # If invalid (like just holding Ctrl), we allow clearing on release
                 # but we usually wait for a full combo.

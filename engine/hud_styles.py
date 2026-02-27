@@ -1,6 +1,6 @@
-from abc import ABC, abstractmethod
-from typing import Any, Optional
 import unicodedata
+from abc import ABC, abstractmethod
+from typing import Optional
 
 import skia
 
@@ -211,13 +211,13 @@ class GlassStyle(HudStyle):
         # If RTL and TextAlign.kRight, the text will be aligned to the RIGHT of the layout width.
         # We laid out with self.max_capsule_width.
         # We need to offset it so it starts after the dot.
-        
+
         text_x = dot_x + 14.0
         text_y = rect.fTop + (self.capsule_height - paragraph.Height) / 2.0
-        
-        # If RTL, paragraph.layout(max_capsule_width) with TextAlign.kRight 
+
+        # If RTL, paragraph.layout(max_capsule_width) with TextAlign.kRight
         # means the text is at the far right of that max width.
         # We should layout with the ACTUAL text_width instead.
-        paragraph.layout(text_width + 1.0) # Add a tiny buffer
-        
+        paragraph.layout(text_width + 1.0)  # Add a tiny buffer
+
         paragraph.paint(canvas, text_x, text_y)

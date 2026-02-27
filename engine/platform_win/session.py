@@ -40,7 +40,7 @@ class SessionMonitor:
         self._stop_event = threading.Event()
         self._thread_id: Optional[int] = None
 
-        # Setup Win32 Function Signatures for stability
+        # Setup Win32 Function Signatures for stability (Surgical Fix)
         user32.CreateWindowExW.argtypes = [
             wintypes.DWORD,
             wintypes.LPCWSTR,
@@ -65,6 +65,13 @@ class SessionMonitor:
             wintypes.LPARAM,
         ]
         user32.DefWindowProcW.restype = LRESULT
+
+        # CRITICAL: Fix for OverflowError during shutdown
+        user32.UnregisterClassW.argtypes = [wintypes.LPCWSTR, wintypes.HINSTANCE]
+        user32.UnregisterClassW.restype = wintypes.BOOL
+
+        user32.DestroyWindow.argtypes = [wintypes.HWND]
+        user32.DestroyWindow.restype = wintypes.BOOL
 
     def start(self):
         """Starts the session monitoring in a dedicated background thread."""
@@ -118,6 +125,7 @@ class SessionMonitor:
         wc.lpszClassName = class_name
         wc.hInstance = kernel32.GetModuleHandleW(None)
 
+        user32.RegisterClassW.argtypes = [ctypes.c_void_p]
         user32.RegisterClassW(ctypes.byref(wc))
 
         # Create Hidden Message-Only Window
