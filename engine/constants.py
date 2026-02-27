@@ -25,3 +25,17 @@ TOGGLE_DEBOUNCE_COOLDOWN = 0.4  # Seconds for native toggle suppression
 # Watchdogs and Health
 HOOK_WATCHDOG_INTERVAL = 30.0  # Seconds between dead-hook checks
 SESSION_QUIT_TIMEOUT = 2.0  # Seconds to wait for thread join on quit
+
+# UI Constants
+DEFAULT_MAX_CHARS = 180
+
+# UI Status Messages (Unified)
+STATUS_CONNECTING = "Connecting..."
+STATUS_READY = "Ready"
+STATUS_RETRYING = "Retrying..."
+STATUS_FAILED = "Connection Failed"
+STATUS_RELOADING = "Reloading..."
+STATUS_CONFIG_UPDATED = "Config Updated"
+STATUS_RELOAD_FAILED = "Reload Failed"
+STATUS_LISTENING = "Listening..."
+STATUS_FINALIZED = "Finalized"

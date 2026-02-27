@@ -7,6 +7,7 @@ from websockets.asyncio.client import ClientConnection
 
 from engine.app_types import EffectiveAssemblyAIConfig
 from engine.audio.adapter import ProviderAudioSpec
+from engine.constants import STATUS_READY
 from engine.logging import get_logger
 
 from .base import BaseProvider
@@ -167,4 +168,4 @@ class AssemblyAIProvider(BaseProvider):
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
             if self.on_status:
-                self.on_status("Ready")
+                self.on_status(STATUS_READY)

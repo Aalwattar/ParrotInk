@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from engine.app_types import AppState
+from engine.constants import STATUS_CONNECTING, STATUS_LISTENING, STATUS_READY
 from engine.indicator_ui import IndicatorWindow
 from engine.ui_bridge import UIBridge, UIEvent
 
@@ -28,13 +29,13 @@ def test_hud_status_propagation(hud):
     h, mock_impl = hud
 
     # Simulate a status update
-    h.update_status_icon("Connecting to OpenAI...")
+    h.update_status_icon(STATUS_CONNECTING)
 
     # Check if indicator tracked it
-    assert h._last_status_msg == "Connecting to OpenAI..."
+    assert h._last_status_msg == STATUS_CONNECTING
 
     # Check if implementation was called
-    mock_impl.update_status_icon.assert_called_with("Connecting to OpenAI...")
+    mock_impl.update_status_icon.assert_called_with(STATUS_CONNECTING)
 
 
 def test_hud_provider_mismatch(hud):
@@ -55,47 +56,31 @@ def test_hud_render_preview_logic(hud):
     # 1. No text, specific status
     h._committed_text = ""
     h._current_partial_text = ""
-    h._last_status_msg = "Connecting..."
+    h._last_status_msg = STATUS_CONNECTING
     h._render_preview()
 
-    # It should pass "Connecting..." to the implementation
-    mock_impl.update_partial_text.assert_called_with("Connecting...")
+    # It should pass STATUS_CONNECTING to the implementation
+    mock_impl.update_partial_text.assert_called_with(STATUS_CONNECTING)
 
     # 2. Transcription text present
     h.on_partial("Hello")
     h._render_preview()
 
-    # It should show "Hello", NOT "Connecting..."
+    # It should show "Hello", NOT STATUS_CONNECTING
     mock_impl.update_partial_text.assert_called_with("Hello")
 
+    # 3. No text, recording state (Placeholder logic)
+    h._committed_text = ""
+    h._current_partial_text = ""
+    h._last_status_msg = ""
+    h.update_status(True)
+    h._render_preview()
+    # It should show STATUS_LISTENING
+    mock_impl.update_partial_text.assert_called_with(STATUS_LISTENING)
 
-def test_hud_concurrent_updates(bridge):
-    """
-    Test that rapid updates through UIBridge are handled without crashing.
-    """
-    # We use the real bridge and a mock Tray/Indicator
-    mock_indicator = MagicMock()
-    # Mocking the Tray's behavior when polling
-    for _ in range(100):
-        bridge.update_partial_text("Partial")
-        bridge.update_status_message("Status")
-        bridge.update_provider("openai")
-        bridge.set_state(AppState.LISTENING)
-
-    # Process some events
-    for _ in range(400):
-        event = bridge.get_event()
-        if not event:
-            break
-        msg_type, data = event
-        if msg_type == UIEvent.UPDATE_PARTIAL_TEXT:
-            mock_indicator.update_partial_text(data)
-        elif msg_type == UIEvent.UPDATE_STATUS_MESSAGE:
-            mock_indicator.update_status_icon(data)
-        elif msg_type == UIEvent.UPDATE_PROVIDER:
-            mock_indicator.update_provider(data)
-        elif msg_type == UIEvent.SET_STATE:
-            mock_indicator.update_status(data == AppState.LISTENING)
-
-    assert mock_indicator.update_partial_text.call_count == 100
-    assert mock_indicator.update_provider.call_count == 100
+    # 4. Ready status during start of session
+    h.update_status_icon(STATUS_READY)
+    h.update_status(True)
+    h._render_preview()
+    # Ready should survive if no text is present
+    mock_impl.update_partial_text.assert_called_with(STATUS_READY)

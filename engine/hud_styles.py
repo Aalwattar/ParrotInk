@@ -4,6 +4,8 @@ from typing import Optional
 
 import skia
 
+from engine.constants import STATUS_LISTENING
+
 # Internal Constants (Not exposed to user)
 CAPSULE_RADIUS = 18.0
 CAPSULE_HEIGHT = 44.0
@@ -94,10 +96,9 @@ class GlassStyle(HudStyle):
         _ensure_text_resources()
 
         # 1. Content Preparation
-        is_listening_placeholder = False
-        if not text and is_recording:
-            display_text = "Listening..."
-            is_listening_placeholder = True
+        is_listening_placeholder = (not text or text == STATUS_LISTENING) and is_recording
+        if is_listening_placeholder:
+            display_text = STATUS_LISTENING
         else:
             display_text = text if text else "..."
 
@@ -168,7 +169,23 @@ class GlassStyle(HudStyle):
         dot_x = rect.fLeft + h_padding + 4.0
         dot_y = rect.fTop + (self.capsule_height / 2.0)
 
+        # Provider Label (Subtle, above the dot)
+        if provider:
+            prov_paint = skia.Paint(AntiAlias=True, Color=skia.ColorSetARGB(130, 200, 200, 200))
+            prov_font = skia.Font(skia.Typeface("Segoe UI"), 8)
+            prov_text = provider.upper()
+            prov_width = prov_font.measureText(prov_text)
+            # Center it horizontally relative to the dot
+            canvas.drawSimpleText(
+                prov_text,
+                dot_x - (prov_width / 2.0),
+                rect.fTop + 10.0,
+                prov_font,
+                prov_paint,
+            )
+
         # Dot Visuals
+
         base_radius = DOT_BASE_RADIUS
         if voice_active:
             dot_radius = base_radius + 1.0

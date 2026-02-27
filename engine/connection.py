@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from engine.app_types import AppState
 from engine.audio.adapter import AudioAdapter
 from engine.config import Config
+from engine.constants import STATUS_CONNECTING, STATUS_FAILED, STATUS_RETRYING
 from engine.logging import get_logger
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
@@ -138,7 +139,7 @@ class ConnectionManager:
         logger.info(f"Connecting to {self.config.transcription.provider}...")
         self.set_state(AppState.CONNECTING)
         if self.on_status:
-            self.on_status(f"Connecting to {self.config.transcription.provider}...")
+            self.on_status(STATUS_CONNECTING)
 
         retry_count = self.config.audio.max_retries
         current_attempt = 0
@@ -172,16 +173,16 @@ class ConnectionManager:
                 if isinstance(e, asyncio.CancelledError) and not is_last_attempt:
                     logger.warning(f"{error_msg}. Retrying...")
                     if self.on_status:
-                        self.on_status(f"Retrying ({current_attempt}/{retry_count})...")
+                        self.on_status(STATUS_RETRYING)
                 elif is_last_attempt:
                     logger.error(f"{error_msg}. Giving up.")
                     if self.on_status:
-                        self.on_status("Connection Failed.")
+                        self.on_status(STATUS_FAILED)
                 else:
                     wait_s = self.config.audio.initial_backoff_seconds
                     logger.warning(f"{error_msg}. Retrying in {wait_s}s...")
                     if self.on_status:
-                        self.on_status(f"Retry {current_attempt}/{retry_count}...")
+                        self.on_status(STATUS_RETRYING)
 
                 if is_last_attempt:
                     self._last_fail_time = time.time()

@@ -4,6 +4,11 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Optional
 
+from engine.constants import (
+    DEFAULT_MAX_CHARS,
+    STATUS_FINALIZED,
+    STATUS_LISTENING,
+)
 from engine.hud_renderer import HudOverlay
 from engine.logging import get_logger
 
@@ -18,7 +23,6 @@ HUD_AVAILABLE = True
 DEFAULT_LINGER_SECONDS = 2.5
 MIN_VISIBLE_DURATION = 0.3
 REDRAW_THROTTLE_SECONDS = 0.05
-DEFAULT_MAX_CHARS = 180
 
 
 class GdiFallbackWindow:
@@ -166,7 +170,9 @@ class IndicatorWindow:
             self._session_id += 1
             self._committed_text = ""
             self._current_partial_text = ""
-            self._last_status_msg = ""  # Clear status so it doesn't linger
+            # Don't clear 'Ready' or 'Connecting' if they just happened
+            if self._last_status_msg.lower() in ("listening", "finalized"):
+                self._last_status_msg = ""
             self.show()
 
         self._render_preview()
@@ -179,7 +185,7 @@ class IndicatorWindow:
         if hasattr(self.impl, "update_status_icon"):
             self.impl.update_status_icon(status)
 
-        if status and status.lower() not in ("listening", "finalized"):
+        if status and status not in (STATUS_LISTENING, STATUS_FINALIZED):
             self.show()
             self._render_preview()
             self._start_linger_timer(duration=3.0)
@@ -259,11 +265,13 @@ class IndicatorWindow:
             max_chars = self.config.ui.floating_indicator.max_characters
 
         if not full_text:
-            if self._last_status_msg and self._last_status_msg.lower() not in (
-                "listening",
-                "finalized",
+            if self._last_status_msg and self._last_status_msg not in (
+                STATUS_LISTENING,
+                STATUS_FINALIZED,
             ):
                 display_text = self._last_status_msg
+            elif self.is_recording:
+                display_text = STATUS_LISTENING
             else:
                 display_text = ""
         elif len(full_text) > max_chars:

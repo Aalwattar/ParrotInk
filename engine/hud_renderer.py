@@ -143,12 +143,12 @@ class HudOverlay:
                     if "click_through" in latest_settings:
                         self.apply_click_through(latest_settings["click_through"])
 
-            if (changed or self.visible) and hasattr(self, "_canvas"):
+            if changed and hasattr(self, "_canvas"):
                 self.style.draw(
                     self._canvas,
                     self.win_width,
                     self.win_height,
-                    self.last_text if self.last_text else "...",
+                    self.last_text if self.last_text is not None else "",
                     self.is_recording,
                     getattr(self, "last_status", None),
                     getattr(self, "voice_active", False),
@@ -301,11 +301,15 @@ class HudOverlay:
         if self._hwnd:
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
             self.visible = True
+            # Force redraw
+            self.text_queue.put(("VISIBILITY", True))
 
     def hide(self):
         if self._hwnd:
             win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE)
             self.visible = False
+            # Force redraw
+            self.text_queue.put(("VISIBILITY", False))
 
     def stop(self):
         if self._hwnd:

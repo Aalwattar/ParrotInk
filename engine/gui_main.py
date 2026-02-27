@@ -6,6 +6,11 @@ import sys
 import threading
 
 from engine.config import ConfigError, load_config
+from engine.constants import (
+    STATUS_CONFIG_UPDATED,
+    STATUS_RELOAD_FAILED,
+    STATUS_RELOADING,
+)
 from engine.logging import configure_logging, get_logger
 from engine.security import SecurityManager
 from engine.ui_bridge import UIBridge
@@ -166,9 +171,9 @@ async def main_gui(cli_args):
         def apply():
             try:
                 logger.info("Manual configuration reload triggered.")
-                ui_bridge.update_status_message("Reloading config...")
+                ui_bridge.update_status_message(STATUS_RELOADING)
                 config.reload()
-                ui_bridge.update_status_message("Config Updated")
+                ui_bridge.update_status_message(STATUS_CONFIG_UPDATED)
                 # Clear status after a short delay
                 if coordinator.loop:
                     coordinator.loop.call_later(
@@ -179,7 +184,7 @@ async def main_gui(cli_args):
                     )
             except ConfigError as e:
                 logger.error(f"Failed to reload config: {e}")
-                ui_bridge.update_status_message("Reload Failed")
+                ui_bridge.update_status_message(STATUS_RELOAD_FAILED)
                 # Clear status after a short delay
                 if coordinator.loop:
                     coordinator.loop.call_later(

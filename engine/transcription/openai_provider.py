@@ -7,6 +7,7 @@ from websockets.asyncio.client import ClientConnection
 
 from engine.app_types import EffectiveOpenAIConfig
 from engine.audio.adapter import ProviderAudioSpec
+from engine.constants import STATUS_READY
 from engine.logging import get_logger
 
 from .base import BaseProvider
@@ -212,4 +213,4 @@ class OpenAIProvider(BaseProvider):
         elif ev_type == "session.updated":
             logger.info("OpenAI: Transcription session updated successfully.")
             if self.on_status:
-                self.on_status("Ready")
+                self.on_status(STATUS_READY)
