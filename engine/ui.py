@@ -1,5 +1,6 @@
 import os
 import threading
+import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Optional
 
@@ -81,6 +82,10 @@ class TrayApp:
         self.on_mic_profile_change = on_mic_profile_change
         self.on_reload_config = on_reload_config
         self.availability = availability or {"openai": True, "assemblyai": True}
+
+        # Update info
+        self.latest_version: Optional[str] = None
+        self.release_url: Optional[str] = None
 
         # Senior Architecture: Thread-safe UI state
         self.ui_root = None
@@ -252,10 +257,28 @@ class TrayApp:
         if self.ui_root:
             self.ui_root.after(0, launch)
 
+    def _on_update_clicked(self, icon: pystray.Icon, item: pystray.MenuItem):
+        """Opens the GitHub releases page in the default browser."""
+        if self.release_url:
+            logger.info(f"Opening update URL: {self.release_url}")
+            webbrowser.open(self.release_url)
+
     def _create_menu(self) -> pystray.Menu:
         version = get_app_version()
+        
+        # UI Implementation: Version label is clickable if update is found.
+        # We use a distinct text if an update is available.
+        version_label = f"ParrotInk v{version}"
+        on_click = lambda: None
+        is_enabled = False
+        
+        if self.latest_version:
+            version_label = f"{version_label} (Update Available: {self.latest_version})"
+            on_click = self._on_update_clicked
+            is_enabled = True
+
         return pystray.Menu(
-            pystray.MenuItem(f"ParrotInk v{version}", lambda: None, enabled=False),
+            pystray.MenuItem(version_label, on_click, enabled=is_enabled),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 "OpenAI",
@@ -424,6 +447,11 @@ class TrayApp:
                 self.stats_manager.record_session(
                     data["duration"], data["words"], data["provider"], data["error"]
                 )
+            elif msg_type == UIEvent.UPDATE_VERSION_NOTIFICATION:
+                version_tag, release_url = data
+                self.latest_version = version_tag
+                self.release_url = release_url
+                self._refresh_menu()
             elif msg_type == UIEvent.QUIT:
                 self.stop()
 
