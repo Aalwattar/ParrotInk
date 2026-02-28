@@ -258,3 +258,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: RTL & Arabic Shaping Support in HUD** [checkpoint: b2617f3]
 *Link: [./tracks/hud_rtl_arabic_support_20260226/plan.md](./tracks/hud_rtl_arabic_support_20260226/plan.md)*
+
+---
+
+- [ ] **Track: GitHub Actions CI/CD Integration**
+*Link: [./tracks/github_actions_20260227/](./tracks/github_actions_20260227/)*
