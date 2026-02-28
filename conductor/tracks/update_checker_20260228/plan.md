@@ -1,4 +1,4 @@
-# Implementation Plan: GitHub Update Checker
+﻿# Implementation Plan: GitHub Update Checker
 
 ## Phase 1: API Foundation [checkpoint: 7f1e0ba]
 - [x] Task: Research GitHub `/releases/latest` schema and confirm `X-RateLimit-*` headers. (0ca51c0)
@@ -28,3 +28,6 @@
     - [x] Sub-task: `uv run mypy .` (35d73aa)
     - [x] Sub-task: `uv run pytest -q` (35d73aa)
 - [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md) (6ded81b)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions (mock patching) (185e925)
