@@ -20,11 +20,11 @@
 - [x] Task: Implement 'Open Browser' action for the version label. (153b079)
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) (6c3f012)
 
-## Phase 4: Final Validation
+## Phase 4: Final Validation [checkpoint: 6ded81b]
 - [x] Task: End-to-end verify update flow with mock API responses. (35d73aa)
 - [x] Task: Execute the project's "Definition of Done Gate": (35d73aa)
     - [x] Sub-task: `uv run ruff check .` (35d73aa)
     - [x] Sub-task: `uv run ruff format --check .` (35d73aa)
     - [x] Sub-task: `uv run mypy .` (35d73aa)
     - [x] Sub-task: `uv run pytest -q` (35d73aa)
-- [~] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md) (6ded81b)
