@@ -20,7 +20,7 @@ def test_tray_app_receives_version_notification(mock_config):
         None,
     ]
 
-    with patch("pystray.Icon"):
+    with patch.object(TrayApp, "_create_icon", return_value=MagicMock()):
         app = TrayApp(mock_config, bridge)
         # We don't want to start the actual icon/ui mainloops
         app.icon = MagicMock()
@@ -37,7 +37,7 @@ def test_tray_app_receives_version_notification(mock_config):
 
 @patch("webbrowser.open")
 def test_on_update_clicked_opens_browser(mock_browser_open, mock_config):
-    with patch("pystray.Icon"):
+    with patch.object(TrayApp, "_create_icon", return_value=MagicMock()):
         app = TrayApp(mock_config)
         app.release_url = "http://release"
 
@@ -47,7 +47,7 @@ def test_on_update_clicked_opens_browser(mock_browser_open, mock_config):
 
 
 def test_create_menu_with_update(mock_config):
-    with patch("pystray.Icon"):
+    with patch.object(TrayApp, "_create_icon", return_value=MagicMock()):
         app = TrayApp(mock_config)
         app.latest_version = "v1.2.3"
         app.release_url = "http://release"
