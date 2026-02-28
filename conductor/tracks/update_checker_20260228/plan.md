@@ -1,11 +1,11 @@
 # Implementation Plan: GitHub Update Checker
 
 ## Phase 1: API Foundation
-- [ ] Task: Research GitHub `/releases/latest` schema and confirm `X-RateLimit-*` headers.
-- [ ] Task: Implement `GitHubClient` in `engine/services/updates.py`.
-    - [ ] Sub-task: Handle 404/403 states gracefully as "no update info".
-    - [ ] Sub-task: Check `X-RateLimit-Remaining` to avoid hitting hard limits.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Research GitHub `/releases/latest` schema and confirm `X-RateLimit-*` headers. (0ca51c0)
+- [x] Task: Implement `GitHubClient` in `engine/services/updates.py`. (0ca51c0)
+    - [x] Sub-task: Handle 404/403 states gracefully as "no update info". (0ca51c0)
+    - [x] Sub-task: Check `X-RateLimit-Remaining` to avoid hitting hard limits. (0ca51c0)
+- [~] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Logic & Polling
 - [ ] Task: Implement `UpdateManager` (Background Thread + Callback).
