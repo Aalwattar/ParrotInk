@@ -89,6 +89,10 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern Dashboard:** A "Statistics" menu item in the system tray opens a professional, instant-launch dashboard (using `ttkbootstrap`) that aggregates data for Today, This Week, This Month, and Lifetime.
 - **Data Sovereignty:** All statistics are stored locally in a `stats.json` file within the user's `%APPDATA%\ParrotInk` directory and never transmitted to external servers.
 
+### 2.12 CI/CD & Automation
+- **Automated Quality Gate:** A GitHub Actions CI workflow automatically runs linters (Ruff), type checkers (Mypy), and unit tests (Pytest) on every push to `main` and all pull requests.
+- **Automated Releases:** A dedicated Release workflow builds the standalone Windows executable and creates a GitHub Release with version-verified assets (EXE and SHA256 checksum) whenever a new version tag (e.g., `v1.2.3`) is pushed.
+
 ## 3. Technical Specifications
 
 ### 3.1. Audio Pipeline

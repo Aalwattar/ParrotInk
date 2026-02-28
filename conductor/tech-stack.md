@@ -36,3 +36,8 @@
 ## 4. Alternatives
 
 - **pynput:** Can be used as a simpler, higher-level alternative to `pywin32` for managing global hotkeys if `pywin32` proves too complex for the initial implementation.
+
+## 5. CI/CD & Automation
+- **GitHub Actions:** Provides automated CI/CD pipelines for linting, testing, and building the application.
+    - **astral-sh/setup-uv@v7:** Used to set up the `uv` environment with caching for fast and reproducible builds.
+    - **softprops/action-gh-release@v2:** Automates the creation of GitHub Releases and asset uploading.
