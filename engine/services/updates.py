@@ -37,11 +37,21 @@ class GitHubClient:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(GITHUB_API_URL, headers=headers)
 
-                # Proactive Rate Limit Check
-                remaining = response.headers.get("X-RateLimit-Remaining")
-                if remaining and int(remaining) == 0:
-                    reset_time = response.headers.get("X-RateLimit-Reset")
-                    logger.warning(f"GitHub Rate Limit hit. Resets at {reset_time}")
+                if response.status_code == 403:
+                    error_data = {}
+                    try:
+                        error_data = response.json()
+                    except Exception:
+                        pass
+
+                    msg = error_data.get("message", "Forbidden")
+                    logger.warning(f"GitHub API 403: {msg}")
+
+                    # Proactive Rate Limit Check
+                    remaining = response.headers.get("X-RateLimit-Remaining")
+                    if remaining and int(remaining) == 0:
+                        reset_time = response.headers.get("X-RateLimit-Reset")
+                        logger.warning(f"GitHub Rate Limit hit. Resets at {reset_time}")
                     return None
 
                 if response.status_code == 404:

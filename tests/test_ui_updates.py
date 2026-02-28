@@ -56,5 +56,6 @@ def test_create_menu_with_update(mock_config):
         # First item should be the version label
         version_item = menu.items[0]
 
-        assert "Update Available: v1.2.3" in version_item.text
+        assert "✨ UPDATE AVAILABLE: v1.2.3" in version_item.text
         assert version_item.enabled is True
+        assert version_item.default is True

@@ -34,7 +34,9 @@ def test_github_client_success(mock_httpx):
 
 def test_github_client_rate_limited(mock_httpx):
     mock_response = MagicMock()
+    mock_response.status_code = 403
     mock_response.headers = {"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "123456"}
+    mock_response.json.return_value = {"message": "rate limit exceeded"}
     mock_httpx.return_value.__enter__.return_value.get.return_value = mock_response
 
     client = GitHubClient("TestAgent")

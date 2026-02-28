@@ -272,18 +272,20 @@ class TrayApp:
             pass
 
         # UI Implementation: Version label is clickable if update is found.
-        # We use a distinct text if an update is available.
+        # We use a distinct text and BOLD formatting if an update is available.
         version_label = f"ParrotInk v{version}"
         on_click: Callable = no_op
         is_enabled = False
+        is_default = False
 
         if self.latest_version:
-            version_label = f"{version_label} (Update Available: {self.latest_version})"
+            version_label = f"✨ UPDATE AVAILABLE: {self.latest_version} (Current: v{version})"
             on_click = self._on_update_clicked
             is_enabled = True
+            is_default = True
 
         return pystray.Menu(
-            pystray.MenuItem(version_label, on_click, enabled=is_enabled),
+            pystray.MenuItem(version_label, on_click, enabled=is_enabled, default=is_default),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 "OpenAI",
