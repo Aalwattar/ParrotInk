@@ -267,5 +267,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Implement GitHub Update Checker in Tray Menu**
+- [x] **Track: Implement GitHub Update Checker in Tray Menu**
 *Link: [./tracks/update_checker_20260228/](./tracks/update_checker_20260228/)*
