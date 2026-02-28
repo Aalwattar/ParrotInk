@@ -1,22 +1,23 @@
 # Implementation Plan: GitHub Update Checker
 
 ## Phase 1: API Foundation
-- [ ] Task: Research GitHub API schema & confirm rate-limiting headers.
+- [ ] Task: Research GitHub `/releases/latest` schema and confirm `X-RateLimit-*` headers.
 - [ ] Task: Implement `GitHubClient` in `engine/services/updates.py`.
-    - [ ] Sub-task: Write tests for parsing various GitHub API responses.
-    - [ ] Sub-task: Implement robust error handling for network timeouts and 403 (Rate Limited).
+    - [ ] Sub-task: Handle 404/403 states gracefully as "no update info".
+    - [ ] Sub-task: Check `X-RateLimit-Remaining` to avoid hitting hard limits.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: Logic & Polling
-- [ ] Task: Implement `UpdateManager` (Polling, comparison logic).
-    - [ ] Sub-task: Write `version_compare` tests (e.g., v0.1.5 vs 0.1.6).
-    - [ ] Sub-task: Implement 24-hour background timer.
+- [ ] Task: Implement `UpdateManager` (Background Thread + Callback).
+    - [ ] Sub-task: Use `packaging.version` for robust tag comparison (RC/Post support).
+    - [ ] Sub-task: Ensure API calls and parsing never run on the main UI thread.
 - [ ] Task: Integrate `UpdateManager` into `AppCoordinator` (startup trigger).
+    - [ ] Sub-task: Implement the 24-hour background timer.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
 
 ## Phase 3: UI Integration
-- [ ] Task: Modify `engine/ui.py` (TrayIcon) for dynamic menu labels.
-    - [ ] Sub-task: Create Signal/Callback from UpdateManager to UI.
+- [ ] Task: Modify `engine/ui.py` (TrayIcon) to use a clickable menu item for the version label.
+    - [ ] Sub-task: Ensure label updates are thread-safe and triggered by the coordinator.
 - [ ] Task: Implement 'Open Browser' action for the version label.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
