@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from engine.constants import (
     DEFAULT_MAX_CHARS,
-    IS_GITHUB_ACTIONS,
     STATUS_FINALIZED,
     STATUS_LISTENING,
 )
@@ -84,20 +83,29 @@ class IndicatorWindow:
         self._visible = False
         self._session_id = 0
 
-        # Use globals check to respect test patches
-        if globals().get("HUD_AVAILABLE", True):
+        # Import inside __init__ to pick up test mocks/patches correctly
+        import engine.hud_renderer
+
+        # Use getattr to safely check the module attribute which might be patched
+        hud_available = getattr(engine.hud_renderer, "HUD_AVAILABLE", False)
+
+        if hud_available:
             try:
                 logger.debug("Initializing HudOverlay implementation.")
+                from engine.hud_renderer import HudOverlay
+
                 self.impl: Any = HudOverlay(
                     config=config, click_through=config.ui.floating_indicator.click_through
                 )
+                # Verify that impl actually initialized (to handle early returns in HudOverlay)
+                if not hasattr(self.impl, "update_status"):
+                    logger.warning("HudOverlay failed to initialize correctly. Falling back.")
+                    self.impl = GdiFallbackWindow(config=config)
             except (ImportError, RuntimeError, AttributeError) as e:
-                # Catching specific startup/import failures from Skia or Win32
-                logger.error(f"HudOverlay instantiation failed: {e}", exc_info=True)
+                logger.error(f"HudOverlay instantiation failed: {e}")
                 self.impl = GdiFallbackWindow(config=config)
             except Exception as e:
-                # Catch-all for unexpected HUD failures during creation
-                logger.error(f"Unexpected HUD initialization error: {e}", exc_info=True)
+                logger.error(f"Unexpected HUD initialization error: {e}")
                 self.impl = GdiFallbackWindow(config=config)
         else:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")

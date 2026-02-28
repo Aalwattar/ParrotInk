@@ -9,6 +9,7 @@ from openai import OpenAI
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 import pytest
+
 from tests.golden_tools.auth_utils import get_openai_key
 
 # Add PROJECT context check

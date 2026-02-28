@@ -18,3 +18,10 @@ def config():
 def mock_audio_feedback():
     with patch("engine.audio_feedback.play_sound") as mock:
         yield mock
+
+
+@pytest.fixture(autouse=True)
+def guard_update_manager():
+    """Prevent UpdateManager from starting threads or making network calls in tests."""
+    with patch("engine.services.updates.UpdateManager.start"):
+        yield
