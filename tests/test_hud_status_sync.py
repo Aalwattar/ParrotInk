@@ -18,7 +18,7 @@ def hud(bridge):
     # Ensure it has the required methods to pass initialization checks
     # and that it is NOT a GdiFallbackWindow
     mock_impl.update_status = MagicMock()
-    
+
     # We MUST patch the source of the import used in IndicatorWindow.__init__
     with patch("engine.hud_renderer.HUD_AVAILABLE", True):
         with patch("engine.hud_renderer.HudOverlay", return_value=mock_impl):
@@ -70,14 +70,14 @@ def test_hud_truncation_logic(hud):
     Test truncation logic separately to avoid redraw throttle issues.
     """
     h, mock_impl = hud
-    
+
     # Force a small limit for testing
     h.config.ui.floating_indicator.max_characters = 50
-    
+
     # 3. Truncation check
     h._committed_text = "a" * 100
     h._render_preview()
-    
+
     # Get the last call arguments
     args, _ = mock_impl.update_partial_text.call_args
     display_text = args[0]

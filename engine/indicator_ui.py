@@ -9,7 +9,6 @@ from engine.constants import (
     STATUS_FINALIZED,
     STATUS_LISTENING,
 )
-from engine.hud_renderer import HUD_AVAILABLE, HudOverlay
 from engine.logging import get_logger
 
 if TYPE_CHECKING:

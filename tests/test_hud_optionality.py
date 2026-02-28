@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 def test_hud_fallback_when_skia_missing():
     """Verify that IndicatorWindow falls back to GDI if Skia/HUD is unavailable."""
@@ -18,7 +16,7 @@ def test_hud_available_selection():
         # We MUST patch the source used in engine.indicator_ui
         mock_instance = MagicMock()
         mock_instance.update_status = MagicMock()
-        
+
         with patch("engine.hud_renderer.HudOverlay", return_value=mock_instance):
             from engine.indicator_ui import IndicatorWindow
 
@@ -36,7 +34,7 @@ def test_on_final_lingers_on_fallback():
         with patch.object(indicator, "_start_linger_timer") as mock_linger:
             # on_final should trigger _render_preview
             indicator.on_final("final text", linger_seconds=1.0)
-            
+
             # Since GdiFallbackWindow HAS update_partial_text, it uses it
             assert indicator.impl.partial_text == "final text"
             mock_linger.assert_called_once_with(1.0)
