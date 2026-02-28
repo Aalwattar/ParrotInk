@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from typing import Callable, Optional
@@ -28,6 +29,10 @@ class GitHubClient:
                              or None if no release found or error occurred.
         """
         headers = {"User-Agent": self.user_agent}
+        token = os.getenv("GITHUB_TOKEN")
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
         try:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(GITHUB_API_URL, headers=headers)
