@@ -3,7 +3,7 @@
 on:
   push:
     branches: [ "main" ]
-    tags-ignore: [ "v*" ]
+    tags-ignore: [ "v*" ]  # don't double-run on release tags
   pull_request:
     branches: [ "main" ]
 
@@ -30,13 +30,13 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies (locked)
-        run: uv sync --frozen --group dev
+        run: uv sync --locked --group dev
 
       - name: Lint (Ruff)
-        run: uv run --frozen ruff check .
+        run: uv run --locked ruff check .
 
       - name: Type Check (Mypy)
-        run: uv run --frozen mypy .
+        run: uv run --locked mypy .
 
       - name: Run Tests
-        run: uv run --frozen pytest -q
+        run: uv run --locked pytest -q
