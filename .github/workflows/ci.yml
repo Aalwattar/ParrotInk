@@ -2,10 +2,10 @@
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     tags-ignore: [ "v*" ]  # don't double-run on release tags
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
 
 concurrency:
   group: ci-${{ github.ref }}
