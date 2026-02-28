@@ -27,11 +27,14 @@ hiddenimports += ["keyring.backends.Windows"]
 datas = []
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
+datas += collect_data_files("skia")
 # Include assets and metadata relative to repo root
 datas += [(os.path.join(repo_root, "assets"), "assets")]
 datas += [(os.path.join(repo_root, "pyproject.toml"), ".")]
+datas += [(os.path.join(repo_root, "config.example.toml"), ".")]
 
 binaries = []
+binaries += collect_dynamic_libs("skia")
 # sounddevice collection usually works better by just collecting the package data
 # but we'll try to find the dll explicitly if needed. 
 # For now, let's use a simpler approach for sounddevice.

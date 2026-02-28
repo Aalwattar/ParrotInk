@@ -1,3 +1,4 @@
+import sys
 import unicodedata
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -5,6 +6,9 @@ from typing import Optional
 import skia
 
 from engine.constants import STATUS_LISTENING
+from engine.logging import get_logger
+
+logger = get_logger("HudStyles")
 
 # Internal Constants (Not exposed to user)
 CAPSULE_RADIUS = 18.0
@@ -35,14 +39,27 @@ def _ensure_text_resources():
         import skia as sk_mod
 
         skia_dir = os.path.dirname(sk_mod.__file__)
-        icu_path = os.path.join(skia_dir, "icudtl.dat")
-        if os.path.exists(icu_path):
-            # On Windows, setting SKIA_ICU_DIR might help before first Unicode call
-            os.environ["SKIA_ICU_DIR"] = skia_dir
-    except Exception:
-        pass
+        # PyInstaller _MEIPASS support
+        if hasattr(sys, "_MEIPASS"):
+            # Check in the root of the temp folder
+            icu_path = os.path.join(sys._MEIPASS, "icudtl.dat")
+        else:
+            icu_path = os.path.join(skia_dir, "icudtl.dat")
 
-    _UNICODE_MGR = skia.Unicode.ICU_Make()
+        if os.path.exists(icu_path):
+            os.environ["SKIA_ICU_DIR"] = os.path.dirname(icu_path)
+            logger.debug(f"Found ICU data at: {icu_path}")
+    except Exception as e:
+        logger.debug(f"Failed to locate ICU data path: {e}")
+
+    try:
+        _UNICODE_MGR = skia.Unicode.ICU_Make()
+        if _UNICODE_MGR is None:
+            logger.warning("skia.Unicode.ICU_Make() returned None. RTL shaping disabled.")
+    except Exception as e:
+        logger.error(f"Critical error initializing Skia ICU: {e}. Falling back to basic shaping.")
+        _UNICODE_MGR = None
+
     _FONT_COLLECTION = skia.textlayout_FontCollection()
     _FONT_COLLECTION.setDefaultFontManager(skia.FontMgr.RefDefault())
 

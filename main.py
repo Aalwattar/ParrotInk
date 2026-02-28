@@ -590,10 +590,10 @@ if __name__ == "__main__":
     if cli_args.command == "run":
         try:
             config = load_config()
-            if config.interaction.run_at_startup:
-                from engine.platform_win.startup import set_run_at_startup
+            if sys.platform == "win32":
+                from engine.platform_win.startup import sync_startup_with_config
 
-                set_run_at_startup(True)
+                sync_startup_with_config(config.interaction.run_at_startup)
         except ConfigError as e:
             msg = f"Configuration invalid:\n\n{e}"
             logger.error(f"[CONFIG ERROR] {e}")

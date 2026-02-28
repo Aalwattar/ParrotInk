@@ -71,3 +71,12 @@ def is_run_at_startup_synced() -> bool:
     except Exception as e:
         logger.error(f"Failed to read startup registry value: {e}")
         return False
+
+
+def sync_startup_with_config(enabled: bool):
+    """
+    Ensures the Windows Registry matches the provided configuration.
+    This is the authoritative sync to prevent registry drift.
+    """
+    if enabled != is_run_at_startup_synced():
+        set_run_at_startup(enabled)

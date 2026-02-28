@@ -393,7 +393,9 @@ def load_config(path: Optional[str | Path] = None) -> Config:
         # a documented experience for the user on first launch.
         import shutil
 
-        example_path = Path(__file__).parent.parent / "config.example.toml"
+        from .ui_utils import get_resource_path
+
+        example_path = Path(get_resource_path("config.example.toml"))
         if example_path.exists():
             config_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(example_path, config_path)
