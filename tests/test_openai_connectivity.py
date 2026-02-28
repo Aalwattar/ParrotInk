@@ -8,9 +8,14 @@ from openai import OpenAI
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+import pytest
 from tests.golden_tools.auth_utils import get_openai_key
 
+# Add PROJECT context check
+IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
+
+@pytest.mark.skipif(IS_GITHUB_ACTIONS, reason="Skipping connectivity test in CI")
 def test_connectivity():
     try:
         api_key = get_openai_key()

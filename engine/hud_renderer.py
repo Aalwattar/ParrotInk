@@ -5,6 +5,7 @@ import time
 from ctypes import wintypes
 from typing import Any, Optional
 
+from engine.constants import IS_GITHUB_ACTIONS
 from engine.logging import get_logger
 
 from .platform_win.api import (
@@ -32,6 +33,9 @@ DEFAULT_REFRESH_RATE_MS = 50
 
 
 try:
+    if IS_GITHUB_ACTIONS:
+        raise ImportError("HUD disabled in GitHub Actions CI")
+
     import skia
     import win32con
     import win32gui

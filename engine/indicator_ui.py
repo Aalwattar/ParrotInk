@@ -6,18 +6,17 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from engine.constants import (
     DEFAULT_MAX_CHARS,
+    IS_GITHUB_ACTIONS,
     STATUS_FINALIZED,
     STATUS_LISTENING,
 )
-from engine.hud_renderer import HudOverlay
+from engine.hud_renderer import HUD_AVAILABLE, HudOverlay
 from engine.logging import get_logger
 
 if TYPE_CHECKING:
     from engine.config import Config
 
 logger = get_logger("IndicatorUI")
-
-HUD_AVAILABLE = True
 
 # Internal Constants (Not exposed to user)
 DEFAULT_LINGER_SECONDS = 2.5

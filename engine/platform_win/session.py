@@ -8,7 +8,7 @@ import threading
 from ctypes import wintypes
 from typing import Callable, Optional
 
-from engine.constants import SESSION_QUIT_TIMEOUT
+from engine.constants import IS_GITHUB_ACTIONS, SESSION_QUIT_TIMEOUT
 from engine.logging import get_logger
 
 from .keys import HBRUSH, HCURSOR, HICON, LRESULT
@@ -85,6 +85,10 @@ class SessionMonitor:
 
     def _run(self):
         """Hidden window message loop for session notifications."""
+        if IS_GITHUB_ACTIONS:
+            logger.debug("SessionMonitor._run skipped in CI.")
+            return
+
         self._thread_id = kernel32.GetCurrentThreadId()
 
         # Define the Window Class

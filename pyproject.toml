@@ -25,6 +25,7 @@ dependencies = [
     "win11toast",
     "ttkbootstrap>=1.10.1",
     "darkdetect>=0.8.0",
+    "packaging>=26.0",
 ]
 
 [dependency-groups]
