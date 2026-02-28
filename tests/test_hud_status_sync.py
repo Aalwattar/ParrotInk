@@ -2,10 +2,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from engine.app_types import AppState
 from engine.constants import STATUS_CONNECTING, STATUS_LISTENING, STATUS_READY
 from engine.indicator_ui import IndicatorWindow
-from engine.ui_bridge import UIBridge, UIEvent
+from engine.ui_bridge import UIBridge
 
 
 @pytest.fixture

@@ -11,21 +11,21 @@ Implement automated CI/CD using GitHub Actions, tailored for the \uv\ package ma
     *   **Steps:**
         *   Checkout repository.
         *   Setup Python 3.12.
-        *   Install \uv\.
-        *   \uv sync --group dev\ to install dependencies.
-        *   \uv run ruff check .\ for linting.
-        *   \uv run mypy .\ for type checking.
-        *   \uv run pytest -q\ for unit tests.
+        *   Install \uv\ using the official \astral-sh/setup-uv@v7\ action with caching.
+        *   \uv sync --frozen --group dev\ to install exact dependencies.
+        *   \uv run --frozen ruff check .\ for linting.
+        *   \uv run --frozen mypy .\ for type checking.
+        *   \uv run --frozen pytest -q\ for unit tests.
 
 2.  **Release Workflow (\.github/workflows/release.yml\):**
-    *   **Trigger:** \push\ of tags matching \*.*.*\.
+    *   **Trigger:** \push\ of tags matching \v*.*.*\.
     *   **Environment:** \windows-latest\.
     *   **Permissions:** \contents: write\ (for creating releases).
     *   **Steps:**
         *   Checkout repository.
         *   Setup Python 3.12.
-        *   Install \uv\.
-        *   \uv sync\ to install production dependencies.
+        *   Install \uv\ using the official \astral-sh/setup-uv@v7\ action.
+        *   \uv sync --frozen\ to install exact production dependencies.
         *   **Version Validation (pwsh):**
             \\\powershell
             \$tag = "${\{ github.ref_name \}}".TrimStart("v")
