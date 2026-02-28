@@ -7,13 +7,13 @@
     - [x] Sub-task: Check `X-RateLimit-Remaining` to avoid hitting hard limits. (0ca51c0)
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) (7f1e0ba)
 
-## Phase 2: Logic & Polling
+## Phase 2: Logic & Polling [checkpoint: 5041507]
 - [x] Task: Implement `UpdateManager` (Background Thread + Callback). (0ca51c0)
     - [x] Sub-task: Use `packaging.version` for robust tag comparison (RC/Post support). (0ca51c0)
     - [x] Sub-task: Ensure API calls and parsing never run on the main UI thread. (0ca51c0)
 - [x] Task: Integrate `UpdateManager` into `AppCoordinator` (startup trigger). (0ca51c0)
     - [x] Sub-task: Implement the 24-hour background timer. (0ca51c0)
-- [~] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) (5041507)
 
 ## Phase 3: UI Integration
 - [ ] Task: Modify `engine/ui.py` (TrayIcon) to use a clickable menu item for the version label.
