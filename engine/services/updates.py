@@ -3,6 +3,7 @@ import time
 from typing import Callable, Optional
 
 import httpx
+
 from packaging import version
 
 from ..logging import get_logger
@@ -60,7 +61,9 @@ class GitHubClient:
 class UpdateManager:
     """Manages version comparison and background polling logic."""
 
-    def __init__(self, on_update_available: Callable[[str, str], None], stop_event: threading.Event):
+    def __init__(
+        self, on_update_available: Callable[[str, str], None], stop_event: threading.Event
+    ):
         """
         Args:
             on_update_available: Callback(new_version_string, release_url)

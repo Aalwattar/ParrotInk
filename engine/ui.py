@@ -265,13 +265,18 @@ class TrayApp:
 
     def _create_menu(self) -> pystray.Menu:
         version = get_app_version()
-        
+
+        def no_op(
+            icon: Optional[pystray.Icon] = None, item: Optional[pystray.MenuItem] = None
+        ) -> None:
+            pass
+
         # UI Implementation: Version label is clickable if update is found.
         # We use a distinct text if an update is available.
         version_label = f"ParrotInk v{version}"
-        on_click = lambda: None
+        on_click: Callable = no_op
         is_enabled = False
-        
+
         if self.latest_version:
             version_label = f"{version_label} (Update Available: {self.latest_version})"
             on_click = self._on_update_clicked
