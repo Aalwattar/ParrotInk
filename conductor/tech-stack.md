@@ -27,6 +27,8 @@
 - **tomli-w:** Used for writing configuration files in TOML format.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 - **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
+- **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
+- **webbrowser:** (Standard Library) Used to securely open the GitHub releases page in the user's default browser.
 
 ## 3. API SDKs
 

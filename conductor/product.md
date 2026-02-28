@@ -29,7 +29,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
 - **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
 - A context menu on the tray icon will allow the user to:
-    - **Version Header:** Displays the current application version and active provider (e.g., "ParrotInk v0.2.0 (OpenAI)") at the top.
+    - **Dynamic Version Header:** Displays the current version. If a newer version is available on GitHub, the label updates to include "(Update Available: vX.Y.Z)" and becomes clickable, allowing the user to open the release page in their browser.
     - Enable or disable transcription.
     - Select the active transcription provider.
     - Open the settings/configuration file.
@@ -89,7 +89,12 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - **Modern Dashboard:** A "Statistics" menu item in the system tray opens a professional, instant-launch dashboard (using `ttkbootstrap`) that aggregates data for Today, This Week, This Month, and Lifetime.
 - **Data Sovereignty:** All statistics are stored locally in a `stats.json` file within the user's `%APPDATA%\ParrotInk` directory and never transmitted to external servers.
 
-### 2.12 CI/CD & Automation
+### 2.12 Automatic Update Checking
+- **GitHub Integration:** The application automatically checks for newer releases on GitHub at startup and every 24 hours.
+- **Non-Intrusive:** Notifications are integrated directly into the tray menu's version label to avoid interrupting the user's workflow.
+- **Rate-Limit Aware:** The system respects GitHub API rate limits and handles offline states or API errors gracefully.
+
+## 2.13 CI/CD & Automation
 - **Automated Quality Gate:** A GitHub Actions CI workflow automatically runs linters (Ruff), type checkers (Mypy), and unit tests (Pytest) on every push to `main` and all pull requests.
 - **Automated Releases:** A dedicated Release workflow builds the standalone Windows executable and creates a GitHub Release with version-verified assets (EXE and SHA256 checksum) whenever a new version tag (e.g., `v1.2.3`) is pushed.
 

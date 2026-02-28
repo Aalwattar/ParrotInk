@@ -22,4 +22,5 @@
 - **Success:** No explicit success message is needed. The successful injection of text is its own confirmation.
 - **Startup:** A non-intrusive "Ready" toast notification confirms successful launch and active hotkey.
 - **Errors:** Error messages will be delivered via non-intrusive system notifications (e.g., a toast notification) and should be actionable (e.g., "Invalid OpenAI API Key. Please check your settings.").
-- **Updates:** If update-checking functionality is added, it will be opt-in and notifications will be minimal.
+- **Updates:** Update notifications are minimal and non-intrusive, appearing as a clickable status in the tray menu rather than a popup dialog.
+
