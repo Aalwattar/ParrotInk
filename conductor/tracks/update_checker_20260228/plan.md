@@ -16,10 +16,9 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) (5041507)
 
 ## Phase 3: UI Integration
-- [ ] Task: Modify `engine/ui.py` (TrayIcon) to use a clickable menu item for the version label.
-    - [ ] Sub-task: Ensure label updates are thread-safe and triggered by the coordinator.
-- [ ] Task: Implement 'Open Browser' action for the version label.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Modify `engine/ui.py` (TrayIcon) to use a clickable menu item for the version label. (153b079)
+- [x] Task: Implement 'Open Browser' action for the version label. (153b079)
+- [~] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: Final Validation
 - [ ] Task: End-to-end verify update flow with mock API responses.
