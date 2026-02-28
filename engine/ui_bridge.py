@@ -21,6 +21,7 @@ class UIEvent:
     REFRESH_HUD = "refresh_hud"
     CLEAR_HUD = "clear_hud"
     RECORD_STATS = "record_stats"
+    UPDATE_VERSION_NOTIFICATION = "update_version_notification"
     QUIT = "quit"
 
 
@@ -74,6 +75,10 @@ class UIBridge:
         """Signal the UI to record session statistics."""
         data = {"duration": duration, "words": words, "provider": provider, "error": error}
         self.queue.put((UIEvent.RECORD_STATS, data))
+
+    def update_version_notification(self, version_tag: str, release_url: str):
+        """Signal the UI that a new version is available."""
+        self.queue.put((UIEvent.UPDATE_VERSION_NOTIFICATION, (version_tag, release_url)))
 
     def stop(self):
         """Signal the UI to stop."""

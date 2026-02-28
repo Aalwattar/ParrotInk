@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import ctypes
 import sys
+import threading
 import time
 from typing import Literal, Optional
 
@@ -27,6 +28,7 @@ from engine.platform_win.constants import MUTEX_NAME_TEMPLATE
 from engine.platform_win.instance import SingleInstance
 from engine.platform_win.paths import APP_NAME
 from engine.security import SecurityManager
+from engine.services.updates import UpdateManager
 from engine.ui_bridge import UIBridge
 from engine.ui_utils import show_startup_toast
 
@@ -97,8 +99,21 @@ class AppCoordinator:
         # Track provider changes for silent transitions
         self._last_provider = config.transcription.provider
 
+        # Update checking service
+        self._stop_event = threading.Event()
+        self.update_manager = UpdateManager(
+            on_update_available=self._on_update_available,
+            stop_event=self._stop_event,
+        )
+        self.update_manager.start()
+
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
+
+    def _on_update_available(self, version_tag: str, release_url: str):
+        """Callback from UpdateManager when a new version is detected."""
+        logger.info(f"Update detected: {version_tag}. Notifying UI.")
+        self.ui_bridge.update_version_notification(version_tag, release_url)
 
     @property
     def loop(self):
@@ -496,6 +511,7 @@ class AppCoordinator:
                 return
             logger.info(f"Shutting down application... Reason: {reason or 'Not specified'}")
             self.set_state(AppState.SHUTTING_DOWN)
+            self._stop_event.set()
 
             # Stop v2 monitors
             self.session_monitor.stop()
