@@ -1,3 +1,4 @@
+import datetime
 import os
 import threading
 import time
@@ -37,6 +38,16 @@ class GitHubClient:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(GITHUB_API_URL, headers=headers)
 
+                # Proactive Rate Limit Check (Before status handling)
+                remaining = response.headers.get("X-RateLimit-Remaining")
+                if remaining and remaining.isdigit() and int(remaining) == 0:
+                    reset_epoch = response.headers.get("X-RateLimit-Reset")
+                    if reset_epoch and reset_epoch.isdigit():
+                        res_time = datetime.datetime.fromtimestamp(int(reset_epoch)).strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        )
+                        logger.warning(f"GitHub Rate Limit hit. Resets at {res_time}")
+
                 if response.status_code == 403:
                     error_data = {}
                     try:
@@ -46,12 +57,6 @@ class GitHubClient:
 
                     msg = error_data.get("message", "Forbidden")
                     logger.warning(f"GitHub API 403: {msg}")
-
-                    # Proactive Rate Limit Check
-                    remaining = response.headers.get("X-RateLimit-Remaining")
-                    if remaining and int(remaining) == 0:
-                        reset_time = response.headers.get("X-RateLimit-Reset")
-                        logger.warning(f"GitHub Rate Limit hit. Resets at {reset_time}")
                     return None
 
                 if response.status_code == 404:

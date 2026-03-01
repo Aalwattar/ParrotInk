@@ -2,7 +2,9 @@
 from PyInstaller.utils.hooks import collect_submodules, collect_data_files, collect_dynamic_libs
 
 import os
-
+import skia
+import glob
+import warnings
 
 
 block_cipher = None
@@ -27,14 +29,29 @@ hiddenimports += ["keyring.backends.Windows"]
 datas = []
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
-datas += collect_data_files("skia")
+
+# Manually collect icudtl.dat since skia is often a module, not a package folder
+skia_dir = os.path.dirname(skia.__file__)
+icu_source = os.path.join(skia_dir, "icudtl.dat")
+if os.path.exists(icu_source):
+    datas += [(icu_source, ".")]
+else:
+    # Try to find it in the site-packages root as well (common for some skia-python builds)
+    parent_icu = os.path.join(os.path.dirname(skia_dir), "icudtl.dat")
+    if os.path.exists(parent_icu):
+        datas += [(parent_icu, ".")]
+    else:
+        warnings.warn("icudtl.dat not found - RTL text shaping will be broken in frozen build.")
+
 # Include assets and metadata relative to repo root
 datas += [(os.path.join(repo_root, "assets"), "assets")]
 datas += [(os.path.join(repo_root, "pyproject.toml"), ".")]
 datas += [(os.path.join(repo_root, "config.example.toml"), ".")]
 
 binaries = []
-binaries += collect_dynamic_libs("skia")
+# Explicitly collect sibling DLLs for skia
+sibling_dlls = glob.glob(os.path.join(skia_dir, "*.dll"))
+binaries += [(dll, ".") for dll in sibling_dlls]
 # sounddevice collection usually works better by just collecting the package data
 # but we'll try to find the dll explicitly if needed. 
 # For now, let's use a simpler approach for sounddevice.
