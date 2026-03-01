@@ -34,6 +34,7 @@ def _ensure_text_resources():
 
     import os
 
+    icu_found = False
     # 1. Attempt to locate icudtl.dat for Arabic/RTL shaping
     try:
         import skia as sk_mod
@@ -49,15 +50,21 @@ def _ensure_text_resources():
         if os.path.exists(icu_path):
             os.environ["SKIA_ICU_DIR"] = os.path.dirname(icu_path)
             logger.debug(f"Found ICU data at: {icu_path}")
+            icu_found = True
+        else:
+            logger.warning(f"ICU data not found at {icu_path}. RTL shaping may be disabled.")
     except Exception as e:
         logger.debug(f"Failed to locate ICU data path: {e}")
 
-    try:
-        _UNICODE_MGR = skia.Unicode.ICU_Make()
-        if _UNICODE_MGR is None:
-            logger.warning("skia.Unicode.ICU_Make() returned None. RTL shaping disabled.")
-    except Exception as e:
-        logger.error(f"Critical error initializing Skia ICU: {e}. Falling back to basic shaping.")
+    if icu_found:
+        try:
+            _UNICODE_MGR = skia.Unicode.ICU_Make()
+            if _UNICODE_MGR is None:
+                logger.warning("skia.Unicode.ICU_Make() returned None. RTL shaping disabled.")
+        except Exception as e:
+            logger.error(f"Critical error initializing Skia ICU: {e}. Falling back to basic shaping.")
+            _UNICODE_MGR = None
+    else:
         _UNICODE_MGR = None
 
     _FONT_COLLECTION = skia.textlayout_FontCollection()

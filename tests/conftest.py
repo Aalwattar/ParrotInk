@@ -25,3 +25,10 @@ def guard_update_manager():
     """Prevent UpdateManager from starting threads or making network calls in tests."""
     with patch("engine.services.updates.UpdateManager.start"):
         yield
+
+
+@pytest.fixture(autouse=True)
+def guard_session_monitor():
+    """Prevent SessionMonitor from starting a background thread during tests."""
+    with patch("engine.platform_win.session.SessionMonitor.start"):
+        yield

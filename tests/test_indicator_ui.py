@@ -25,26 +25,38 @@ def test_indicator_status_update():
 def test_indicator_partial_text_truncation():
     """Test that the partial text display is truncated by character count (180)."""
     indicator = IndicatorWindow()
-    indicator.start()
+    try:
+        indicator.start()
 
-    # Send a very long string (> 180 chars)
-    long_text = "A" * 200
-    indicator.update_partial_text(long_text)
+        # Send a very long string (> 180 chars)
+        long_text = "A" * 200
+        indicator.update_partial_text(long_text)
 
-    time.sleep(0.2)
-    # Should keep only the last few characters with an ellipsis.
-    # length should be around 180 (including ellipsis).
-    assert len(indicator.partial_text) <= 180
-    assert indicator.partial_text.startswith("…")
+        # Wait longer than the 0.5s _hide_after background thread to prevent teardown race conditions
+        time.sleep(0.6)
+
+        # Should keep only the last few characters with an ellipsis.
+        # length should be around 180 (including ellipsis).
+        assert len(indicator.partial_text) <= 180
+        assert indicator.partial_text.startswith("…")
+    finally:
+        indicator.stop()
+        if hasattr(indicator, "_thread") and indicator._thread:
+            indicator._thread.join(timeout=2.0)
 
 
 def test_indicator_visibility_toggle():
     """Test showing and hiding the indicator."""
     indicator = IndicatorWindow()
-    indicator.start()
+    try:
+        indicator.start()
 
-    indicator.show()
-    assert indicator.visible is True
+        indicator.show()
+        assert indicator.visible is True
 
-    indicator.hide()
-    assert indicator.visible is False
+        indicator.hide()
+        assert indicator.visible is False
+    finally:
+        indicator.stop()
+        if hasattr(indicator, "_thread") and indicator._thread:
+            indicator._thread.join(timeout=2.0)
