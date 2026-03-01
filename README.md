@@ -1,7 +1,7 @@
 # 🎙️ ParrotInk: Stop Typing. Start Thinking.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Release](https://img.shields.io/github/v/release/Aalwattar/ParrotInk?label=latest)](https://github.com/Aalwattar/ParrotInk/releases)
+[![Latest Tag](https://img.shields.io/github/v/tag/Aalwattar/ParrotInk?label=latest)](https://github.com/Aalwattar/ParrotInk/tags)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)](https://www.microsoft.com/windows)
 
 ### High-accuracy, ultra-low latency real-time voice-to-text — Native for Windows.
