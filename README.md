@@ -51,7 +51,7 @@ ParrotInk natively handles mixed-language environments and Right-to-Left (RTL) t
 
 | English Dictation | Arabic (RTL) Dictation |
 | :--- | :--- |
-| ![English HUD Example](https://raw.githubusercontent.com/Aalwattar/ParrotInk/master/arabic_test.png) | ![Arabic HUD Example](https://raw.githubusercontent.com/Aalwattar/ParrotInk/master/hud_rtl_verification.png) |
+| ![English HUD Example](./arabic_test.png) | ![Arabic HUD Example](./hud_rtl_verification.png) |
 
 *(Note: Screenshots show the Skia-powered HUD with Acrylic blur and RTL alignment.)*
 
