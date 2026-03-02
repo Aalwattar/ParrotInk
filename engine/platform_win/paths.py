@@ -1,8 +1,16 @@
+import sys
 from pathlib import Path
-
 from platformdirs import user_data_dir, user_log_dir
 
 APP_NAME = "ParrotInk"
+
+
+def get_runtime_root() -> Path:
+    """Returns the directory containing the executable or the main script."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    # In development, use the current working directory (project root)
+    return Path(".").absolute()
 
 
 def get_app_dir() -> str:
@@ -11,7 +19,17 @@ def get_app_dir() -> str:
 
 
 def get_config_path() -> str:
-    """Returns the path to the config file in the app data directory."""
+    """
+    Returns the path to the config file. 
+    1. Checks local directory for Portable Mode.
+    2. Defaults to AppData/ParrotInk.
+    """
+    # 1. Portable Check: If config.toml exists next to the EXE, use it.
+    local_config = get_runtime_root() / "config.toml"
+    if local_config.exists():
+        return str(local_config)
+
+    # 2. Standard AppData fallback
     return str(Path(get_app_dir()) / "config.toml")
 
 
