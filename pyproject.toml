@@ -4,6 +4,25 @@ version = "0.2.17"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
+authors = [
+    { name = "Aalwattar", email = "4478356+Aalwattar@users.noreply.github.com" }
+]
+keywords = [
+    "voice-to-text",
+    "speech-recognition",
+    "windows",
+    "real-time",
+    "arabic",
+    "rtl",
+    "openai-realtime",
+    "assemblyai",
+    "open-source"
+]
+
+[project.urls]
+Homepage = "https://github.com/Aalwattar/ParrotInk"
+Issues = "https://github.com/Aalwattar/ParrotInk/issues"
+
 dependencies = [
     "sounddevice==0.5.5",
     "numpy>=1.26.0",

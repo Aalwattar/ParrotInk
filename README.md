@@ -61,6 +61,14 @@ ParrotInk is a **portable** application. There is no installer needed; just down
 
 1.  **Download**: Click the button below to get the latest version.
     [![Download ParrotInk](https://img.shields.io/badge/Download-ParrotInk.exe-brightgreen?style=for-the-badge&logo=windows)](https://github.com/Aalwattar/ParrotInk/releases/latest/download/ParrotInk.exe)
+
+> **⚠️ Note on Windows Security:**
+> Because ParrotInk is a new open-source project and is not yet signed with a paid Microsoft Developer certificate, you may see a "Windows protected your PC" warning. 
+> 
+> To run the app: Click **More info** -> **Run anyway**. 
+> 
+> As this is 100% open-source software, you can always inspect the code or build the EXE yourself from source if you prefer.
+
 2.  **Launch**: Open `ParrotInk.exe`. You will see a new 🎙️ icon in your system tray (bottom right).
 3.  **Setup API Key**: Right-click the tray icon and select **Settings > Setup API Keys**.
 4.  **Start Dictating**: Press `Ctrl + Alt + V` (default) and start speaking.
