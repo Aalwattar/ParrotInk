@@ -8,15 +8,16 @@ authors = [
     { name = "Aalwattar", email = "4478356+Aalwattar@users.noreply.github.com" }
 ]
 keywords = [
+    "parrotink",
     "voice-to-text",
-    "speech-recognition",
-    "windows",
-    "real-time",
-    "arabic",
-    "rtl",
-    "openai-realtime",
-    "assemblyai",
-    "open-source"
+    "speech-to-text",
+    "real-time-transcription",
+    "multilingual",
+    "ai-dictation",
+    "windows-native",
+    "low-latency",
+    "arabic-stt",
+    "rtl-support"
 ]
 
 [project.urls]
