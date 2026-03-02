@@ -32,7 +32,8 @@ def test_indicator_partial_text_truncation():
         long_text = "A" * 200
         indicator.update_partial_text(long_text)
 
-        # Wait longer than the 0.5s _hide_after background thread to prevent teardown race conditions
+        # Wait longer than the 0.5s _hide_after background thread to prevent
+        # teardown race conditions
         time.sleep(0.6)
 
         # Should keep only the last few characters with an ellipsis.

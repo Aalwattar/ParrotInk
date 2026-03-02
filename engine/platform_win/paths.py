@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+
 from platformdirs import user_data_dir, user_log_dir
 
 APP_NAME = "ParrotInk"
@@ -9,8 +10,8 @@ def get_runtime_root() -> Path:
     """Returns the directory containing the executable or the main script."""
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
-    # In development, use the current working directory (project root)
-    return Path(".").absolute()
+    # In development, use the project root relative to this file
+    return Path(__file__).parents[2].absolute()
 
 
 def get_app_dir() -> str:
@@ -20,7 +21,7 @@ def get_app_dir() -> str:
 
 def get_config_path() -> str:
     """
-    Returns the path to the config file. 
+    Returns the path to the config file.
     1. Checks local directory for Portable Mode.
     2. Defaults to AppData/ParrotInk.
     """
