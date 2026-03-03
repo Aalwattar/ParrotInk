@@ -75,6 +75,8 @@ class AssemblyAIProvider(BaseProvider):
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("Connected to AssemblyAI successfully.")
+            # V3 does not send a SessionBegins handshake message, so we are ready immediately
+            self._ready_event.set()
         except Exception as e:
             logger.error(f"Failed to connect to AssemblyAI: {e}")
             raise

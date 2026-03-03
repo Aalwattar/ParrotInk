@@ -394,14 +394,16 @@ class AppCoordinator:
         self.start_time = time.time()
         self.session_start_time = self.start_time
         self.session_word_count = 0
+
+        # Clear HUD before CONNECTING to avoid wiping the "Connecting..." message
+        self.ui_bridge.clear_hud()
+
         self.set_state(AppState.CONNECTING)
 
         try:
             # 1. Capture anchor point
             if self.config.interaction.cancel_on_click_outside_anchor:
                 self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
-
-            self.ui_bridge.clear_hud()
 
             self._last_voice_activity = time.time()
             self.pipeline.on_voice_activity = self._on_voice_activity
