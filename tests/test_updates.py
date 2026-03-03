@@ -53,7 +53,7 @@ def test_version_comparison_logic():
             mock_fetch.return_value = {"tag_name": "v0.2.0", "html_url": "http://test"}
 
             manager = UpdateManager(callback, stop_event)
-            manager._check_now()
+            manager.check_now()
 
             callback.assert_called_once_with("v0.2.0", "http://test")
 
@@ -67,6 +67,6 @@ def test_version_comparison_older_remote():
             mock_fetch.return_value = {"tag_name": "v0.1.5", "html_url": "http://test"}
 
             manager = UpdateManager(callback, stop_event)
-            manager._check_now()
+            manager.check_now()
 
             callback.assert_not_called()

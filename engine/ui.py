@@ -18,6 +18,7 @@ import ttkbootstrap as tb
 from PIL import Image, ImageDraw
 
 from .app_types import AppState, ProviderType
+from .constants import URL_HOMEPAGE, URL_ISSUES
 from .logging import get_logger
 from .stats import StatsManager
 from .ui_utils import get_app_version
@@ -60,6 +61,7 @@ class TrayApp:
         on_toggle_hold_mode: Callable[[bool], None] | None = None,
         on_mic_profile_change: Callable[[str], None] | None = None,
         on_reload_config: Callable[[], None] | None = None,
+        on_check_updates: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -81,6 +83,7 @@ class TrayApp:
         self.on_toggle_hold_mode = on_toggle_hold_mode
         self.on_mic_profile_change = on_mic_profile_change
         self.on_reload_config = on_reload_config
+        self.on_check_updates = on_check_updates
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         # Update info
@@ -351,12 +354,28 @@ class TrayApp:
                         checked=lambda it: self.config.ui.floating_indicator.click_through,
                         enabled=lambda it: self.config.ui.floating_indicator.enabled,
                     ),
-                    pystray.Menu.SEPARATOR,
+                ),
+            ),
+            pystray.MenuItem(
+                "Configuration",
+                pystray.Menu(
                     pystray.MenuItem("Open Configuration File", self._open_config),
                     pystray.MenuItem(
                         "Reload Configuration",
                         self._on_reload_config_clicked,
                         enabled=lambda it: self.state in (AppState.IDLE, AppState.ERROR),
+                    ),
+                ),
+            ),
+            pystray.MenuItem(
+                "Help",
+                pystray.Menu(
+                    pystray.MenuItem("View Documentation", lambda: webbrowser.open(URL_HOMEPAGE)),
+                    pystray.MenuItem("Report an Issue", lambda: webbrowser.open(URL_ISSUES)),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem(
+                        "Check for Updates...",
+                        lambda: self.on_check_updates() if self.on_check_updates else None,
                     ),
                 ),
             ),

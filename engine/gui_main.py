@@ -202,6 +202,26 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
+    def on_check_updates():
+        def apply():
+            logger.info("Manual update check triggered.")
+            ui_bridge.update_status_message("Checking for updates...")
+            coordinator.update_manager.check_now()
+            # If no update found, status will eventually clear by normal transitions
+            # but we can force it after a delay if still idle
+            if coordinator.loop:
+                coordinator.loop.call_later(
+                    3.0,
+                    lambda: (
+                        ui_bridge.update_status_message(coordinator.state.name.capitalize())
+                        if ui_bridge.queue.empty()
+                        else None
+                    ),
+                )
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
     from engine.ui import TrayApp
 
     app = TrayApp(
@@ -219,6 +239,7 @@ async def main_gui(cli_args):
         on_toggle_hold_mode=on_toggle_hold_mode,
         on_mic_profile_change=on_mic_profile_change,
         on_reload_config=on_reload_config,
+        on_check_updates=on_check_updates,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

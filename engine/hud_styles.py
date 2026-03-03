@@ -63,7 +63,7 @@ def _ensure_text_resources():
                 logger.warning("skia.Unicode.ICU_Make() returned None. RTL shaping disabled.")
         except Exception as e:
             logger.error(
-                f"Critical error initializing Skia ICU: {e}. " "Falling back to basic shaping."
+                f"Critical error initializing Skia ICU: {e}. Falling back to basic shaping."
             )
             _UNICODE_MGR = None
     else:

@@ -109,7 +109,7 @@ class UpdateManager:
     def _run_loop(self):
         """Background loop that polls GitHub periodically."""
         # Initial check on startup
-        self._check_now()
+        self.check_now()
 
         while not self.stop_event.is_set():
             # Wait for 1 hour between "is_set" checks, but wait total 24h between API calls
@@ -120,9 +120,9 @@ class UpdateManager:
                 time.sleep(1)
 
             if time.time() - self._last_check_time > self._check_interval:
-                self._check_now()
+                self.check_now()
 
-    def _check_now(self):
+    def check_now(self):
         """Perform a single version check."""
         if self.stop_event.is_set():
             return

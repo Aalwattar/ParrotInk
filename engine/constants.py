@@ -34,6 +34,10 @@ SESSION_QUIT_TIMEOUT = 2.0  # Seconds to wait for thread join on quit
 # UI Constants
 DEFAULT_MAX_CHARS = 180
 
+# URLs
+URL_HOMEPAGE = "https://github.com/Aalwattar/ParrotInk"
+URL_ISSUES = "https://github.com/Aalwattar/ParrotInk/issues"
+
 # UI Status Messages (Unified)
 STATUS_CONNECTING = "Connecting..."
 STATUS_READY = "Ready"
