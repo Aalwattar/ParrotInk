@@ -78,6 +78,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    onefile=True,
     version=os.path.join(SPECPATH, "version_info.txt"),
     icon=os.path.join(repo_root, "assets", "icons", "icon.ico"),
 )

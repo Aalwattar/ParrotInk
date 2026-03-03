@@ -44,38 +44,42 @@ Write-Host "Syncing dependencies with uv..." -ForegroundColor Cyan
 uv sync --dev
 
 # --- Automatic Version Bumping ---
-Write-Host "Updating version number..." -ForegroundColor Yellow
-$pyprojectPath = "pyproject.toml"
-$versionInfoPath = "packaging/pyinstaller/version_info.txt"
-
-# Read version from pyproject.toml
-$content = Get-Content $pyprojectPath -Raw
-if ($content -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
-    $major = [int]$Matches[1]
-    $minor = [int]$Matches[2]
-    $patch = [int]$Matches[3]
-    
-    $newPatch = $patch + 1
-    $newVersion = "$major.$minor.$newPatch"
-    
-    Write-Host "Incrementing version: $major.$minor.$patch -> $newVersion" -ForegroundColor Green
-    
-    # Update pyproject.toml
-    $newContent = $content -replace 'version\s*=\s*"\d+\.\d+\.\d+"', "version = `"$newVersion`""
-    $newContent | Set-Content $pyprojectPath -NoNewline
-    
-    # Update version_info.txt
-    if (Test-Path $versionInfoPath) {
-        $vInfo = Get-Content $versionInfoPath -Raw
-        # Update tuples: (0, 2, 10, 0)
-        $vInfo = $vInfo -replace 'filevers=\(\d+, \d+, \d+, \d+\)', "filevers=($major, $minor, $newPatch, 0)"
-        $vInfo = $vInfo -replace 'prodvers=\(\d+, \d+, \d+, \d+\)', "prodvers=($major, $minor, $newPatch, 0)"
-        # Update strings: u'0.2.10'
-        $vInfo = $vInfo -replace "u'\d+\.\d+\.\d+'", "u'$newVersion'"
-        $vInfo | Set-Content $versionInfoPath -NoNewline
-    }
+if ($env:GITHUB_ACTIONS -eq "true" -or $env:CI -eq "true") {
+    Write-Host "CI environment detected. Skipping automatic version bump." -ForegroundColor Gray
 } else {
-    Write-Host "Warning: Could not parse version from pyproject.toml. Skipping auto-bump." -ForegroundColor Red
+    Write-Host "Updating version number..." -ForegroundColor Yellow
+    $pyprojectPath = "pyproject.toml"
+    $versionInfoPath = "packaging/pyinstaller/version_info.txt"
+
+    # Read version from pyproject.toml
+    $content = Get-Content $pyprojectPath -Raw
+    if ($content -match 'version\s*=\s*"(\d+)\.(\d+)\.(\d+)"') {
+        $major = [int]$Matches[1]
+        $minor = [int]$Matches[2]
+        $patch = [int]$Matches[3]
+        
+        $newPatch = $patch + 1
+        $newVersion = "$major.$minor.$newPatch"
+        
+        Write-Host "Incrementing version: $major.$minor.$patch -> $newVersion" -ForegroundColor Green
+        
+        # Update pyproject.toml
+        $newContent = $content -replace 'version\s*=\s*"\d+\.\d+\.\d+"', "version = `"$newVersion`""
+        $newContent | Set-Content $pyprojectPath -NoNewline
+        
+        # Update version_info.txt
+        if (Test-Path $versionInfoPath) {
+            $vInfo = Get-Content $versionInfoPath -Raw
+            # Update tuples: (0, 2, 10, 0)
+            $vInfo = $vInfo -replace 'filevers=\(\d+, \d+, \d+, \d+\)', "filevers=($major, $minor, $newPatch, 0)"
+            $vInfo = $vInfo -replace 'prodvers=\(\d+, \d+, \d+, \d+\)', "prodvers=($major, $minor, $newPatch, 0)"
+            # Update strings: u'0.2.10'
+            $vInfo = $vInfo -replace "u'\d+\.\d+\.\d+'", "u'$newVersion'"
+            $vInfo | Set-Content $versionInfoPath -NoNewline
+        }
+    } else {
+        Write-Host "Warning: Could not parse version from pyproject.toml. Skipping auto-bump." -ForegroundColor Red
+    }
 }
 
 # 5) Build
