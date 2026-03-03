@@ -7,6 +7,15 @@ from engine.config import Config
 from engine.connection import ConnectionManager
 
 
+async def connect_and_ready(cm: ConnectionManager, is_listening: bool = False):
+    """Helper to handle new wait_for_ready synchronization in tests."""
+    task = asyncio.create_task(cm.ensure_connected(is_listening=is_listening))
+    await asyncio.sleep(0.1)
+    if cm.provider:
+        cm.provider._ready_event.set()
+    await task
+
+
 @pytest.mark.asyncio
 async def test_ensure_connected_idempotency():
     config = Config()
@@ -29,7 +38,7 @@ async def test_ensure_connected_idempotency():
         mock_connect.return_value = mock_ws
 
         # First connection
-        await cm.ensure_connected(is_listening=False)
+        await connect_and_ready(cm)
         provider1 = cm.provider
         assert provider1 is not None
         assert provider1.is_running
@@ -62,14 +71,14 @@ async def test_openai_rotation_guard():
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
 
-        await cm.ensure_connected(is_listening=False)
+        await connect_and_ready(cm)
         provider1 = cm.provider
 
         # Wait for rotation to be due
         await asyncio.sleep(1.1)
 
         # ensure_connected while NOT listening should rotate immediately
-        await cm.ensure_connected(is_listening=False)
+        await connect_and_ready(cm)
         assert cm.provider is not provider1
         assert cm.provider is not None
 
@@ -96,14 +105,14 @@ async def test_provider_switching():
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
 
-        await cm.ensure_connected(is_listening=False)
+        await connect_and_ready(cm)
         assert cm.provider.get_type() == "openai"
 
         # Switch config
         config.transcription.provider = "assemblyai"
 
         # ensure_connected should switch provider
-        await cm.ensure_connected(is_listening=False)
+        await connect_and_ready(cm)
         assert cm.provider.get_type() == "assemblyai"
 
     await cm.shutdown()

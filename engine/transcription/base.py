@@ -1,3 +1,4 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Union
 
@@ -22,12 +23,23 @@ class BaseProvider(ABC):
         self.base_url = base_url
         self.stop_timeout = stop_timeout
         self.on_status = on_status
+        self._ready_event = asyncio.Event()
 
     @property
     @abstractmethod
     def is_running(self) -> bool:
         """Return whether the provider session is currently active."""
         pass
+
+    async def wait_for_ready(self, timeout: float = 10.0):
+        """Wait for the server to confirm the session is ready."""
+        try:
+            async with asyncio.timeout(timeout):
+                await self._ready_event.wait()
+        except TimeoutError:
+            from engine.logging import get_logger
+
+            get_logger("Provider").warning(f"{self.get_type()} wait_for_ready timed out.")
 
     @abstractmethod
     def get_audio_spec(self) -> ProviderAudioSpec:
@@ -48,8 +60,6 @@ class BaseProvider(ABC):
         """
         Stop the transcription session with a mandatory timeout.
         """
-        import asyncio
-
         from engine.logging import get_logger
 
         logger = get_logger("Provider")

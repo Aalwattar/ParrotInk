@@ -5,6 +5,7 @@ import pytest
 
 from engine.config import Config
 from engine.connection import ConnectionManager
+from tests.test_connection_lifecycle import connect_and_ready
 
 
 @pytest.mark.asyncio
@@ -31,7 +32,7 @@ async def test_immediate_rotation_after_stop():
         mock_connect.return_value = mock_ws
 
         # 1. Connect
-        await cm.ensure_connected(is_listening=True)
+        await connect_and_ready(cm, is_listening=True)
         provider1 = cm.provider
         assert provider1 is not None
 
@@ -46,7 +47,10 @@ async def test_immediate_rotation_after_stop():
         # 4. Stop listening should trigger immediate rotation
         cm.start_idle_timer()
 
-        # Give it a moment to run the async task
+        # Give it a moment to run the async task and trigger its ready event
+        await asyncio.sleep(0.1)
+        if cm.provider and cm.provider != provider1:
+            cm.provider._ready_event.set()
         await asyncio.sleep(0.5)
 
         # Verify provider was rotated
