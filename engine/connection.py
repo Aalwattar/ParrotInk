@@ -5,7 +5,7 @@ from typing import Callable, Optional
 from engine.app_types import AppState
 from engine.audio.adapter import AudioAdapter
 from engine.config import Config
-from engine.constants import STATUS_CONNECTING, STATUS_FAILED, STATUS_RETRYING
+from engine.constants import STATUS_CONNECTING, STATUS_FAILED, STATUS_READY, STATUS_RETRYING
 from engine.logging import get_logger
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
@@ -160,6 +160,10 @@ class ConnectionManager:
                 self._rotation_pending = False
                 self._backoff_delay = self.config.audio.initial_backoff_seconds
                 logger.info("Connected successfully.")
+
+                # Centrally transition the UI to Ready once the provider is fully established
+                if self.on_status:
+                    self.on_status(STATUS_READY)
 
                 # If we are NOT in the middle of a listening command, transition to IDLE
                 if not is_listening:
