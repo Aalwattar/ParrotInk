@@ -108,7 +108,9 @@ ParrotInk is open-source and **100% free software**. Your only cost is your dire
 As an open-source project, transparency is our priority:
 - **Encrypted Storage**: Your API keys are stored directly in the **Windows Credential Manager**, encrypted at the OS level.
 - **No Local Audio Storage**: Audio is streamed via encrypted WebSockets to the provider and is **never** saved to your hard drive.
-- **Lightweight Telemetry**: Log files are purely local, rotational, and capped at **30MB** total to prevent drive bloat.
+- **Local Logs & Stats**: All diagnostic data is kept strictly on your machine:
+  - **Logs**: `%LOCALAPPDATA%\ParrotInk\Logs\parrotink.log` (Rotational, capped at 30MB).
+  - **Statistics**: `%APPDATA%\ParrotInk\Stats\stats.json`.
 
 ---
 
@@ -138,7 +140,12 @@ ParrotInk lives in your system tray and monitors a global hotkey via native Win3
 3. Press the new key combination (e.g., `Alt + S` or `Ctrl + Space`). ParrotInk saves it instantly.
 
 ### ⚙️ Deep Configuration
-ParrotInk stores its configuration in `%APPDATA%\ParrotInk\config.toml`. 
+ParrotInk follows a **Portable-First** configuration strategy. It looks for its settings in the following order:
+
+1.  **Portable Mode**: A `config.toml` file located in the same folder as the `ParrotInk.exe`. (Ideal for USB drives or custom installs).
+2.  **Standard Mode**: `%APPDATA%\ParrotInk\config.toml` (Used if no local file is found).
+
+**Available Tuning:**
 - **HUD Styles**: Customize the Skia-powered HUD appearance.
 - **Acoustic Profiles**: Switch between `Headset` (near-field) and `Laptop Mic` (far-field) profiles.
 - **Latency Tuning**: Choose between `Fast`, `Balanced`, or `Accurate` profiles to match your speaking pace.
