@@ -206,7 +206,7 @@ async def main_gui(cli_args):
         def apply():
             logger.info("Manual update check triggered.")
             ui_bridge.update_status_message("Checking for updates...")
-            coordinator.update_manager.check_now()
+            threading.Thread(target=coordinator.update_manager.check_now, daemon=True).start()
             # If no update found, status will eventually clear by normal transitions
             # but we can force it after a delay if still idle
             if coordinator.loop:

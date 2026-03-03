@@ -153,7 +153,9 @@ class ConnectionManager:
                 )
                 async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
                     await self.provider.start()
-                logger.debug("Provider started.")
+                    # Wait for server handshake/ready signal
+                    await self.provider.wait_for_ready()
+                logger.debug("Provider started and ready.")
                 self._session_start_time = time.time()
                 self._rotation_pending = False
                 self._backoff_delay = self.config.audio.initial_backoff_seconds

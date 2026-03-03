@@ -58,6 +58,7 @@ class AssemblyAIProvider(BaseProvider):
         """Connect to AssemblyAI and start receiving events."""
         from engine.security import SecurityManager
 
+        self._ready_event.clear()
         is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
 
@@ -167,5 +168,6 @@ class AssemblyAIProvider(BaseProvider):
             logger.error(f"AssemblyAI API Error: {event.get('error')}")
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
+            self._ready_event.set()
             if self.on_status:
                 self.on_status(STATUS_READY)

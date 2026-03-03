@@ -61,6 +61,7 @@ class OpenAIProvider(BaseProvider):
         """Connect and configure the session."""
         from engine.security import SecurityManager
 
+        self._ready_event.clear()
         # Security Strategy: Only send the API key if the URL is trusted.
         # This prevents credential leak to malicious endpoints in config.
         is_trusted = SecurityManager.is_url_trusted(self.url)
@@ -212,5 +213,6 @@ class OpenAIProvider(BaseProvider):
 
         elif ev_type == "session.updated":
             logger.info("OpenAI: Transcription session updated successfully.")
+            self._ready_event.set()
             if self.on_status:
                 self.on_status(STATUS_READY)

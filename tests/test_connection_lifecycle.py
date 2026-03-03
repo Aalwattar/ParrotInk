@@ -10,7 +10,11 @@ from engine.connection import ConnectionManager
 async def connect_and_ready(cm: ConnectionManager, is_listening: bool = False):
     """Helper to handle new wait_for_ready synchronization in tests."""
     task = asyncio.create_task(cm.ensure_connected(is_listening=is_listening))
-    await asyncio.sleep(0.1)
+    # Poll for provider initialization to avoid flaky timing
+    for _ in range(20):
+        if cm.provider:
+            break
+        await asyncio.sleep(0.05)
     if cm.provider:
         cm.provider._ready_event.set()
     await task
