@@ -19,11 +19,6 @@ keywords = [
     "arabic-stt",
     "rtl-support"
 ]
-
-[project.urls]
-Homepage = "https://github.com/Aalwattar/ParrotInk"
-Issues = "https://github.com/Aalwattar/ParrotInk/issues"
-
 dependencies = [
     "sounddevice==0.5.5",
     "numpy>=1.26.0",
@@ -47,6 +42,10 @@ dependencies = [
     "darkdetect>=0.8.0",
     "packaging>=26.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Aalwattar/ParrotInk"
+Issues = "https://github.com/Aalwattar/ParrotInk/issues"
 
 [dependency-groups]
 dev = [
@@ -79,7 +78,7 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 no_implicit_optional = true
-exclude = ["hotkey_review_pack"]
+exclude = ["hotkey_review_pack", "scripts", "nanobanana-output"]
 # strict = true # Uncomment if you want to go full strict mode
 
 [[tool.mypy.overrides]]
