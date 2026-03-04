@@ -272,15 +272,15 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: API Key Validation & Onboarding**
-*Link: [./tracks/api_validation_onboarding_20260304/](./tracks/api_validation_onboarding_20260304/)*
+- [x] **Track: API Key Validation & Onboarding**
+*Link: [./archive/api_validation_onboarding_20260304/](./archive/api_validation_onboarding_20260304/)*
 
 ---
 
-- [ ] **Track: Tray "Open Log Folder" Integration**
-*Link: [./tracks/tray_log_folder_20260304/](./tracks/tray_log_folder_20260304/)*
+- [x] **Track: Tray "Open Log Folder" Integration**
+*Link: [./archive/tray_log_folder_20260304/](./archive/tray_log_folder_20260304/)*
 
 ---
 
-- [ ] **Track: PortAudio/MME "Undefined external error" Fix**
-*Link: [./tracks/audio_mme_error_fix_20260304/](./tracks/audio_mme_error_fix_20260304/)*
+- [x] **Track: PortAudio/MME "Undefined external error" Fix**
+*Link: [./archive/audio_mme_error_fix_20260304/](./archive/audio_mme_error_fix_20260304/)*
