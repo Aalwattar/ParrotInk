@@ -1,0 +1,7 @@
+# .pre-commit-config.yaml
+# Deterministic synchronization of uv.lock with pyproject.toml
+repos:
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.10.7   # Pin to matches project's current uv usage
+    hooks:
+      - id: uv-lock   # Blocks commits if uv.lock is out of sync

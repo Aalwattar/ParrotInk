@@ -61,6 +61,7 @@ dev = [
     "types-pywin32>=311.0.0.20251008",
     "types-keyboard>=0.13.2.20250801",
     "pyinstaller>=6.18.0",
+    "pre-commit>=4.5.1",
 ]
 
 [tool.ruff]
