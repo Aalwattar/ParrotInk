@@ -622,6 +622,8 @@ class AppCoordinator:
             self.session_monitor.stop()
             if self._hook_watchdog_task:
                 self._hook_watchdog_task.cancel()
+            if self._retry_mic_task:
+                self._retry_mic_task.cancel()
 
             try:
                 # We wrap the cleanup in a timeout to prevent hanging the system on exit
