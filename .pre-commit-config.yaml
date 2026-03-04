@@ -1,7 +1,53 @@
 # .pre-commit-config.yaml
-# Deterministic synchronization of uv.lock with pyproject.toml
+# Production-grade deterministic synchronization and safety gates.
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.7   # Pin to matches project's current uv usage
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
     hooks:
-      - id: uv-lock   # Blocks commits if uv.lock is out of sync
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: no-commit-to-branch
+        args: [--branch, master]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.23.3
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.7
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.10.7
+    hooks:
+      - id: uv-lock
+
+  # Heavier checks moved to pre-push to maintain high developer velocity
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy .
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]
+
+      - id: pytest
+        name: pytest
+        entry: uv run pytest -q
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
