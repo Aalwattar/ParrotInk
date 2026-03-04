@@ -9,3 +9,7 @@ config.toml
 *.log
 build/
 dist/
+
+# Temporary Outputs
+nanobanana-output/
+arabic_test.png
