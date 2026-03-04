@@ -7,7 +7,7 @@ import time
 from typing import Literal, Optional
 
 from engine.anchor import Anchor
-from engine.app_types import AppState
+from engine.app_types import AppState, AudioHardwareError
 from engine.audio.pipeline import AudioPipeline
 from engine.audio.streamer import AudioStreamer
 from engine.audio_feedback import play_sound
@@ -204,9 +204,29 @@ class AppCoordinator:
         if self.config.test.enabled:
             return {"openai": True, "assemblyai": True}
 
+        def is_valid(provider: str, key: str | None) -> bool:
+            """
+            Senior Validation Strategy: Positive pattern matching.
+            Avoids blacklisting magic numbers (like '4444') by strictly
+            whitelisting known provider key formats.
+            """
+            if not key:
+                return False
+            key = key.strip()
+            if not key:
+                return False
+
+            if provider == "openai":
+                # OpenAI: sk- (legacy) or sk-proj- (project keys)
+                return key.startswith("sk-")
+            elif provider == "assemblyai":
+                # AssemblyAI: 32-character hex string
+                return len(key) == 32 and all(c in "0123456789abcdefABCDEF" for c in key)
+            return True
+
         return {
-            "openai": bool(self.config.get_openai_key()),
-            "assemblyai": bool(self.config.get_assemblyai_key()),
+            "openai": is_valid("openai", self.config.get_openai_key()),
+            "assemblyai": is_valid("assemblyai", self.config.get_assemblyai_key()),
         }
 
     async def ensure_connected(self):
@@ -388,6 +408,11 @@ class AppCoordinator:
             provider_title = self.config.transcription.provider.title()
             msg = f"Please set your {provider_title} API Key in the Credentials menu."
             self.ui_bridge.notify(msg, "Missing API Key")
+
+            # Show onboarding instructions in HUD
+            self.set_state(AppState.ERROR)
+            self.ui_bridge.update_status_message("API Key Required. Check Settings.")
+            self.ui_bridge.update_partial_text("Open Tray Menu > Settings to add your key.")
             return
 
         self.session_cancelled = False
@@ -439,6 +464,17 @@ class AppCoordinator:
 
             self.set_state(AppState.LISTENING)
 
+        except AudioHardwareError as e:
+            logger.error(f"Hardware error: {e}")
+            self.set_state(AppState.ERROR)
+            self.ui_bridge.update_status_message("Microphone Access Denied")
+            self.ui_bridge.update_partial_text(
+                "Check Windows Privacy Settings or close other apps using the mic."
+            )
+            if self.loop:
+                self.loop.create_task(self.stop_listening())
+            else:
+                await self.stop_listening()
         except Exception as e:
             logger.error(f"Error starting session: {e}")
             self.set_state(AppState.ERROR)

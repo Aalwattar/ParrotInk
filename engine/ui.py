@@ -247,6 +247,13 @@ class TrayApp:
             if local_path.exists():
                 os.startfile(local_path)
 
+    def _open_log_folder(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
+        from .logging import get_current_log_dir
+
+        log_dir = get_current_log_dir(self.config)
+        if log_dir.exists():
+            os.startfile(log_dir)
+
     def _on_show_stats_clicked(self):
         """Launches the statistics dashboard instantly on the UI thread."""
         report = self.stats_manager.get_report()
@@ -365,6 +372,8 @@ class TrayApp:
                         self._on_reload_config_clicked,
                         enabled=lambda it: self.state in (AppState.IDLE, AppState.ERROR),
                     ),
+                    pystray.Menu.SEPARATOR,
+                    pystray.MenuItem("Open Log Folder", self._open_log_folder),
                 ),
             ),
             pystray.MenuItem(

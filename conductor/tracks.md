@@ -270,3 +270,17 @@ This file tracks all major tracks for the project. Each track has its own detail
 - [x] **Track: Implement GitHub Update Checker in Tray Menu**
 *Link: [./tracks/update_checker_20260228/](./tracks/update_checker_20260228/)*
 
+---
+
+- [ ] **Track: API Key Validation & Onboarding**
+*Link: [./tracks/api_validation_onboarding_20260304/](./tracks/api_validation_onboarding_20260304/)*
+
+---
+
+- [ ] **Track: Tray "Open Log Folder" Integration**
+*Link: [./tracks/tray_log_folder_20260304/](./tracks/tray_log_folder_20260304/)*
+
+---
+
+- [ ] **Track: PortAudio/MME "Undefined external error" Fix**
+*Link: [./tracks/audio_mme_error_fix_20260304/](./tracks/audio_mme_error_fix_20260304/)*

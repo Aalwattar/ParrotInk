@@ -16,6 +16,10 @@ class CaptureFormatError(Exception):
     """Raised when audio capture data violates expected dimensionality or types."""
 
 
+class AudioHardwareError(Exception):
+    """Raised when the audio device is busy, unavailable, or rejects the requested format."""
+
+
 ProviderType = Literal["openai", "assemblyai"]
 
 

@@ -30,7 +30,7 @@ def test_availability_production_partial_keys(mocker):
     # Mock SecurityManager: openai has key, assemblyai doesn't
     def mock_get_key(account):
         if account == "openai_api_key":
-            return "valid-key"
+            return "sk-valid-key"
         return None
 
     mocker.patch("engine.security.SecurityManager.get_key", side_effect=mock_get_key)

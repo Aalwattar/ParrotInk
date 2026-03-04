@@ -126,6 +126,14 @@ def get_default_log_path() -> Path:
     return log_path
 
 
+def get_current_log_dir(config) -> Path:
+    """Returns the directory where logs are currently being written."""
+    if config.logging.file_enabled and config.logging.file_path:
+        path = Path(config.logging.file_path)
+        return path.parent if path.suffix else path
+    return get_default_log_path().parent
+
+
 # Global listener to keep it alive
 _listener: Optional[logging.handlers.QueueListener] = None
 

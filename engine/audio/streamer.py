@@ -5,7 +5,7 @@ from typing import AsyncGenerator, Tuple, cast
 import numpy as np
 import sounddevice as sd
 
-from engine.app_types import CaptureFormatError
+from engine.app_types import AudioHardwareError, CaptureFormatError
 from engine.logging import get_logger
 
 logger = get_logger("Audio")
@@ -116,8 +116,35 @@ class AudioStreamer:
 
         self.async_q.put_nowait((chunk, capture_time))
 
+    def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
+        """Helper to try mono, then stereo capture at a given sample rate."""
+        chunk_size_adjusted = int(self.chunk_size * (sample_rate / self.sample_rate))
+        try:
+            stream = sd.InputStream(
+                samplerate=sample_rate,
+                channels=1,
+                dtype=DEFAULT_DTYPE,
+                blocksize=chunk_size_adjusted,
+                callback=self._callback,
+            )
+            return stream
+        except Exception as e:
+            logger.debug(f"Mono capture at {sample_rate}Hz failed: {e}. Trying stereo...")
+            try:
+                stream = sd.InputStream(
+                    samplerate=sample_rate,
+                    channels=2,
+                    dtype=DEFAULT_DTYPE,
+                    blocksize=chunk_size_adjusted,
+                    callback=self._callback,
+                )
+                logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
+                return stream
+            except Exception as e2:
+                raise e2
+
     def start(self, loop: asyncio.AbstractEventLoop | None = None):
-        """Starts the audio capture stream."""
+        """Starts the audio capture stream with robust fallbacks."""
         if self.is_running:
             return
 
@@ -131,34 +158,30 @@ class AudioStreamer:
                 break
 
         self._drop_count = 0
-        try:
-            self._stream = sd.InputStream(
-                samplerate=self.sample_rate,
-                channels=1,
-                dtype=DEFAULT_DTYPE,
-                blocksize=self.chunk_size,
-                callback=self._callback,
-            )
-        except Exception as e:
-            logger.info(f"Mono capture failed ({e}), attempting stereo fallback...")
+
+        rates_to_try = [self.sample_rate]
+        if self.sample_rate not in (44100, 48000):
+            rates_to_try.extend([44100, 48000])
+
+        last_error = None
+        for rate in rates_to_try:
             try:
-                self._stream = sd.InputStream(
-                    samplerate=self.sample_rate,
-                    channels=2,
-                    dtype=DEFAULT_DTYPE,
-                    blocksize=self.chunk_size,
-                    callback=self._callback,
-                )
-                logger.info("Stereo capture fallback successful.")
-            except Exception as e2:
-                logger.error(f"Stereo capture fallback also failed: {e2}")
-                raise e2
+                self._stream = self._try_open_stream(rate)
+                break
+            except Exception as e:
+                logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
+                last_error = e
+
+        if self._stream is None:
+            err_msg = str(last_error) if last_error else "Unknown error"
+            logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
+            raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
 
         self._stream.start()
         self.is_running = True
         logger.info(
-            f"Audio capture started at {self.sample_rate}Hz "
-            f"(channels={self._stream.channels}, chunk_size={self.chunk_size})"
+            f"Audio capture started at {self._stream.samplerate}Hz "
+            f"(channels={self._stream.channels})"
         )
 
     def stop(self):
