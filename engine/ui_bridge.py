@@ -22,6 +22,7 @@ class UIEvent:
     CLEAR_HUD = "clear_hud"
     RECORD_STATS = "record_stats"
     UPDATE_VERSION_NOTIFICATION = "update_version_notification"
+    UPDATE_AUDIO_ERROR = "update_audio_error"
     QUIT = "quit"
 
 
@@ -79,6 +80,10 @@ class UIBridge:
     def update_version_notification(self, version_tag: str, release_url: str):
         """Signal the UI that a new version is available."""
         self.queue.put((UIEvent.UPDATE_VERSION_NOTIFICATION, (version_tag, release_url)))
+
+    def update_audio_error(self, error_type: Optional[str]):
+        """Signal the UI about a specific audio hardware error."""
+        self.queue.put((UIEvent.UPDATE_AUDIO_ERROR, error_type))
 
     def stop(self):
         """Signal the UI to stop."""

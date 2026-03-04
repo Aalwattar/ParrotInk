@@ -107,6 +107,9 @@ class AppCoordinator:
         )
         self.update_manager.start()
 
+        # Audio Recovery
+        self._retry_mic_task: Optional[asyncio.Task] = None
+
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
 
@@ -467,10 +470,7 @@ class AppCoordinator:
         except AudioHardwareError as e:
             logger.error(f"Hardware error: {e}")
             self.set_state(AppState.ERROR)
-            self.ui_bridge.update_status_message("Microphone Access Denied")
-            self.ui_bridge.update_partial_text(
-                "Check Windows Privacy Settings or close other apps using the mic."
-            )
+            self._handle_audio_failure(e)
             if self.loop:
                 self.loop.create_task(self.stop_listening())
             else:
@@ -483,6 +483,73 @@ class AppCoordinator:
                 self.loop.create_task(self.stop_listening())
             else:
                 await self.stop_listening()
+
+    def _handle_audio_failure(self, error: Exception):
+        """
+        Senior Diagnostic Logic:
+        Differentiate between 'Privacy Block', 'Missing Device', and 'Busy Device'.
+        """
+        import sounddevice as sd
+
+        from engine.platform_win.audio_diag import is_mic_privacy_blocked
+
+        try:
+            devices = sd.query_devices()
+            input_devices = [d for d in devices if d["max_input_channels"] > 0]
+        except Exception:
+            input_devices = []
+
+        if not input_devices:
+            self.ui_bridge.update_status_message("No Microphone Detected")
+            self.ui_bridge.update_partial_text("Please plug in a microphone and restart.")
+            return
+
+        error_type = "privacy" if is_mic_privacy_blocked() else "other"
+        self.ui_bridge.update_audio_error(error_type)
+
+        if error_type == "privacy":
+            self.ui_bridge.update_status_message("Microphone Access Denied")
+            self.ui_bridge.update_partial_text(
+                "Access is blocked by Windows. Right-click Tray > Fix."
+            )
+        else:
+            self.ui_bridge.update_status_message("Audio Device Unavailable")
+            self.ui_bridge.update_partial_text(
+                "Another app might be using the mic. Right-click Tray > Fix."
+            )
+
+        # Start recovery polling
+        if self.loop and (not self._retry_mic_task or self._retry_mic_task.done()):
+            self._retry_mic_task = self.loop.create_task(self._poll_mic_recovery())
+
+    async def _poll_mic_recovery(self):
+        """Background task that polls for mic availability to auto-clear error state."""
+        import sounddevice as sd
+
+        logger.info("Started microphone recovery polling.")
+        try:
+            while self.state == AppState.ERROR:
+                await asyncio.sleep(5.0)  # Poll every 5 seconds
+                try:
+                    # Attempt a minimal stream open to check if hardware is actually available
+                    with sd.InputStream(
+                        samplerate=16000, channels=1, blocksize=512, dtype="float32"
+                    ):
+                        pass
+                    # Success! Hardware is back.
+                    logger.info("Microphone recovery successful. Clearing error state.")
+                    self.ui_bridge.update_audio_error(None)  # Clear UI fix links
+                    self.set_state(AppState.IDLE)
+                    self.ui_bridge.update_status_message("Microphone Restored")
+                    self.ui_bridge.update_partial_text("You can now resume transcription.")
+                    break
+                except Exception:
+                    # Still failing, continue polling
+                    continue
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in mic recovery poll: {e}")
 
     async def stop_listening(self, silent: bool = False):
         """Stops the current transcription session."""
