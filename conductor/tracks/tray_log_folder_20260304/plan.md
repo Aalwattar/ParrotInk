@@ -19,3 +19,6 @@
     -   Expect: "Open Log Folder" item is visible.
 2.  **Manual Test**: Click "Open Log Folder".
     -   Expect: Windows Explorer opens the log directory.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 21b946f

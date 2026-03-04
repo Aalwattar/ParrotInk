@@ -27,3 +27,6 @@
 1.  **Manual Test**: Run another app (like Chrome) with exclusive mic access (if possible to simulate). Press hotkey.
     -   Expect: HUD shows "Audio Hardware Busy" instead of log loop.
 2.  **Mock Test**: Create a script that mocks `sd.InputStream` to throw `PaErrorCode -9999` and verify fallback logic.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 21b946f

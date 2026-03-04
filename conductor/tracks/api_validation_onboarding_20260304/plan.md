@@ -30,3 +30,6 @@
 2.  **Manual Test**: Set API key to "4444". Press hotkey.
     -   Expect: HUD shows "API Key Required".
 3.  **Automated Test**: Add a test case in `tests/test_config.py` for key validation logic.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 21b946f
