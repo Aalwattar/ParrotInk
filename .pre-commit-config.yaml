@@ -1,6 +1,7 @@
 # .pre-commit-config.yaml
 # Production-grade deterministic synchronization and safety gates.
 default_install_hook_types: [pre-commit, pre-push]
+exclude: '^(assets/|nanobanana-output/|build/|dist/)'
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -34,7 +35,7 @@ repos:
     hooks:
       - id: uv-lock
 
-  # Heavier checks moved to pre-push to maintain high developer velocity
+  # Local system hooks for deep verification before push
   - repo: local
     hooks:
       - id: mypy
