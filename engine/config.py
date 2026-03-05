@@ -400,7 +400,7 @@ class Config(BaseModel):
                         else:
                             # Scalar value
                             if key in target:
-                                # Update existing value (preserves comments)
+                                # Update existing value (preserves comments and position)
                                 target[key] = value
                             else:
                                 # New key: only add if it's NOT the default value
@@ -410,7 +410,40 @@ class Config(BaseModel):
                                         is_default = True
 
                                 if not is_default:
-                                    target[key] = value
+                                    # IDIOMATIC PLACEMENT:
+                                    # Use _insert_at to place the new key exactly where its
+                                    # commented-out default currently sits.
+                                    insertion_idx = None
+
+                                    # Table items store their container in .value,
+                                    # while TOMLDocument is itself a Container.
+                                    container = target.value if hasattr(target, "value") else target
+
+                                    if hasattr(container, "_insert_at") and hasattr(
+                                        container, "body"
+                                    ):
+                                        from tomlkit.items import Comment
+
+                                        for i, (_k, v) in enumerate(container.body):
+                                            # Standalone comments have None as the key in the body
+                                            if isinstance(v, Comment):
+                                                ct = v.trivia.comment.strip()
+                                                if (
+                                                    ct.startswith(f"# {key} =")
+                                                    or ct.startswith(f"#{key} =")
+                                                    or ct.startswith(f"# {key}=")
+                                                    or ct.startswith(f"#{key}=")
+                                                ):
+                                                    insertion_idx = i
+                                                    break
+
+                                    if insertion_idx is not None:
+                                        try:
+                                            container._insert_at(insertion_idx, key, value)
+                                        except Exception:
+                                            target[key] = value
+                                    else:
+                                        target[key] = value
 
                 update_toml_doc(doc, data, type(self))
 
