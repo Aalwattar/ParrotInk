@@ -21,3 +21,6 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Final Verification' (Protocol in workflow.md)
 ---
 **Note:** Once you provide the `.ico` files in `assets/icons/`, the application will automatically pick them up based on this logic.
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions d3bab45
