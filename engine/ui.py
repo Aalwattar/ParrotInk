@@ -18,10 +18,9 @@ import ttkbootstrap as tb
 from PIL import Image, ImageDraw
 
 from .app_types import AppState, ProviderType
-from .constants import URL_HOMEPAGE, URL_ISSUES
 from .logging import get_logger
 from .stats import StatsManager
-from .ui_utils import get_app_version
+from .ui_menu import build_tray_menu
 
 if TYPE_CHECKING:
     from .config import Config
@@ -290,142 +289,7 @@ class TrayApp:
             open_settings("sound")
 
     def _create_menu(self) -> pystray.Menu:
-        version = get_app_version()
-
-        def no_op(
-            icon: Optional[pystray.Icon] = None, item: Optional[pystray.MenuItem] = None
-        ) -> None:
-            pass
-
-        # UI Implementation: Version label is clickable if update is found.
-        # We use a distinct text and BOLD formatting if an update is available.
-        version_label = f"ParrotInk v{version}"
-        on_click: Callable = no_op
-        is_enabled = False
-        is_default = False
-
-        if self.latest_version:
-            version_label = f"✨ UPDATE AVAILABLE: {self.latest_version} (Current: v{version})"
-            on_click = self._on_update_clicked
-            is_enabled = True
-            is_default = True
-
-        menu_items = []
-
-        # 1. Hardware Fix Links (High Priority)
-        if self.audio_error_type:
-            fix_label = (
-                "🚨 FIX: Check Privacy & security > Microphone"
-                if self.audio_error_type == "privacy"
-                else "🚨 FIX: Open Sound Settings"
-            )
-            menu_items.append(pystray.MenuItem(fix_label, self._on_fix_mic_clicked, default=True))
-            menu_items.append(pystray.Menu.SEPARATOR)
-
-        # 2. Version and Standard Items
-        menu_items.extend(
-            [
-                pystray.MenuItem(version_label, on_click, enabled=is_enabled, default=is_default),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem(
-                    "OpenAI",
-                    lambda i, it: self._on_provider_selection(i, "openai"),
-                    checked=lambda i: self.current_provider == "openai",
-                    radio=True,
-                ),
-                pystray.MenuItem(
-                    "AssemblyAI",
-                    lambda i, it: self._on_provider_selection(i, "assemblyai"),
-                    checked=lambda i: self.current_provider == "assemblyai",
-                    radio=True,
-                ),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Statistics...", self._on_show_stats_clicked),
-                pystray.MenuItem(
-                    "Settings",
-                    pystray.Menu(
-                        pystray.MenuItem(
-                            "Setup API Keys",
-                            pystray.Menu(
-                                pystray.MenuItem(
-                                    "Set OpenAI Key...",
-                                    lambda: self._on_set_key_clicked("openai_api_key", "OpenAI"),
-                                ),
-                                pystray.MenuItem(
-                                    "Set AssemblyAI Key...",
-                                    lambda: self._on_set_key_clicked(
-                                        "assemblyai_api_key", "AssemblyAI"
-                                    ),
-                                ),
-                            ),
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            lambda it: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
-                            self._on_change_hotkey_clicked,
-                        ),
-                        pystray.MenuItem(
-                            "Hold to Talk",
-                            self._on_toggle_hold_mode_clicked,
-                            checked=lambda it: self.config.hotkeys.hold_mode,
-                        ),
-                        pystray.MenuItem(
-                            "Enable Audio Feedback",
-                            self._on_toggle_sounds_clicked,
-                            checked=lambda it: self.sounds_enabled,
-                        ),
-                        pystray.MenuItem(
-                            "Run at Startup",
-                            self._on_toggle_startup_clicked,
-                            checked=lambda it: self.config.interaction.run_at_startup,
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            "Show HUD",
-                            self._on_toggle_hud_clicked,
-                            checked=lambda it: self.config.ui.floating_indicator.enabled,
-                        ),
-                        pystray.MenuItem(
-                            "HUD Click-Through",
-                            self._on_toggle_click_through_clicked,
-                            checked=lambda it: self.config.ui.floating_indicator.click_through,
-                            enabled=lambda it: self.config.ui.floating_indicator.enabled,
-                        ),
-                    ),
-                ),
-                pystray.MenuItem(
-                    "Configuration",
-                    pystray.Menu(
-                        pystray.MenuItem("Open Configuration File", self._open_config),
-                        pystray.MenuItem(
-                            "Reload Configuration",
-                            self._on_reload_config_clicked,
-                            enabled=lambda it: self.state in (AppState.IDLE, AppState.ERROR),
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem("Open Log Folder", self._open_log_folder),
-                    ),
-                ),
-                pystray.MenuItem(
-                    "Help",
-                    pystray.Menu(
-                        pystray.MenuItem(
-                            "View Documentation", lambda: webbrowser.open(URL_HOMEPAGE)
-                        ),
-                        pystray.MenuItem("Report an Issue", lambda: webbrowser.open(URL_ISSUES)),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            "Check for Updates...",
-                            lambda: self.on_check_updates() if self.on_check_updates else None,
-                        ),
-                    ),
-                ),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Quit", self._on_tray_quit),
-            ]
-        )
-
-        return pystray.Menu(*menu_items)
+        return build_tray_menu(self)
 
     def _on_tray_quit(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         """Triggered only when the user explicitly clicks 'Quit' in the menu."""

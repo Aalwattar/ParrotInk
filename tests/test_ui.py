@@ -80,8 +80,14 @@ def test_tray_menu_structure(mocker, config):
         assert "ParrotInk v" in items[0].text
         assert items[0].enabled is False
         # Second item is separator
-        assert items[2].text == "OpenAI"
+        assert items[2].text == "Transcription Provider"
         assert all(item.text != "Status: Ready" for item in items)
+
+        # Check Providers sub-menu
+        providers_menu = items[2].submenu
+        provider_items = list(providers_menu)
+        assert provider_items[0].text == "OpenAI"
+        assert provider_items[1].text == "AssemblyAI"
 
 
 def test_tray_settings_menu_hold_mode(mocker, config):
