@@ -23,6 +23,20 @@ MessageBoxW = user32.MessageBoxW
 MessageBoxW.argtypes = [wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.UINT]
 MessageBoxW.restype = ctypes.c_int
 
+shell32 = ctypes.windll.shell32
+
+
+def set_aumid(app_id: str):
+    """
+    Sets the App User Model ID (AUMID) for the current process.
+    This ensures Windows correctly groups the app in Taskbar/Settings/Privacy.
+    """
+    try:
+        shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
+    except Exception:
+        # Fallback for older Windows versions or failures
+        pass
+
 
 class SingleInstance:
     """

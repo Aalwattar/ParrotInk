@@ -343,8 +343,17 @@ class Config(BaseModel):
         def perform_write():
             temp_path = path.with_suffix(path.suffix + ".tmp")
             try:
-                content = tomli_w.dumps(data)
-                temp_path.write_text(content, encoding="utf-8")
+                # Senior Architecture: Use multiline strings for cleaner TOML output
+                content = tomli_w.dumps(data, multiline_strings=True)
+
+                # Add a helpful header to the top of the file
+                header = (
+                    "# ParrotInk Configuration\n"
+                    "# This file is updated automatically when you change settings.\n"
+                    "# You can also edit it manually while the app is closed.\n\n"
+                )
+
+                temp_path.write_text(header + content, encoding="utf-8")
                 os.replace(temp_path, path)
                 logger.debug(f"Configuration saved atomically to {path}")
             except Exception as e:
@@ -396,15 +405,22 @@ def load_config(path: Optional[str | Path] = None) -> Config:
         from .ui_utils import get_resource_path
 
         example_path = Path(get_resource_path("config.example.toml"))
+        logger.info(f"Config not found. Looking for template at: {example_path}")
+
         if example_path.exists():
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(example_path, config_path)
-            logger.info(f"Initialized new configuration from template: {config_path}")
+            try:
+                config_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(example_path, config_path)
+                logger.info(f"Initialized new configuration from template: {config_path}")
+            except Exception as e:
+                logger.error(f"Failed to copy template config: {e}. Falling back to bare defaults.")
+                config = Config()
+                config.save(path, blocking=True)
         else:
             # Fallback to programmatic default if example is missing (e.g. in some builds)
+            logger.warning(f"Template not found at {example_path}. Using bare defaults.")
             config = Config()
             config.save(path, blocking=True)
-            logger.warning(f"Template not found. Initialized bare configuration: {config_path}")
 
     return Config.from_file(path)
 

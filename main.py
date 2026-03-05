@@ -404,7 +404,7 @@ class AppCoordinator:
             logger.debug(f"start_listening ignored: current state is {self.state.name}")
             return
 
-        # Credential check
+        # 1. API Key Check
         availability = self.get_provider_availability()
         if not availability.get(self.config.transcription.provider, False):
             logger.error(f"Missing API Key for {self.config.transcription.provider}")
@@ -417,6 +417,27 @@ class AppCoordinator:
             self.ui_bridge.update_status_message("API Key Required. Check Settings.")
             self.ui_bridge.update_partial_text("Open Tray Menu > Settings to add your key.")
             return
+
+        # 2. Fast OS-level Diagnostic (Privacy & Missing Hardware)
+        if sys.platform == "win32":
+            from engine.platform_win.audio_diag import is_mic_privacy_blocked
+
+            if is_mic_privacy_blocked():
+                logger.warning("Microphone access blocked by Windows Privacy settings.")
+                self.set_state(AppState.ERROR)
+                self._handle_audio_failure(AudioHardwareError("Privacy Blocked"))
+                return
+
+            import sounddevice as sd
+
+            try:
+                if not any(d["max_input_channels"] > 0 for d in sd.query_devices()):
+                    logger.warning("No microphone detected by sounddevice.")
+                    self.set_state(AppState.ERROR)
+                    self._handle_audio_failure(AudioHardwareError("No devices"))
+                    return
+            except Exception:
+                pass
 
         self.session_cancelled = False
         self.start_time = time.time()

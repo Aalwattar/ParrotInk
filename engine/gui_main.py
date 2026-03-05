@@ -35,6 +35,13 @@ async def main_gui(cli_args):
 
     configure_logging(config, verbose_count=cli_args.verbose, quiet=cli_args.quiet)
 
+    # Senior Architecture: Set AUMID to ensure Windows identifies us as 'ParrotInk'
+    if sys.platform == "win32":
+        from engine.platform_win.instance import set_aumid
+        from engine.platform_win.paths import APP_NAME
+
+        set_aumid(f"ParrotInk.{APP_NAME}.App")
+
     ui_bridge = UIBridge()
     coordinator = AppCoordinator(config, ui_bridge)
     coordinator.loop = asyncio.get_running_loop()
