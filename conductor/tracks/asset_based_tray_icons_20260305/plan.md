@@ -15,9 +15,9 @@
 - [x] Task: Ensure the current state color definitions (`COLOR_IDLE`, `COLOR_LISTENING`, etc.) are preserved for the fallback case. c3253b2
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Implementation' (Protocol in workflow.md)
 
-## Phase 3: Final Verification
-- [ ] Task: Run all UI tests to ensure no regressions in tray menu functionality or HUD synchronization.
-- [ ] Task: Verify that the application correctly handles the absence of assets by showing the original colored squares.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Final Verification' (Protocol in workflow.md)
+## Phase 3: Final Verification [checkpoint: 3ab6b3f]
+- [x] Task: Run all UI tests to ensure no regressions in tray menu functionality or HUD synchronization. 3ab6b3f
+- [x] Task: Verify that the application correctly handles the absence of assets by showing the original colored squares. 3ab6b3f
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Final Verification' (Protocol in workflow.md)
 ---
 **Note:** Once you provide the `.ico` files in `assets/icons/`, the application will automatically pick them up based on this logic.
