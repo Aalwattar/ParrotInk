@@ -26,8 +26,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
 ### 2.5 System Tray Application
 - The application will run as a background process with an icon in the system tray.
-- **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
-- **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
+- **Professional Identity:** The tray icon uses high-quality, custom `.ico` assets to provide a polished, "Fluent" visual identity on Windows.
+- **Visual Feedback:** The icon changes based on state: Idle, Listening, Connecting, Error, and Transition. If assets are missing, the system automatically falls back to a robust, color-coded dynamic square generation (Grey, Blue, Yellow, Red).
 - A redesigned context menu on the tray icon allows the user to:
     - **Dynamic Version Header:** Displays the current version and update status (Top-level).
     - **Transcription Sub-menu:** Select active Provider and Microphone Profile.

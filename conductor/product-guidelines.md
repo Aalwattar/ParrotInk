@@ -11,10 +11,8 @@
 
 ## 3. Visual Identity & UX
 - **UI:** The primary interface is a system tray icon. There will be no main application window.
-- **Iconography:** The tray icon uses a "Modern Square" design with soft rounded corners.
-    - **Idle:** Neutral Slate color (#475569).
-    - **Listening:** Vibrant Microsoft Blue (#0078D4).
-    - **Error:** Alert Red (#EF4444).
+- **Asset-Based Icons:** The tray icon uses professional `.ico` assets for clear state feedback (Idle, Listening, Connecting, Error).
+- **Robust Fallback:** If custom assets are removed or missing, the application maintains usability by dynamically generating color-coded squares as a fallback.
 - **HUD:** The floating HUD provides real-time feedback using **Segoe UI 16pt** typography on an acrylic glass background, adhering to Windows modern design patterns.
 - **Configuration:** A simple configuration window can be accessed from the tray menu for setting up API keys, hotkeys, and other options. This window should be clean and functional.
 
