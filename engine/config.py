@@ -353,17 +353,23 @@ class Config(BaseModel):
                 else:
                     doc = tomlkit.document()
 
-                # Deep update the tomlkit document with our validated data
-                def update_toml_doc(target, source, model_cls):
-                    # Create a default instance to compare values against
+                # Senior Architecture: Logic-preserving TOML updater
+                def update_toml_doc(target, source, model_cls) -> bool:
+                    """
+                    Recursively updates a tomlkit document while preserving style.
+                    Returns True if any non-default values were added or updated.
+                    """
+                    from tomlkit.container import Container
+                    from tomlkit.items import Comment, Table
+
                     try:
                         default_instance = model_cls()
                     except Exception:
-                        # Fallback for models that might require arguments (unlikely here)
                         default_instance = None
 
+                    changed = False
+
                     for key, value in source.items():
-                        # Skip internal fields
                         if key.startswith("_"):
                             continue
 
@@ -372,78 +378,59 @@ class Config(BaseModel):
                             if not field:
                                 continue
 
-                            # Recursively update nested tables
-                            if key not in target or not isinstance(target[key], dict):
-                                # Check if nested dict has any non-defaults
-                                def has_non_defaults(d, m):
-                                    try:
-                                        defaults = m()
-                                    except Exception:
-                                        return True  # Assume it has non-defaults if we can't check
-
-                                    for k, v in d.items():
-                                        if isinstance(v, dict):
-                                            f = m.model_fields.get(k)
-                                            if f and has_non_defaults(v, f.annotation):
-                                                return True
-                                        elif hasattr(defaults, k) and v != getattr(defaults, k):
-                                            return True
-                                    return False
-
-                                if key in target or has_non_defaults(value, field.annotation):
-                                    if key not in target:
-                                        target[key] = tomlkit.table()
-                                else:
-                                    continue
-
-                            update_toml_doc(target[key], value, field.annotation)
-                        else:
-                            # Scalar value
-                            if key in target:
-                                # Update existing value (preserves comments and position)
-                                target[key] = value
+                            # Ensure the section exists in TOML if we're about to add to it
+                            if key not in target:
+                                # We only create the table if it contains non-default values
+                                # We use a temporary table to check this
+                                temp_table = tomlkit.table()
+                                if update_toml_doc(temp_table, value, field.annotation):
+                                    target[key] = temp_table
+                                    changed = True
                             else:
-                                # New key: only add if it's NOT the default value
-                                is_default = False
-                                if default_instance and hasattr(default_instance, key):
-                                    if value == getattr(default_instance, key):
-                                        is_default = True
+                                if update_toml_doc(target[key], value, field.annotation):
+                                    changed = True
+                        else:
+                            # Scalar value update logic
+                            is_default = False
+                            if default_instance and hasattr(default_instance, key):
+                                if value == getattr(default_instance, key):
+                                    is_default = True
 
-                                if not is_default:
-                                    # IDIOMATIC PLACEMENT:
-                                    # Use _insert_at to place the new key exactly where its
-                                    # commented-out default currently sits.
-                                    insertion_idx = None
+                            if key in target:
+                                # Existing key: always update to match live config
+                                # (preserves comments and position)
+                                if target[key] != value:
+                                    target[key] = value
+                                    changed = True
+                            elif not is_default:
+                                # New key: only add if it's a non-default value
+                                # SMART PLACEMENT: Insert before its commented-out default
+                                container = target.value if isinstance(target, Table) else target
+                                insertion_idx = None
 
-                                    # Table items store their container in .value,
-                                    # while TOMLDocument is itself a Container.
-                                    container = target.value if hasattr(target, "value") else target
+                                if isinstance(container, Container):
+                                    for i, (_item_key, item_val) in enumerate(container.body):
+                                        if isinstance(item_val, Comment):
+                                            ct = item_val.trivia.comment.strip()
+                                            if (
+                                                ct.startswith(f"# {key} =")
+                                                or ct.startswith(f"#{key} =")
+                                                or ct.startswith(f"# {key}=")
+                                                or ct.startswith(f"#{key}=")
+                                            ):
+                                                insertion_idx = i
+                                                break
 
-                                    if hasattr(container, "_insert_at") and hasattr(
-                                        container, "body"
-                                    ):
-                                        from tomlkit.items import Comment
-
-                                        for i, (_k, v) in enumerate(container.body):
-                                            # Standalone comments have None as the key in the body
-                                            if isinstance(v, Comment):
-                                                ct = v.trivia.comment.strip()
-                                                if (
-                                                    ct.startswith(f"# {key} =")
-                                                    or ct.startswith(f"#{key} =")
-                                                    or ct.startswith(f"# {key}=")
-                                                    or ct.startswith(f"#{key}=")
-                                                ):
-                                                    insertion_idx = i
-                                                    break
-
-                                    if insertion_idx is not None:
-                                        try:
-                                            container._insert_at(insertion_idx, key, value)
-                                        except Exception:
-                                            target[key] = value
-                                    else:
+                                if insertion_idx is not None and hasattr(container, "_insert_at"):
+                                    try:
+                                        container._insert_at(insertion_idx, key, value)
+                                    except Exception:
                                         target[key] = value
+                                else:
+                                    target[key] = value
+                                changed = True
+
+                    return changed
 
                 update_toml_doc(doc, data, type(self))
 
