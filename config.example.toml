@@ -10,7 +10,7 @@
 # ==============================================================================
 
 [hotkeys]
-# The key combination used to trigger dictation. 
+# The key combination used to trigger dictation.
 # Supports modifiers: ctrl, alt, shift, win.
 # Examples: "ctrl+alt+v", "shift+f2", "win+v"
 # hotkey = "ctrl+alt+v"
@@ -20,7 +20,7 @@
 # hold_mode = false
 
 [interaction]
-# Automatically cancel and discard transcription if you click away from the active 
+# Automatically cancel and discard transcription if you click away from the active
 # input field (anchor) while recording.
 # cancel_on_click_outside_anchor = true
 
@@ -41,7 +41,7 @@
 # Enable auditory feedback (beeps) when recording starts or stops.
 # enabled = true
 
-# Volume of the feedback sounds. 
+# Volume of the feedback sounds.
 # Range: 0 (silent) to 100 (max volume).
 # volume = 30
 
@@ -57,11 +57,11 @@
 # If true, the HUD ignores mouse clicks (allowing you to click through it).
 # click_through = true
 
-# Transparency level of the HUD background when the app is idle. 
+# Transparency level of the HUD background when the app is idle.
 # Range: 0.0 (transparent) to 1.0 (opaque).
 # opacity_idle = 0.3
 
-# Transparency level of the HUD background when actively recording speech. 
+# Transparency level of the HUD background when actively recording speech.
 # Range: 0.0 (transparent) to 1.0 (opaque).
 # opacity_active = 0.8
 
@@ -76,11 +76,11 @@
 # refresh_rate_ms = 50
 
 [audio]
-# Internal sample rate for microphone capture. 
+# Internal sample rate for microphone capture.
 # 16000 is the industry standard for most ASR models.
 # capture_sample_rate = 16000
 
-# Duration of each audio buffer chunk in milliseconds. 
+# Duration of each audio buffer chunk in milliseconds.
 # Lower values reduce latency but increase CPU usage.
 # Range: 50 to 500.
 # chunk_ms = 100
@@ -99,7 +99,7 @@
 # Range: 5 to 3600.
 # inactivity_timeout_seconds = 30
 
-# Sensitivity for local voice activity detection. 
+# Sensitivity for local voice activity detection.
 # Lower values are more sensitive (detect quiet speech).
 # Range: 0.001 to 0.05.
 # voice_activity_threshold = 0.005
@@ -124,7 +124,7 @@
 # Options: "openai", "assemblyai"
 # provider = "openai"
 
-# Performance profile. 
+# Performance profile.
 # 'fast'     - Prioritizes speed (faster finalization).
 # 'balanced' - Good balance between speed and sentence completion.
 # 'accurate' - Waits longer for natural pauses to ensure better context.
@@ -136,7 +136,7 @@
 # 'laptop'  - Optimized for built-in or room microphones (far-field).
 # 'none'    - Raw audio signal.
 # Options: "headset", "laptop", "none"
-# mic_profile = "headset"
+# mic_profile = "none"
 
 # --- OpenAI Configuration ---
 
