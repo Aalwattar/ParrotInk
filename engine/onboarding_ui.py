@@ -131,6 +131,14 @@ def show_onboarding_blocking() -> bool:
     window.grab_set()
     window.wait_window()
 
+    # Senior Architecture: Reset the ttkbootstrap Style singleton.
+    # Without this, the next call to tb.Window() in a different thread will
+    # try to use the destroyed Tcl interpreter and fail with a RuntimeError.
+    try:
+        tb.Style.instance = None
+    except Exception:
+        pass
+
     return dont_show_again.get()
 
 
