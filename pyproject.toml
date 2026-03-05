@@ -1,6 +1,6 @@
 [project]
 name = "parrotink"
-version = "0.2.20"
+version = "0.2.22"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -41,6 +41,7 @@ dependencies = [
     "ttkbootstrap>=1.10.1",
     "darkdetect>=0.8.0",
     "packaging>=26.0",
+    "tomlkit>=0.14.0",
 ]
 
 [project.urls]
