@@ -13,8 +13,8 @@
 - [x] Task: Write/update tests to ensure menu logic still initializes correctly after refactor (or lack thereof). ae20b5f
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Code Review & Conditional Refactoring' (Protocol in workflow.md) ae20b5f
 
-## Phase 3: UI/UX Redesign
-- [ ] Task: Restructure the tray menu according to the approved spec (Sub-menus for Providers, Settings, Tools).
-- [ ] Task: Implement the flat structure items (Help, Check for Updates, Exit).
-- [ ] Task: Ensure all existing callbacks and dynamic states (e.g., greyed-out providers, active provider radio button) function correctly in the new nested structure.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: UI/UX Redesign' (Protocol in workflow.md)
+## Phase 3: UI/UX Redesign [checkpoint: 1586b2a]
+- [x] Task: Restructure the tray menu according to the approved spec (Sub-menus for Providers, Settings, Tools). 1586b2a
+- [x] Task: Implement the flat structure items (Help, Check for Updates, Exit). 1586b2a
+- [x] Task: Ensure all existing callbacks and dynamic states (e.g., greyed-out providers, active provider radio button) function correctly in the new nested structure. 1586b2a
+- [x] Task: Conductor - User Manual Verification 'Phase 3: UI/UX Redesign' (Protocol in workflow.md) 1586b2a
