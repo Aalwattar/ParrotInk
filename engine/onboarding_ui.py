@@ -3,9 +3,6 @@ import sys
 from pathlib import Path
 
 # Senior Architecture: Path Shadowing Guard
-# If run directly as a script (e.g. 'python engine/onboarding_ui.py'), the script's
-# directory is added to the front of sys.path. This causes 'import logging' in
-# libraries like PIL to mistakenly find 'engine/logging.py'.
 if __name__ == "__main__":
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     if _script_dir in sys.path:
@@ -34,8 +31,8 @@ def show_onboarding_blocking() -> bool:
     window.title("ParrotInk - Welcome")
     window.attributes("-topmost", True)
 
-    # Cinematic Size and Centering
-    width, height = 640, 680
+    # Cinematic Size and Centering - Increased height to 780 to ensure visibility
+    width, height = 640, 780
     screen_w = window.winfo_screenwidth()
     screen_h = window.winfo_screenheight()
     x = (screen_w - width) // 2
@@ -45,13 +42,11 @@ def show_onboarding_blocking() -> bool:
 
     # State
     dont_show_again = tk.BooleanVar(value=False)
-    # Store image references to prevent GC
     images = []
 
     def load_icon(name: str, size: int = 32) -> ImageTk.PhotoImage:
         path = Path(get_resource_path(os.path.join("assets", "icons", name)))
         if not path.exists():
-            # Fallback to a colored square if icon missing
             img = Image.new("RGBA", (size, size), (100, 100, 100, 255))
         else:
             img = Image.open(path)
@@ -68,7 +63,6 @@ def show_onboarding_blocking() -> bool:
     header_frame = tb.Frame(content)
     header_frame.pack(fill=X, pady=(0, 30))
 
-    # Large App Icon
     brand_icon = load_icon("icon.ico", 64)
     tb.Label(header_frame, image=brand_icon).pack(side=TOP, pady=(0, 15))
 
@@ -87,8 +81,9 @@ def show_onboarding_blocking() -> bool:
 
     # --- 2. INTRODUCTION ---
     intro_text = (
-        "ParrotInk runs silently in your system tray. Just press your hotkey, "
-        "speak, and watch your words appear instantly at your cursor."
+        "ParrotInk runs silently in your System Tray (the area with small icons "
+        "next to your clock). Just press your hotkey, speak, and watch your "
+        "words appear instantly at your cursor."
     )
     tb.Label(content, text=intro_text, font=("Segoe UI", 12), wraplength=540, justify=CENTER).pack(
         side=TOP, pady=(0, 35)
@@ -124,7 +119,7 @@ def show_onboarding_blocking() -> bool:
 
     # --- 4. QUICK STEPS ---
     step_frame = tb.Frame(content, bootstyle="secondary", padding=25)
-    step_frame.pack(fill=X, pady=(0, 40))
+    step_frame.pack(fill=X, pady=(0, 30))
 
     steps = [
         ("🔑 Setup", "Right-click tray > Settings > API Credentials to add your key."),
@@ -145,6 +140,14 @@ def show_onboarding_blocking() -> bool:
             wraplength=400,
             justify=LEFT,
         ).pack(side=LEFT)
+
+    # --- 5. PRO TIP ---
+    tb.Label(
+        content,
+        text="💡 Pro Tip: Drag the icon out of the 'Hidden Icons' arrow to keep it always visible!",
+        font=("Segoe UI", 10, "italic"),
+        bootstyle="info",
+    ).pack(anchor="w", pady=(0, 35))
 
     # --- FOOTER ---
     footer = tb.Frame(content)
@@ -183,11 +186,9 @@ if __name__ == "__main__":
     # Test runner
     print("Launching world-class onboarding popup...")
 
-    # Mock get_resource_path for local run
     def get_resource_path_local(path):
         return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), path)
 
-    # We need to monkeypatch the import if we run this directly
     import engine.onboarding_ui as onboarding_ui
 
     onboarding_ui.get_resource_path = get_resource_path_local
