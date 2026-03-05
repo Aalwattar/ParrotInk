@@ -1,11 +1,11 @@
 # Implementation Plan: Asset-Based Tray Icons
 
-## Phase 1: Investigation & Test Harness [checkpoint: pending]
+## Phase 1: Investigation & Test Harness [checkpoint: ff46baa]
 - [x] Task: Create a new test file `tests/test_ui_icon_loading.py` to verify that the UI can load and fall back when icons are missing. c3253b2
 - [x] Task: Review the existing `UI` class in `engine/ui.py` to identify the current icon generation and state mapping logic. c3253b2
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Investigation & Test Harness' (Protocol in workflow.md)
 
-## Phase 2: Implementation (The "Robust Icon Logic") [checkpoint: pending]
+## Phase 2: Implementation (The "Robust Icon Logic") [checkpoint: ff46baa]
 - [x] Task: Modify the `UI` class to include an icon caching mechanism. c3253b2
 - [x] Task: Implement the `_get_icon_asset` logic: c3253b2
     - Attempt to load the corresponding `.ico` file based on the `AppState`.
