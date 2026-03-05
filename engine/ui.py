@@ -94,6 +94,7 @@ class TrayApp:
         self.ui_root = None
         self._ui_ready = threading.Event()
         self.audio_error_type: Optional[str] = None  # Track specific audio errors
+        self._popup_active = False  # Guard for concurrent popups
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
         self.stats_manager = StatsManager()
@@ -531,6 +532,16 @@ class TrayApp:
 
     def _show_hardware_error_dialog(self):
         """Shows a native OS popup for microphone hardware/privacy issues."""
+        import sys
+
+        # Senior Architecture: Never show blocking modal dialogs during automated tests.
+        if "pytest" in sys.modules or os.getenv("GITHUB_ACTIONS"):
+            logger.info("Skipping hardware error popup (Test Environment detected).")
+            return
+
+        if self._popup_active:
+            return
+        self._popup_active = True
 
         def show():
             import ctypes
@@ -539,19 +550,24 @@ class TrayApp:
             # 4 (Yes/No) | 48 (Warning Icon) | 65536 (SetForeground) = 65588
             # Yes = 6, No = 7
             msg = (
-                "ParrotInk cannot access your microphone.\n\n"
-                "This usually happens if Windows Privacy settings are blocking it, "
-                "or if another app has exclusive control.\n\n"
+                "MICROPHONE ACCESS DENIED\n\n"
+                "ParrotInk cannot access your microphone. "
+                "This is likely blocked by Windows Privacy settings.\n\n"
+                "IMPORTANT: In the settings page that opens, scroll down and "
+                "ensure the following toggle is turned ON:\n\n"
+                "   'Let desktop apps access your microphone'\n\n"
                 "Would you like to open the Windows Microphone Privacy settings now?"
             )
             title = "Microphone Access Required"
 
-            result = ctypes.windll.user32.MessageBoxW(0, msg, title, 65588)
+            try:
+                result = ctypes.windll.user32.MessageBoxW(0, msg, title, 65588)
+                if result == 6:  # Yes clicked
+                    from .platform_win.audio_diag import open_settings
 
-            if result == 6:  # Yes clicked
-                from .platform_win.audio_diag import open_settings
-
-                open_settings("microphone")
+                    open_settings("microphone")
+            finally:
+                self._popup_active = False
 
         # Run on a detached thread so it doesn't block the UI event loop
         threading.Thread(target=show, daemon=True).start()

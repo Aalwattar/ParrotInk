@@ -109,6 +109,7 @@ class AppCoordinator:
 
         # Audio Recovery
         self._retry_mic_task: Optional[asyncio.Task] = None
+        self._last_audio_failure_reason: Optional[str] = None
 
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
@@ -418,28 +419,16 @@ class AppCoordinator:
             self.ui_bridge.update_partial_text("Open Tray Menu > Settings to add your key.")
             return
 
-        # 2. Fast OS-level Diagnostic (Privacy & Missing Hardware)
-        # Senior Architecture: Always run this BEFORE entering CONNECTING state
-        # to prevent pointless network handshakes if the local hardware is locked.
-        if sys.platform == "win32":
+        # 2. Fast Path: If we previously failed due to privacy, check if it's still blocked
+        # before attempting to open the stream to avoid the ~50ms PortAudio init cost.
+        if self._last_audio_failure_reason == "privacy" and sys.platform == "win32":
             from engine.platform_win.audio_diag import is_mic_privacy_blocked
 
             if is_mic_privacy_blocked():
-                logger.warning("Microphone access blocked by Windows Privacy settings.")
+                logger.warning("Microphone access still blocked by Windows Privacy settings.")
                 self.set_state(AppState.ERROR)
-                self._handle_audio_failure(AudioHardwareError("Privacy Blocked"))
+                self.ui_bridge.show_hardware_error_popup()
                 return
-
-            import sounddevice as sd
-
-            try:
-                if not any(d["max_input_channels"] > 0 for d in sd.query_devices()):
-                    logger.warning("No microphone detected by sounddevice.")
-                    self.set_state(AppState.ERROR)
-                    self._handle_audio_failure(AudioHardwareError("No devices"))
-                    return
-            except Exception:
-                pass
 
         self.session_cancelled = False
         self.start_time = time.time()
@@ -511,25 +500,26 @@ class AppCoordinator:
         """
         Senior Diagnostic Logic:
         Differentiate between 'Privacy Block', 'Missing Device', and 'Busy Device'.
+        Classify-on-failure to determine the true root cause.
         """
         import sounddevice as sd
+
+        # Default classification
+        error_type = "device"
+        error_msg = "Audio Device Unavailable"
+        error_sub = "Another app might be using the mic. Right-click Tray > Fix."
 
         try:
             devices = sd.query_devices()
             input_devices = [d for d in devices if d["max_input_channels"] > 0]
+            if not input_devices:
+                error_type = "missing"
+                error_msg = "No Microphone Detected"
+                error_sub = "Please plug in a microphone and restart."
         except Exception:
             input_devices = []
 
-        if not input_devices:
-            self.ui_bridge.update_status_message("No Microphone Detected")
-            self.ui_bridge.update_partial_text("Please plug in a microphone and restart.")
-            return
-
-        error_type = "other"
-        error_msg = "Audio Device Unavailable"
-        error_sub = "Another app might be using the mic. Right-click Tray > Fix."
-
-        if sys.platform == "win32":
+        if sys.platform == "win32" and error_type != "missing":
             from engine.platform_win.audio_diag import is_mic_privacy_blocked
 
             if is_mic_privacy_blocked():
@@ -537,7 +527,7 @@ class AppCoordinator:
                 error_msg = "Microphone Access Denied"
                 error_sub = "Blocked by Windows. Check 'Privacy & security > Microphone'."
                 # Senior UX: Show unmissable popup
-                self.ui_bridge.show_privacy_popup()
+                self.ui_bridge.show_hardware_error_popup()
             elif (
                 "permission" in str(error).lower()
                 or "access denied" in str(error).lower()
@@ -548,7 +538,10 @@ class AppCoordinator:
                 error_type = "privacy"
                 error_msg = "Microphone Access Denied"
                 error_sub = "Permission error. Check Windows Privacy settings."
-                self.ui_bridge.show_privacy_popup()
+                self.ui_bridge.show_hardware_error_popup()
+
+        # Cache the reason to avoid redundant stream attempts on rapid retries
+        self._last_audio_failure_reason = error_type
 
         self.ui_bridge.update_audio_error(error_type)
         self.ui_bridge.update_status_message(error_msg)
