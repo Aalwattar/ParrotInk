@@ -55,28 +55,56 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     )
     menu_items.append(pystray.Menu.SEPARATOR)
 
-    # 3. Provider Selection
+    # 3. Transcription Sub-menu (Provider & Profile)
     menu_items.append(
         pystray.MenuItem(
-            "Transcription Provider",
+            "Transcription",
             pystray.Menu(
                 pystray.MenuItem(
-                    "OpenAI",
-                    lambda i, it: app._on_provider_selection(i, "openai"),
-                    checked=lambda i: app.current_provider == "openai",
-                    radio=True,
+                    "Provider",
+                    pystray.Menu(
+                        pystray.MenuItem(
+                            "OpenAI",
+                            lambda i, it: app._on_provider_selection(i, "openai"),
+                            checked=lambda i: app.current_provider == "openai",
+                            radio=True,
+                        ),
+                        pystray.MenuItem(
+                            "AssemblyAI",
+                            lambda i, it: app._on_provider_selection(i, "assemblyai"),
+                            checked=lambda i: app.current_provider == "assemblyai",
+                            radio=True,
+                        ),
+                    ),
                 ),
                 pystray.MenuItem(
-                    "AssemblyAI",
-                    lambda i, it: app._on_provider_selection(i, "assemblyai"),
-                    checked=lambda i: app.current_provider == "assemblyai",
-                    radio=True,
+                    "Microphone Profile",
+                    pystray.Menu(
+                        pystray.MenuItem(
+                            "Headset (Near-field)",
+                            lambda i, it: app._on_mic_profile_selection(i, "headset"),
+                            checked=lambda i: app.config.transcription.mic_profile == "headset",
+                            radio=True,
+                        ),
+                        pystray.MenuItem(
+                            "Laptop (Far-field)",
+                            lambda i, it: app._on_mic_profile_selection(i, "laptop"),
+                            checked=lambda i: app.config.transcription.mic_profile == "laptop",
+                            radio=True,
+                        ),
+                        pystray.MenuItem(
+                            "None (Raw)",
+                            lambda i, it: app._on_mic_profile_selection(i, "none"),
+                            checked=lambda i: app.config.transcription.mic_profile == "none",
+                            radio=True,
+                        ),
+                    ),
                 ),
             ),
         )
     )
 
-    # 4. Settings
+    # 4. Settings Sub-menu
     menu_items.append(
         pystray.MenuItem(
             "Settings",
@@ -119,7 +147,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
         )
     )
 
-    # 5. Tools & HUD
+    # 5. Tools Sub-menu
     menu_items.append(
         pystray.MenuItem(
             "Tools",
@@ -127,15 +155,20 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                 pystray.MenuItem("Statistics...", app._on_show_stats_clicked),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
-                    "Show HUD",
-                    app._on_toggle_hud_clicked,
-                    checked=lambda it: app.config.ui.floating_indicator.enabled,
-                ),
-                pystray.MenuItem(
-                    "HUD Click-Through",
-                    app._on_toggle_click_through_clicked,
-                    checked=lambda it: app.config.ui.floating_indicator.click_through,
-                    enabled=lambda it: app.config.ui.floating_indicator.enabled,
+                    "Floating HUD",
+                    pystray.Menu(
+                        pystray.MenuItem(
+                            "Enabled",
+                            app._on_toggle_hud_clicked,
+                            checked=lambda it: app.config.ui.floating_indicator.enabled,
+                        ),
+                        pystray.MenuItem(
+                            "Click-Through",
+                            app._on_toggle_click_through_clicked,
+                            checked=lambda it: app.config.ui.floating_indicator.click_through,
+                            enabled=lambda it: app.config.ui.floating_indicator.enabled,
+                        ),
+                    ),
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Open Configuration File", app._open_config),
