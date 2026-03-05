@@ -28,13 +28,13 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - The application will run as a background process with an icon in the system tray.
 - **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
 - **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
-- A context menu on the tray icon will allow the user to:
-    - **Dynamic Version Header:** Displays the current version. If a newer version is available on GitHub, the label updates to include "(Update Available: vX.Y.Z)" and becomes clickable, allowing the user to open the release page in their browser.
-    - Enable or disable transcription.
-    - Select the active transcription provider.
-    - Open the settings/configuration file.
-    - **Reload Configuration:** Manually refresh and apply settings from `config.toml` without restarting the application.
-    - Exit the application.
+- A redesigned context menu on the tray icon allows the user to:
+    - **Dynamic Version Header:** Displays the current version and update status (Top-level).
+    - **Transcription Sub-menu:** Select active Provider and Microphone Profile.
+    - **Settings Sub-menu:** Configure hotkeys, "Hold to Talk" mode, and Audio Feedback.
+    - **Tools Sub-menu:** Access Statistics dashboard, open config/log folders, and reload settings.
+    - **Help Sub-menu:** View documentation, report issues, and check for updates manually.
+    - **Quit:** Exit the application.
 
 ### 2.6. Configuration
 - All settings will be managed through a local configuration file in TOML format for easy editing.
