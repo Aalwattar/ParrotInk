@@ -15,6 +15,7 @@
 - **Robust Fallback:** If custom assets are removed or missing, the application maintains usability by dynamically generating color-coded squares as a fallback.
 - **HUD:** The floating HUD provides real-time feedback using **Segoe UI 16pt** typography on an acrylic glass background, adhering to Windows modern design patterns.
 - **Configuration:** A simple configuration window can be accessed from the tray menu for setting up API keys, hotkeys, and other options. This window should be clean and functional.
+- **Onboarding:** A one-time welcome popup greets new users to explain the tray-only interface and API key setup, ensuring a smooth first-run experience without violating the "silent assistant" philosophy.
 
 ## 4. Messaging
 - **Success:** No explicit success message is needed. The successful injection of text is its own confirmation.
