@@ -1,10 +1,9 @@
 import os
 import threading
-import tomllib
 from pathlib import Path
 from typing import List, Literal, Optional
 
-import tomli_w
+import tomlkit
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -331,31 +330,55 @@ class Config(BaseModel):
 
     def save(self, path: Optional[Path | str] = None, blocking: bool = False):
         """
-        Saves the configuration to a TOML file atomically.
+        Saves the configuration to a TOML file atomically, preserving comments and style.
         """
         if path is None:
             path = get_config_path()
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
+        # Get the current data to write
         data = self.model_dump(exclude_none=True)
 
         def perform_write():
             temp_path = path.with_suffix(path.suffix + ".tmp")
             try:
-                # Senior Architecture: Use multiline strings for cleaner TOML output
-                content = tomli_w.dumps(data, multiline_strings=True)
+                # Senior Architecture: Style-preserving round-trip
+                if path.exists():
+                    try:
+                        doc = tomlkit.parse(path.read_text(encoding="utf-8"))
+                    except Exception as e:
+                        logger.warning(f"Could not parse config for style preservation: {e}")
+                        doc = tomlkit.document()
+                else:
+                    doc = tomlkit.document()
 
-                # Add a helpful header to the top of the file
-                header = (
-                    "# ParrotInk Configuration\n"
-                    "# This file is updated automatically when you change settings.\n"
-                    "# You can also edit it manually while the app is closed.\n\n"
-                )
+                # Deep update the tomlkit document with our validated data
+                def update_toml_doc(target, source):
+                    for key, value in source.items():
+                        if isinstance(value, dict):
+                            if key not in target or not isinstance(target[key], dict):
+                                target[key] = tomlkit.table()
+                            update_toml_doc(target[key], value)
+                        else:
+                            target[key] = value
 
-                temp_path.write_text(header + content, encoding="utf-8")
+                update_toml_doc(doc, data)
+
+                # Add a helpful header if it's a new file
+                if not path.exists() or not doc.as_string().strip().startswith("#"):
+                    header = (
+                        "# ParrotInk Configuration\n"
+                        "# This file is updated automatically when you change settings.\n"
+                        "# You can also edit it manually while the app is closed.\n\n"
+                    )
+                    content = header + doc.as_string()
+                else:
+                    content = doc.as_string()
+
+                temp_path.write_text(content, encoding="utf-8")
                 os.replace(temp_path, path)
-                logger.debug(f"Configuration saved atomically to {path}")
+                logger.debug(f"Configuration saved atomically (preserving style) to {path}")
             except Exception as e:
                 logger.error(f"Error saving config: {e}")
                 if temp_path.exists():
@@ -374,22 +397,26 @@ class Config(BaseModel):
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":
         try:
-            with open(path, "rb") as f:
-                data = tomllib.load(f)
+            content = Path(path).read_text(encoding="utf-8")
+            data = tomlkit.parse(content)
             return cls(**data)
         except FileNotFoundError:
             return cls()
-        except tomllib.TOMLDecodeError as e:
-            raise ConfigError(f"Invalid TOML format: {e}") from e
-        except ValidationError as e:
-            error_messages = []
-            for err in e.errors():
-                loc = ".".join(str(i) for i in err["loc"])
-                msg = err["msg"]
-                error_messages.append(f"{loc}: {msg}")
-            error_summary = "\n".join(error_messages)
-            raise ConfigError(f"Configuration validation failed:\n{error_summary}") from e
         except Exception as e:
+            # Senior Architecture: Map tomlkit exceptions to ConfigError
+            # to keep the interface consistent.
+            from tomlkit.exceptions import TOMLKitError
+
+            if isinstance(e, TOMLKitError):
+                raise ConfigError(f"Invalid TOML format: {e}") from e
+            if isinstance(e, ValidationError):
+                error_messages = []
+                for err in e.errors():
+                    loc = ".".join(str(i) for i in err["loc"])
+                    msg = err["msg"]
+                    error_messages.append(f"{loc}: {msg}")
+                error_summary = "\n".join(error_messages)
+                raise ConfigError(f"Configuration validation failed:\n{error_summary}") from e
             raise ConfigError(f"Unexpected error loading config: {e}") from e
 
 
