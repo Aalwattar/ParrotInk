@@ -354,16 +354,65 @@ class Config(BaseModel):
                     doc = tomlkit.document()
 
                 # Deep update the tomlkit document with our validated data
-                def update_toml_doc(target, source):
-                    for key, value in source.items():
-                        if isinstance(value, dict):
-                            if key not in target or not isinstance(target[key], dict):
-                                target[key] = tomlkit.table()
-                            update_toml_doc(target[key], value)
-                        else:
-                            target[key] = value
+                def update_toml_doc(target, source, model_cls):
+                    # Create a default instance to compare values against
+                    try:
+                        default_instance = model_cls()
+                    except Exception:
+                        # Fallback for models that might require arguments (unlikely here)
+                        default_instance = None
 
-                update_toml_doc(doc, data)
+                    for key, value in source.items():
+                        # Skip internal fields
+                        if key.startswith("_"):
+                            continue
+
+                        if isinstance(value, dict):
+                            field = model_cls.model_fields.get(key)
+                            if not field:
+                                continue
+
+                            # Recursively update nested tables
+                            if key not in target or not isinstance(target[key], dict):
+                                # Check if nested dict has any non-defaults
+                                def has_non_defaults(d, m):
+                                    try:
+                                        defaults = m()
+                                    except Exception:
+                                        return True  # Assume it has non-defaults if we can't check
+
+                                    for k, v in d.items():
+                                        if isinstance(v, dict):
+                                            f = m.model_fields.get(k)
+                                            if f and has_non_defaults(v, f.annotation):
+                                                return True
+                                        elif hasattr(defaults, k) and v != getattr(defaults, k):
+                                            return True
+                                    return False
+
+                                if key in target or has_non_defaults(value, field.annotation):
+                                    if key not in target:
+                                        target[key] = tomlkit.table()
+                                else:
+                                    continue
+
+                            update_toml_doc(target[key], value, field.annotation)
+                        else:
+                            # Scalar value
+                            if key in target:
+                                # Update existing value (preserves comments)
+                                target[key] = value
+                            else:
+                                # New key: only add if it's NOT the default value
+                                is_default = False
+                                if default_instance and hasattr(default_instance, key):
+                                    if value == getattr(default_instance, key):
+                                        is_default = True
+
+                                if not is_default:
+                                    target[key] = value
+
+                update_toml_doc(doc, data, type(self))
 
                 # Add a helpful header if it's a new file
                 if not path.exists() or not doc.as_string().strip().startswith("#"):
