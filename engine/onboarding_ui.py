@@ -1,3 +1,15 @@
+import os
+import sys
+
+# Senior Architecture: Path Shadowing Guard
+# If run directly as a script (e.g. 'python engine/onboarding_ui.py'), the script's
+# directory is added to the front of sys.path. This causes 'import logging' in
+# libraries like PIL to mistakenly find 'engine/logging.py'.
+if __name__ == "__main__":
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    if _script_dir in sys.path:
+        sys.path.remove(_script_dir)
+
 import tkinter as tk
 
 import ttkbootstrap as tb
@@ -64,7 +76,10 @@ def show_onboarding_blocking() -> bool:
     instruction_frame.pack(fill=X, pady=(0, 25))
 
     instructions = [
-        ("🔑 Setup", "Right-click the tray icon and select 'Settings' to add your API key."),
+        (
+            "🔑 Setup",
+            "Right-click tray > Settings > API Credentials to add your OpenAI or AssemblyAI key.",
+        ),
         ("🎨 Colors", "Grey = Idle, Blue = Listening, Red = Error, Yellow = Connecting."),
         ("❓ Help", "Check the 'Help' menu in the tray for hotkeys and documentation."),
     ]

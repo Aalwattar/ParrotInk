@@ -697,7 +697,9 @@ def handle_cli():
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
     parser.add_argument("--log-file", type=str, help="Override default log file path")
     parser.add_argument(
-        "--background", action="store_true", help="Start without already running warning"
+        "--background",
+        action="store_true",
+        help="Start in background mode (suppresses onboarding and notifications)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -789,6 +791,16 @@ if __name__ == "__main__":
         verbose_count=cli_args.verbose,
         quiet=cli_args.quiet,
     )
+
+    # 4. Onboarding Popup (Gatekeeper)
+    # We run this before main_gui to ensure it blocks and acts as a pure introduction.
+    if not cli_args.background and config.ui.show_onboarding_popup:
+        from engine.onboarding_ui import show_onboarding_blocking
+
+        dont_show_again = show_onboarding_blocking()
+        if dont_show_again:
+            logger.info("User requested to hide onboarding popup in the future.")
+            config.update_and_save({"ui": {"show_onboarding_popup": False}}, blocking=True)
 
     from engine.gui_main import main_gui
 
