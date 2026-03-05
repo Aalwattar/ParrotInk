@@ -51,6 +51,7 @@
 # stop_sound_path = "C:\\Windows\\Media\\Speech Off.wav"
 
 [ui]
+
 # Show a welcome popup on the first launch to explain the app's mechanics.
 # show_onboarding_popup = true
 
