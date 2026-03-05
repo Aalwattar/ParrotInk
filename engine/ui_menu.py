@@ -93,15 +93,17 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                         pystray.MenuItem(
                             "Standard (Balanced) (Default)",
                             lambda i, it: app._on_latency_profile_selection(i, "balanced"),
-                            checked=lambda i: app.config.transcription.latency_profile
-                            == "balanced",
+                            checked=lambda i: (
+                                app.config.transcription.latency_profile == "balanced"
+                            ),
                             radio=True,
                         ),
                         pystray.MenuItem(
                             "Slower (More accurate)",
                             lambda i, it: app._on_latency_profile_selection(i, "accurate"),
-                            checked=lambda i: app.config.transcription.latency_profile
-                            == "accurate",
+                            checked=lambda i: (
+                                app.config.transcription.latency_profile == "accurate"
+                            ),
                             radio=True,
                         ),
                     ),

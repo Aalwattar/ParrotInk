@@ -21,6 +21,7 @@ from .app_types import AppState, ProviderType
 from .logging import get_logger
 from .stats import StatsManager
 from .ui_menu import build_tray_menu
+from .ui_utils import get_resource_path
 
 if TYPE_CHECKING:
     from .config import Config
@@ -169,6 +170,47 @@ class TrayApp:
 
         # Enter the hidden Master mainloop
         self.ui_root.mainloop()
+
+    def _get_icon_asset(self, state: AppState) -> Optional[Image.Image]:
+        """
+        Attempts to load a custom .ico asset for the given state.
+        Returns the Image object if successful, None otherwise.
+        """
+        mapping = {
+            AppState.IDLE: "tray_idle.ico",
+            AppState.LISTENING: "tray_listening.ico",
+            AppState.CONNECTING: "tray_connecting.ico",
+            AppState.ERROR: "tray_error.ico",
+            AppState.STOPPING: "tray_transition.ico",
+            AppState.SHUTTING_DOWN: "tray_transition.ico",
+        }
+
+        filename = mapping.get(state)
+        if not filename:
+            return None
+
+        icon_path = Path(get_resource_path(os.path.join("assets", "icons", filename)))
+        if icon_path.exists():
+            try:
+                # Return the image object. pystray handles resizing if needed.
+                return Image.open(icon_path)
+            except Exception as e:
+                logger.warning(f"Failed to load icon asset {icon_path}: {e}")
+
+        return None
+
+    def _get_icon_image(self, state: AppState) -> Image.Image:
+        """
+        Returns the best available icon for the state:
+        1. Custom .ico asset from assets/icons/
+        2. Dynamically generated colored square (Fallback)
+        """
+        asset = self._get_icon_asset(state)
+        if asset:
+            return asset
+
+        # Fallback to dynamic generation
+        return self._create_image(self._get_icon_color(state))
 
     def _create_image(self, color: str) -> Image.Image:
         image = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
@@ -322,14 +364,14 @@ class TrayApp:
     def _create_icon(self) -> pystray.Icon:
         return pystray.Icon(
             "parrotink",
-            self._create_image(self._get_icon_color(self.state)),
+            self._get_icon_image(self.state),
             "ParrotInk",
             self._create_menu(),
         )
 
     def set_state(self, state: AppState) -> None:
         self.state = state
-        self.icon.icon = self._create_image(self._get_icon_color(state))
+        self.icon.icon = self._get_icon_image(state)
         if self.indicator:
             is_rec = state == AppState.LISTENING
             self.indicator.update_status(is_rec)
