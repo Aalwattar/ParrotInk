@@ -1,0 +1,8 @@
+{
+  "track_id": "config_privacy_ux_20260305",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-03-05T05:28:00Z",
+  "updated_at": "2026-03-05T05:28:00Z",
+  "description": "Config Fidelity (tomlkit) & Audio Privacy UX Improvements"
+}

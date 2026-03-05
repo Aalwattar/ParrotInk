@@ -284,3 +284,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: PortAudio/MME "Undefined external error" Fix**
 *Link: [./archive/audio_mme_error_fix_20260304/](./archive/audio_mme_error_fix_20260304/)*
+
+---
+
+- [ ] **Track: Config Fidelity & Audio Privacy UX Improvements**
+*Link: [./tracks/config_privacy_ux_20260305/](./tracks/config_privacy_ux_20260305/)*
