@@ -1,4 +1,4 @@
-# 🎙️ ParrotInk: Stop Typing. Start Thinking.
+# 🦜 ParrotInk: Stop Typing. Start Thinking.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Latest Release](https://img.shields.io/github/v/release/Aalwattar/ParrotInk?sort=semver)](https://github.com/Aalwattar/ParrotInk/releases)
@@ -6,7 +6,7 @@
 
 ### High-accuracy, ultra-low latency real-time voice-to-text — Native for Windows.
 
-You think faster than you type. **ParrotInk** closes that gap. It is the only open-source, Windows-native application that brings professional-grade, real-time voice-to-text directly to your cursor. Whether you are coding in VS Code, drafting emails in Outlook, or brainstorming in Notion, ParrotInk streams your words instantly so you never lose your flow state.
+You think faster than you type. **ParrotInk** closes that gap. It is the only open-source, Windows-native application that brings professional-grade, real-time voice-to-text directly to your cursor. With a **polished visual identity** and high-fidelity tray feedback, ParrotInk streams your words instantly so you never lose your flow state.
 
 ---
 
@@ -28,7 +28,7 @@ You think faster than you type. **ParrotInk** closes that gap. It is the only op
 
 ## 🚀 The Story Behind ParrotInk
 
-I built ParrotInk because existing dictation tools broke my concentration. They either forced me to wait for "batch processing" to dump a giant block of text onto the screen, or—like the built-in Windows dictation (`Win + H`)—struggled heavily with slight accents. 
+I built ParrotInk because existing dictation tools broke my concentration. They either forced me to wait for "batch processing" to dump a giant block of text onto the screen, or—like the built-in Windows dictation (`Win + H`)—struggled heavily with slight accents.
 
 I wanted true real-time streaming with professional-grade accuracy, and I wanted the freedom to use my own API keys from industry leaders like OpenAI and AssemblyAI. When I couldn't find a single open-source, Windows-native tool that met these standards, I decided to build it. ParrotInk is the result: a tool designed for people who want to type as fast as they can think, without the wait.
 
@@ -63,15 +63,18 @@ ParrotInk is a **portable** application. There is no installer needed; just down
     [![Download ParrotInk](https://img.shields.io/badge/Download-ParrotInk.exe-brightgreen?style=for-the-badge&logo=windows)](https://github.com/Aalwattar/ParrotInk/releases/latest/download/ParrotInk.exe)
 
 > **⚠️ Note on Windows Security:**
-> Because ParrotInk is a new open-source project and is not yet signed with a paid Microsoft Developer certificate, you may see a "Windows protected your PC" warning. 
-> 
-> To run the app: Click **More info** -> **Run anyway**. 
-> 
+> Because ParrotInk is a new open-source project and is not yet signed with a paid Microsoft Developer certificate, you may see a "Windows protected your PC" warning.
+>
+> To run the app: Click **More info** -> **Run anyway**.
+>
 > As this is 100% open-source software, you can always inspect the code or build the EXE yourself from source if you prefer.
 
-2.  **Launch**: Open `ParrotInk.exe`. You will see a new 🎙️ icon in your system tray (bottom right).
-3.  **Setup API Key**: Right-click the tray icon and select **Settings > Setup API Keys**.
-4.  **Start Dictating**: Press `Ctrl + Alt + V` (default) and start speaking.
+2.  **Launch**: Open `ParrotInk.exe`. You will be greeted by a **Welcome Onboarding** window that explains the basics. You will also see a new icon in your **System Tray** (the small icons area next to your clock).
+3.  **Setup API Key**:
+    *   **What is an API Key?** Think of it as a "secret password" that allows ParrotInk to securely talk to the AI models (OpenAI or AssemblyAI) that handle the transcription.
+    *   **How to get one**: Sign up for a free account at [AssemblyAI](https://www.assemblyai.com/dashboard/) or [OpenAI](https://platform.openai.com/api-keys) and copy your "API Key" from their dashboard.
+    *   **Where to put it**: Right-click the ParrotInk tray icon and select **Settings > API Credentials**.
+4.  **Start Dictating**: Press `Ctrl + Alt + V` (default) and start speaking. Your words will appear instantly at your cursor!
 
 > **Pro Tip:** To have ParrotInk start automatically with your computer, right-click the tray icon and check **Settings > Run at Startup**.
 
@@ -112,11 +115,24 @@ As an open-source project, transparency is our priority:
   - **Logs**: `%LOCALAPPDATA%\ParrotInk\Logs\parrotink.log` (Rotational, capped at 30MB).
   - **Statistics**: `%APPDATA%\ParrotInk\Stats\stats.json`.
 
+### 🎨 Visual Feedback: Understanding the Icon
+ParrotInk stays out of your way in the **System Tray** (the icons next to your clock). The icon color tells you exactly what the app is doing:
+- **🔘 Grey**: **Idle** — App is ready and waiting for your hotkey.
+- **🔵 Blue**: **Listening** — Capturing your voice and streaming text.
+- **🟡 Yellow**: **Connecting** — Establishing a secure link to the AI.
+- **🔴 Red**: **Error** — Something is wrong (usually a missing API key).
+
 ---
 
 ## 🔍 User Manual: How it Works
 
-ParrotInk lives in your system tray and monitors a global hotkey via native Win32 hooks. You can switch between two distinct modes via the tray menu (**Settings > Hold to Talk**):
+### ⚡ Simple Use (The "3-Step Flow")
+1. **Click** into the application where you want to type (Notion, Slack, Word, etc.).
+2. **Press** `Ctrl + Alt + V` (or your custom hotkey).
+3. **Speak**. Your words will appear instantly. Stop speaking or press any key to finish.
+
+### 🎮 Operation Modes
+ParrotInk monitors a global hotkey via native Win32 hooks. You can switch between two distinct modes via the tray menu (**Settings > Hold to Talk**):
 
 ### 1. Hold to Talk (The "Walkie-Talkie")
 *Best for short bursts, quick replies, and coding snippets.*
