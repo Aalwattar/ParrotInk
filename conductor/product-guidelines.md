@@ -21,6 +21,6 @@
 ## 4. Messaging
 - **Success:** No explicit success message is needed. The successful injection of text is its own confirmation.
 - **Startup:** A non-intrusive "Ready" toast notification confirms successful launch and active hotkey.
-- **Errors:** Error messages will be delivered via non-intrusive system notifications (e.g., a toast notification) and should be actionable (e.g., "Invalid OpenAI API Key. Please check your settings.").
+- **Soft Errors:** Non-critical issues (e.g., network timeout) are delivered via non-intrusive HUD messages.
+- **Critical Hardware Errors:** Major hardware or privacy blocks trigger a high-visibility, native Windows popup to ensure user awareness and provide immediate recovery steps.
 - **Updates:** Update notifications are minimal and non-intrusive, appearing as a clickable status in the tray menu rather than a popup dialog.
-

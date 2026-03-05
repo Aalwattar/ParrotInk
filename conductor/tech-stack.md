@@ -24,7 +24,7 @@
 - **soxr (python-soxr):** High-quality, stateful audio resampling library used to convert microphone capture rates to provider-specific requirements (e.g., 24kHz for OpenAI).
 - **skia-python:** Powers the high-performance, hardware-accelerated HUD rendering with anti-aliased typography.
 - **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
-- **tomli-w:** Used for writing configuration files in TOML format.
+- **tomlkit:** Used for style-preserving TOML management to maintain user comments and formatting when saving configuration programmatically.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 - **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
 - **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
