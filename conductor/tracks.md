@@ -8,7 +8,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Tray Menu Optimization & Hotkey Bug Fix**
+- [x] **Track: Tray Menu Optimization & Hotkey Bug Fix**
 *Link: [./tracks/tray_menu_optimization_20260305/](./tracks/tray_menu_optimization_20260305/)*
 
 ---
