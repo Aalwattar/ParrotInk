@@ -1,11 +1,11 @@
 # Implementation Plan: Tray Menu Optimization & Hotkey Bug Fix
 
-## Phase 1: Investigation & Hotkey Bug Fix
-- [ ] Task: Write failing test to simulate UI initialization triggering a config save.
-- [ ] Task: Investigate the application startup sequence (focusing on `ui.py` and `config.py`) to confirm the bug hypothesis.
-- [ ] Task: Implement fix: Ensure tray menu strictly reads the hotkey from config without writing defaults back during init.
-- [ ] Task: Update or write unit tests to ensure `save_config` is not called implicitly during UI startup.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Investigation & Hotkey Bug Fix' (Protocol in workflow.md)
+## Phase 1: Investigation & Hotkey Bug Fix [checkpoint: 6364bdd]
+- [x] Task: Write failing test to simulate UI initialization triggering a config save. 6364bdd
+- [x] Task: Investigate the application startup sequence (in `main.py` and `ui.py`) to identify redundant or premature `save_config` calls. 6364bdd
+- [x] Task: Implement fix: Ensure tray menu strictly reads the hotkey from config without writing defaults back during init. 6364bdd
+- [x] Task: Update or write unit tests to ensure `save_config` is not called implicitly during UI startup. 6364bdd
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Investigation & Hotkey Bug Fix' (Protocol in workflow.md) 6364bdd
 
 ## Phase 2: Code Review & Conditional Refactoring
 - [ ] Task: Review the tray menu construction logic (likely `create_menu` or similar in `ui.py`).
