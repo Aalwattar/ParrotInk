@@ -166,7 +166,14 @@ class AudioStreamer:
         last_error = None
         for rate in rates_to_try:
             try:
+                # Guard against ZeroDivisionError just in case
+                if self.sample_rate == 0:
+                    self.sample_rate = rate
+
                 self._stream = self._try_open_stream(rate)
+                if rate != self.sample_rate:
+                    self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
+                    self.sample_rate = rate
                 break
             except Exception as e:
                 logger.info(f"Failed to open audio stream at {rate}Hz: {e}")

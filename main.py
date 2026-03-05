@@ -512,8 +512,6 @@ class AppCoordinator:
         """
         import sounddevice as sd
 
-        from engine.platform_win.audio_diag import is_mic_privacy_blocked
-
         try:
             devices = sd.query_devices()
             input_devices = [d for d in devices if d["max_input_channels"] > 0]
@@ -525,7 +523,13 @@ class AppCoordinator:
             self.ui_bridge.update_partial_text("Please plug in a microphone and restart.")
             return
 
-        error_type = "privacy" if is_mic_privacy_blocked() else "other"
+        error_type = "other"
+        if sys.platform == "win32":
+            from engine.platform_win.audio_diag import is_mic_privacy_blocked
+
+            if is_mic_privacy_blocked():
+                error_type = "privacy"
+
         self.ui_bridge.update_audio_error(error_type)
 
         if error_type == "privacy":
@@ -552,11 +556,15 @@ class AppCoordinator:
             while self.state == AppState.ERROR:
                 await asyncio.sleep(5.0)  # Poll every 5 seconds
                 try:
-                    # Attempt a minimal stream open to check if hardware is actually available
-                    with sd.InputStream(
-                        samplerate=16000, channels=1, blocksize=512, dtype="float32"
-                    ):
-                        pass
+
+                    def check_mic():
+                        # Attempt a minimal stream open to check if hardware is actually available
+                        with sd.InputStream(
+                            samplerate=16000, channels=1, blocksize=512, dtype="float32"
+                        ):
+                            pass
+
+                    await self.loop.run_in_executor(None, check_mic)
                     # Success! Hardware is back.
                     logger.info("Microphone recovery successful. Clearing error state.")
                     self.ui_bridge.update_audio_error(None)  # Clear UI fix links

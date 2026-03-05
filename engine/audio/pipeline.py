@@ -34,6 +34,15 @@ class AudioPipeline:
 
         self._is_running = True
         self.streamer.start(loop=loop)
+
+        # Guard against zero sample rate just in case, though streamer handles it
+        if getattr(self.streamer, "sample_rate", 16000) != adapter.capture_rate_hz:
+            logger.info(
+                f"Streamer fallback changed sample rate to {self.streamer.sample_rate}. "
+                "Updating adapter."
+            )
+            adapter.update_capture_rate(self.streamer.sample_rate)
+
         self._audio_task = asyncio.create_task(self._run_pipe(adapter, provider))
         logger.debug("Audio pipeline started.")
 

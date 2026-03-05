@@ -1,4 +1,3 @@
-import subprocess
 import winreg
 from typing import Literal
 
@@ -28,7 +27,8 @@ def open_settings(page: Literal["microphone", "sound"]):
     """Opens the specific Windows Settings page."""
     uri = "ms-settings:privacy-microphone" if page == "microphone" else "ms-settings:sound"
     try:
-        # Use start to handle the URI scheme
-        subprocess.Popen(["cmd", "/c", "start", uri], shell=True)
+        import os
+
+        os.startfile(uri)
     except Exception:
         pass

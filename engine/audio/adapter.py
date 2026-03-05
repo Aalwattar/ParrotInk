@@ -32,6 +32,16 @@ class AudioAdapter:
         if capture_rate_hz != provider_spec.sample_rate_hz:
             self._resampler = Resampler(capture_rate_hz, provider_spec.sample_rate_hz)
 
+    def update_capture_rate(self, new_rate_hz: int):
+        if self.capture_rate_hz == new_rate_hz:
+            return
+        self.capture_rate_hz = new_rate_hz
+        if self._resampler:
+            self._resampler.close()
+            self._resampler = None
+        if new_rate_hz != self.spec.sample_rate_hz:
+            self._resampler = Resampler(new_rate_hz, self.spec.sample_rate_hz)
+
     def process(self, chunk: np.ndarray) -> Union[bytes, str]:
         """
         Transforms raw capture chunk (float32 or int16) into provider-ready format.

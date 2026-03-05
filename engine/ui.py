@@ -276,6 +276,11 @@ class TrayApp:
 
     def _on_fix_mic_clicked(self, icon: pystray.Icon, item: pystray.MenuItem):
         """Deep-links to Windows Settings based on the error type."""
+        import sys
+
+        if sys.platform != "win32":
+            return
+
         from .platform_win.audio_diag import open_settings
 
         if self.audio_error_type == "privacy":
