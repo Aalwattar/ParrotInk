@@ -10,8 +10,3 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Tray Menu Optimization & Hotkey Bug Fix**
 *Link: [./tracks/tray_menu_optimization_20260305/](./tracks/tray_menu_optimization_20260305/)*
-
----
-
-- [x] **Track: Asset-Based Tray Icons**
-*Link: [./tracks/asset_based_tray_icons_20260305/](./tracks/asset_based_tray_icons_20260305/)*
