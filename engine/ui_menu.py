@@ -79,23 +79,23 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
-                    "Performance Profile",
+                    "Response Speed",
                     pystray.Menu(
                         pystray.MenuItem(
-                            "Fast (Lowest Latency)",
+                            "Immediate (Fast)",
                             lambda i, it: app._on_latency_profile_selection(i, "fast"),
                             checked=lambda i: app.config.transcription.latency_profile == "fast",
                             radio=True,
                         ),
                         pystray.MenuItem(
-                            "Balanced",
+                            "Standard (Balanced) (Default)",
                             lambda i, it: app._on_latency_profile_selection(i, "balanced"),
                             checked=lambda i: app.config.transcription.latency_profile
                             == "balanced",
                             radio=True,
                         ),
                         pystray.MenuItem(
-                            "Accurate (Natural Pauses)",
+                            "Natural (Waits for pauses)",
                             lambda i, it: app._on_latency_profile_selection(i, "accurate"),
                             checked=lambda i: app.config.transcription.latency_profile
                             == "accurate",
@@ -104,22 +104,22 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     ),
                 ),
                 pystray.MenuItem(
-                    "Microphone Profile",
+                    "Noise Suppression (OpenAI Only)",
                     pystray.Menu(
                         pystray.MenuItem(
-                            "Headset (Near-field)",
+                            "Optimized for Headsets",
                             lambda i, it: app._on_mic_profile_selection(i, "headset"),
                             checked=lambda i: app.config.transcription.mic_profile == "headset",
                             radio=True,
                         ),
                         pystray.MenuItem(
-                            "Laptop (Far-field)",
+                            "Optimized for Laptops",
                             lambda i, it: app._on_mic_profile_selection(i, "laptop"),
                             checked=lambda i: app.config.transcription.mic_profile == "laptop",
                             radio=True,
                         ),
                         pystray.MenuItem(
-                            "None (Raw)",
+                            "Standard (Original Mic) (Default)",
                             lambda i, it: app._on_mic_profile_selection(i, "none"),
                             checked=lambda i: app.config.transcription.mic_profile == "none",
                             radio=True,
@@ -129,7 +129,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     enabled=lambda i: app.current_provider == "openai",
                 ),
                 pystray.MenuItem(
-                    "Real-time Punctuation",
+                    "Real-time Punctuation (AssemblyAI Only)",
                     app._on_toggle_realtime_punctuation_clicked,
                     checked=lambda i: app.config.providers.assemblyai.advanced.format_text,
                     # AssemblyAI specific feature
