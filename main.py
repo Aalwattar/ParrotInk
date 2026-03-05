@@ -526,26 +526,33 @@ class AppCoordinator:
             return
 
         error_type = "other"
+        error_msg = "Audio Device Unavailable"
+        error_sub = "Another app might be using the mic. Right-click Tray > Fix."
+
         if sys.platform == "win32":
             from engine.platform_win.audio_diag import is_mic_privacy_blocked
 
             if is_mic_privacy_blocked():
                 error_type = "privacy"
+                error_msg = "Microphone Access Denied"
+                error_sub = "Blocked by Windows. Check 'Privacy & security > Microphone'."
+                # Senior UX: Show unmissable popup
+                self.ui_bridge.show_privacy_popup()
+            elif (
+                "permission" in str(error).lower()
+                or "access denied" in str(error).lower()
+                or "paerrorcode -9999" in str(error).lower()
+                or "wait for device wait timed out" in str(error).lower()
+            ):
+                # Fallback detection if registry check missed it but driver reported it
+                error_type = "privacy"
+                error_msg = "Microphone Access Denied"
+                error_sub = "Permission error. Check Windows Privacy settings."
+                self.ui_bridge.show_privacy_popup()
 
         self.ui_bridge.update_audio_error(error_type)
-
-        if error_type == "privacy":
-            self.ui_bridge.update_status_message("Microphone Access Denied")
-            self.ui_bridge.update_partial_text(
-                "Access is blocked by Windows. Check 'Privacy & security > Microphone'."
-            )
-            # Senior UX: Show unmissable popup
-            self.ui_bridge.show_privacy_popup()
-        else:
-            self.ui_bridge.update_status_message("Audio Device Unavailable")
-            self.ui_bridge.update_partial_text(
-                "Another app might be using the mic. Right-click Tray > Fix."
-            )
+        self.ui_bridge.update_status_message(error_msg)
+        self.ui_bridge.update_partial_text(error_sub)
 
         # Start recovery polling
         if self.loop and (not self._retry_mic_task or self._retry_mic_task.done()):
@@ -572,9 +579,10 @@ class AppCoordinator:
                     # Success! Hardware is back.
                     logger.info("Microphone recovery successful. Clearing error state.")
                     self.ui_bridge.update_audio_error(None)  # Clear UI fix links
-                    self.set_state(AppState.IDLE)
-                    self.ui_bridge.update_status_message("Microphone Restored")
-                    self.ui_bridge.update_partial_text("You can now resume transcription.")
+                    if self.state == AppState.ERROR:
+                        self.set_state(AppState.IDLE)
+                        self.ui_bridge.update_status_message("Microphone Restored")
+                        self.ui_bridge.update_partial_text("You can now resume transcription.")
                     break
                 except Exception:
                     # Still failing, continue polling

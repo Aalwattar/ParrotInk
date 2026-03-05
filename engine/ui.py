@@ -524,35 +524,37 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_AUDIO_ERROR:
                 self.audio_error_type = data
                 self._refresh_menu()
-            elif msg_type == UIEvent.SHOW_PRIVACY_POPUP:
-                self._show_privacy_dialog()
+            elif msg_type == UIEvent.SHOW_HARDWARE_ERROR_POPUP:
+                self._show_hardware_error_dialog()
             elif msg_type == UIEvent.QUIT:
                 self.stop()
 
-    def _show_privacy_dialog(self):
-        """Shows a styled popup for microphone privacy issues."""
-        if not self.ui_root:
-            return
+    def _show_hardware_error_dialog(self):
+        """Shows a native OS popup for microphone hardware/privacy issues."""
 
         def show():
-            from ttkbootstrap.dialogs import Messagebox
+            import ctypes
 
-            ans = Messagebox.show_question(
-                message=(
-                    "ParrotInk cannot access your microphone because it is blocked by Windows.\n\n"
-                    "Please enable microphone access in 'Privacy & security > Microphone'.\n\n"
-                    "Would you like to open settings now?"
-                ),
-                title="Microphone Access Required",
-                buttons=["No:secondary", "Open Settings:primary"],
-                parent=self.ui_root,
+            # MB_YESNO | MB_ICONWARNING | MB_SETFOREGROUND
+            # 4 (Yes/No) | 48 (Warning Icon) | 65536 (SetForeground) = 65588
+            # Yes = 6, No = 7
+            msg = (
+                "ParrotInk cannot access your microphone.\n\n"
+                "This usually happens if Windows Privacy settings are blocking it, "
+                "or if another app has exclusive control.\n\n"
+                "Would you like to open the Windows Microphone Privacy settings now?"
             )
-            if ans == "Open Settings":
+            title = "Microphone Access Required"
+
+            result = ctypes.windll.user32.MessageBoxW(0, msg, title, 65588)
+
+            if result == 6:  # Yes clicked
                 from .platform_win.audio_diag import open_settings
 
                 open_settings("microphone")
 
-        self.ui_root.after(0, show)
+        # Run on a detached thread so it doesn't block the UI event loop
+        threading.Thread(target=show, daemon=True).start()
 
     def run(self) -> None:
         # 1. Launch the hidden Master on its own sidecar thread
