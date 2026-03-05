@@ -229,6 +229,7 @@ class ProvidersConfig(BaseModel):
 
 class UIConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    show_onboarding_popup: bool = True
     floating_indicator: FloatingIndicatorConfig = Field(default_factory=FloatingIndicatorConfig)
 
 
