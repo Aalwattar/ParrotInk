@@ -288,4 +288,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [x] **Track: Config Fidelity & Audio Privacy UX Improvements**
-*Link: [./tracks/config_privacy_ux_20260305/](./tracks/config_privacy_ux_20260305/)*
+*Link: [./archive/config_privacy_ux_20260305/](./archive/config_privacy_ux_20260305/)*
