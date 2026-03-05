@@ -1,4 +1,4 @@
-﻿# Project Tracks
+# Project Tracks
 
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
 
@@ -289,3 +289,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [x] **Track: Config Fidelity & Audio Privacy UX Improvements**
 *Link: [./archive/config_privacy_ux_20260305/](./archive/config_privacy_ux_20260305/)*
+
+---
+
+- [ ] **Track: Tray Menu Optimization & Hotkey Bug Fix**
+*Link: [./tracks/tray_menu_optimization_20260305/](./tracks/tray_menu_optimization_20260305/)*
