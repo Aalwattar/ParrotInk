@@ -53,9 +53,12 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
             default=is_version_default,
         )
     )
+
+    # 3. Usage Statistics (Promoted to Top Level)
+    menu_items.append(pystray.MenuItem("Statistics...", app._on_show_stats_clicked))
     menu_items.append(pystray.Menu.SEPARATOR)
 
-    # 3. Transcription Sub-menu (Provider & Profiles)
+    # 4. Transcription Sub-menu (Provider & Profiles)
     menu_items.append(
         pystray.MenuItem(
             "Transcription",
@@ -82,7 +85,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     "Response Speed",
                     pystray.Menu(
                         pystray.MenuItem(
-                            "Immediate (Fast)",
+                            "Fast (Less accurate)",
                             lambda i, it: app._on_latency_profile_selection(i, "fast"),
                             checked=lambda i: app.config.transcription.latency_profile == "fast",
                             radio=True,
@@ -95,7 +98,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             radio=True,
                         ),
                         pystray.MenuItem(
-                            "Natural (Waits for pauses)",
+                            "Slower (More accurate)",
                             lambda i, it: app._on_latency_profile_selection(i, "accurate"),
                             checked=lambda i: app.config.transcription.latency_profile
                             == "accurate",
@@ -129,7 +132,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     enabled=lambda i: app.current_provider == "openai",
                 ),
                 pystray.MenuItem(
-                    "Real-time Punctuation (AssemblyAI Only)",
+                    "Real-time Punctuation",
                     app._on_toggle_realtime_punctuation_clicked,
                     checked=lambda i: app.config.providers.assemblyai.advanced.format_text,
                     # AssemblyAI specific feature
@@ -139,7 +142,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
         )
     )
 
-    # 4. Settings Sub-menu
+    # 5. Settings Sub-menu
     menu_items.append(
         pystray.MenuItem(
             "Settings",
@@ -199,13 +202,11 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
         )
     )
 
-    # 5. Tools Sub-menu
+    # 6. Tools Sub-menu
     menu_items.append(
         pystray.MenuItem(
             "Tools",
             pystray.Menu(
-                pystray.MenuItem("Statistics...", app._on_show_stats_clicked),
-                pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Open Configuration File", app._open_config),
                 pystray.MenuItem("Open Log Folder", app._open_log_folder),
                 pystray.MenuItem(
@@ -217,7 +218,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
         )
     )
 
-    # 6. Help & Exit
+    # 7. Help & Exit
     menu_items.append(pystray.Menu.SEPARATOR)
     menu_items.append(
         pystray.MenuItem(
