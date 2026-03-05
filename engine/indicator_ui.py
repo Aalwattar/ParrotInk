@@ -194,7 +194,11 @@ class IndicatorWindow:
         if status and status not in (STATUS_LISTENING, STATUS_FINALIZED):
             self.show()
             self._render_preview()
-            self._start_linger_timer(duration=3.0)
+
+            # Senior UX: Don't linger critical hardware errors. Make them stay.
+            is_critical = any(kw in status for kw in ("Access Denied", "Unavailable", "Required"))
+            if not is_critical:
+                self._start_linger_timer(duration=3.0)
         else:
             self._render_preview()
 

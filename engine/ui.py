@@ -314,7 +314,7 @@ class TrayApp:
         # 1. Hardware Fix Links (High Priority)
         if self.audio_error_type:
             fix_label = (
-                "🚨 FIX: Allow Microphone Access"
+                "🚨 FIX: Check Privacy & security > Microphone"
                 if self.audio_error_type == "privacy"
                 else "🚨 FIX: Open Sound Settings"
             )
@@ -524,8 +524,35 @@ class TrayApp:
             elif msg_type == UIEvent.UPDATE_AUDIO_ERROR:
                 self.audio_error_type = data
                 self._refresh_menu()
+            elif msg_type == UIEvent.SHOW_PRIVACY_POPUP:
+                self._show_privacy_dialog()
             elif msg_type == UIEvent.QUIT:
                 self.stop()
+
+    def _show_privacy_dialog(self):
+        """Shows a styled popup for microphone privacy issues."""
+        if not self.ui_root:
+            return
+
+        def show():
+            from ttkbootstrap.dialogs import Messagebox
+
+            ans = Messagebox.show_question(
+                message=(
+                    "ParrotInk cannot access your microphone because it is blocked by Windows.\n\n"
+                    "Please enable microphone access in 'Privacy & security > Microphone'.\n\n"
+                    "Would you like to open settings now?"
+                ),
+                title="Microphone Access Required",
+                buttons=["No:secondary", "Open Settings:primary"],
+                parent=self.ui_root,
+            )
+            if ans == "Open Settings":
+                from .platform_win.audio_diag import open_settings
+
+                open_settings("microphone")
+
+        self.ui_root.after(0, show)
 
     def run(self) -> None:
         # 1. Launch the hidden Master on its own sidecar thread

@@ -23,6 +23,7 @@ class UIEvent:
     RECORD_STATS = "record_stats"
     UPDATE_VERSION_NOTIFICATION = "update_version_notification"
     UPDATE_AUDIO_ERROR = "update_audio_error"
+    SHOW_PRIVACY_POPUP = "show_privacy_popup"
     QUIT = "quit"
 
 
@@ -84,6 +85,10 @@ class UIBridge:
     def update_audio_error(self, error_type: Optional[str]):
         """Signal the UI about a specific audio hardware error."""
         self.queue.put((UIEvent.UPDATE_AUDIO_ERROR, error_type))
+
+    def show_privacy_popup(self):
+        """Signal the UI to show the microphone privacy popup."""
+        self.queue.put((UIEvent.SHOW_PRIVACY_POPUP, None))
 
     def stop(self):
         """Signal the UI to stop."""

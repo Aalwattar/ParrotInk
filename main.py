@@ -419,6 +419,8 @@ class AppCoordinator:
             return
 
         # 2. Fast OS-level Diagnostic (Privacy & Missing Hardware)
+        # Senior Architecture: Always run this BEFORE entering CONNECTING state
+        # to prevent pointless network handshakes if the local hardware is locked.
         if sys.platform == "win32":
             from engine.platform_win.audio_diag import is_mic_privacy_blocked
 
@@ -535,8 +537,10 @@ class AppCoordinator:
         if error_type == "privacy":
             self.ui_bridge.update_status_message("Microphone Access Denied")
             self.ui_bridge.update_partial_text(
-                "Access is blocked by Windows. Right-click Tray > Fix."
+                "Access is blocked by Windows. Check 'Privacy & security > Microphone'."
             )
+            # Senior UX: Show unmissable popup
+            self.ui_bridge.show_privacy_popup()
         else:
             self.ui_bridge.update_status_message("Audio Device Unavailable")
             self.ui_bridge.update_partial_text(
