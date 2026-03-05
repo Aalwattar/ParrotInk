@@ -2,8 +2,8 @@
 
 ## Phase 1: Configuration Fidelity (tomlkit)
 - [x] Task: Add `tomlkit` to `pyproject.toml` dependencies and run `uv lock`. 9bfd6be
-- [ ] Task: Update `engine/config.py` to use `tomlkit` for reading and writing `config.toml`, ensuring comments and original document structure are preserved.
-- [ ] Task: Create or update unit tests in `tests/test_config.py` to verify that saving a config change does not strip comments.
+- [x] Task: Update `engine/config.py` to use `tomlkit` for reading and writing `config.toml`, ensuring comments and original document structure are preserved. 4b1df17
+- [x] Task: Create or update unit tests in `tests/test_config.py` to verify that saving a config change does not strip comments. 4b1df17
 - [ ] Task: Conductor - User Manual Verification 'Configuration Fidelity' (Protocol in workflow.md)
 
 ## Phase 2: Dynamic Diagnostic & Pipeline Guard
