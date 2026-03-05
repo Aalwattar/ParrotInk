@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icons/icon_128.png" width="128" alt="ParrotInk Logo">
+</p>
+
 # 🦜 ParrotInk: Stop Typing. Start Thinking.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
