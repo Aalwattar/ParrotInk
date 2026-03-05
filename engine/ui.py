@@ -59,6 +59,8 @@ class TrayApp:
         on_toggle_startup: Callable[[bool], None] | None = None,
         on_toggle_hold_mode: Callable[[bool], None] | None = None,
         on_mic_profile_change: Callable[[str], None] | None = None,
+        on_latency_profile_change: Callable[[str], None] | None = None,
+        on_toggle_realtime_punctuation: Callable[[bool], None] | None = None,
         on_reload_config: Callable[[], None] | None = None,
         on_check_updates: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
@@ -81,6 +83,8 @@ class TrayApp:
         self.on_toggle_startup = on_toggle_startup
         self.on_toggle_hold_mode = on_toggle_hold_mode
         self.on_mic_profile_change = on_mic_profile_change
+        self.on_latency_profile_change = on_latency_profile_change
+        self.on_toggle_realtime_punctuation = on_toggle_realtime_punctuation
         self.on_reload_config = on_reload_config
         self.on_check_updates = on_check_updates
         self.availability = availability or {"openai": True, "assemblyai": True}
@@ -211,6 +215,18 @@ class TrayApp:
     def _on_mic_profile_selection(self, icon: pystray.Icon, profile: str) -> None:
         if self.on_mic_profile_change:
             self.on_mic_profile_change(profile)
+
+    def _on_latency_profile_selection(self, icon: pystray.Icon, profile: str) -> None:
+        if self.on_latency_profile_change:
+            self.on_latency_profile_change(profile)
+
+    def _on_toggle_realtime_punctuation_clicked(
+        self, icon: pystray.Icon, item: pystray.MenuItem
+    ) -> None:
+        if self.on_toggle_realtime_punctuation:
+            # We toggle based on current config state
+            current = self.config.providers.assemblyai.advanced.format_text
+            self.on_toggle_realtime_punctuation(not current)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_before_hotkey_change:

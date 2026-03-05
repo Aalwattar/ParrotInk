@@ -55,7 +55,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     )
     menu_items.append(pystray.Menu.SEPARATOR)
 
-    # 3. Transcription Sub-menu (Provider & Profile)
+    # 3. Transcription Sub-menu (Provider & Profiles)
     menu_items.append(
         pystray.MenuItem(
             "Transcription",
@@ -73,6 +73,32 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             "AssemblyAI",
                             lambda i, it: app._on_provider_selection(i, "assemblyai"),
                             checked=lambda i: app.current_provider == "assemblyai",
+                            radio=True,
+                        ),
+                    ),
+                ),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem(
+                    "Performance Profile",
+                    pystray.Menu(
+                        pystray.MenuItem(
+                            "Fast (Lowest Latency)",
+                            lambda i, it: app._on_latency_profile_selection(i, "fast"),
+                            checked=lambda i: app.config.transcription.latency_profile == "fast",
+                            radio=True,
+                        ),
+                        pystray.MenuItem(
+                            "Balanced",
+                            lambda i, it: app._on_latency_profile_selection(i, "balanced"),
+                            checked=lambda i: app.config.transcription.latency_profile
+                            == "balanced",
+                            radio=True,
+                        ),
+                        pystray.MenuItem(
+                            "Accurate (Natural Pauses)",
+                            lambda i, it: app._on_latency_profile_selection(i, "accurate"),
+                            checked=lambda i: app.config.transcription.latency_profile
+                            == "accurate",
                             radio=True,
                         ),
                     ),
@@ -99,6 +125,15 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             radio=True,
                         ),
                     ),
+                    # OpenAI specific optimization
+                    enabled=lambda i: app.current_provider == "openai",
+                ),
+                pystray.MenuItem(
+                    "Real-time Punctuation",
+                    app._on_toggle_realtime_punctuation_clicked,
+                    checked=lambda i: app.config.providers.assemblyai.advanced.format_text,
+                    # AssemblyAI specific feature
+                    enabled=lambda i: app.current_provider == "assemblyai",
                 ),
             ),
         )
@@ -143,16 +178,6 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     app._on_toggle_startup_clicked,
                     checked=lambda it: app.config.interaction.run_at_startup,
                 ),
-            ),
-        )
-    )
-
-    # 5. Tools Sub-menu
-    menu_items.append(
-        pystray.MenuItem(
-            "Tools",
-            pystray.Menu(
-                pystray.MenuItem("Statistics...", app._on_show_stats_clicked),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
                     "Floating HUD",
@@ -170,6 +195,16 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                         ),
                     ),
                 ),
+            ),
+        )
+    )
+
+    # 5. Tools Sub-menu
+    menu_items.append(
+        pystray.MenuItem(
+            "Tools",
+            pystray.Menu(
+                pystray.MenuItem("Statistics...", app._on_show_stats_clicked),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Open Configuration File", app._open_config),
                 pystray.MenuItem("Open Log Folder", app._open_log_folder),

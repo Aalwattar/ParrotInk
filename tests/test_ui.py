@@ -87,7 +87,10 @@ def test_tray_menu_structure(mocker, config):
         trans_menu = items[2].submenu
         trans_items = list(trans_menu)
         assert trans_items[0].text == "Provider"
-        assert trans_items[1].text == "Microphone Profile"
+        # Index 1 is separator
+        assert trans_items[2].text == "Performance Profile"
+        assert trans_items[3].text == "Microphone Profile"
+        assert trans_items[4].text == "Real-time Punctuation"
 
         # Check Providers sub-menu
         providers_menu = trans_items[0].submenu
