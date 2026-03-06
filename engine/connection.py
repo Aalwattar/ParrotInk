@@ -195,12 +195,11 @@ class ConnectionManager:
                     self._backoff_delay = min(
                         self._backoff_delay * 2, self.config.audio.max_backoff_seconds
                     )
-                    self.provider = None
-                    self.audio_adapter = None
+
+                    # Force a cleanup of the provider if it exists before clearing references
+                    await self.stop_provider()
+
                     self.set_state(AppState.ERROR)
-                    # Force a cleanup of the provider if it exists
-                    if self.provider:
-                        asyncio.create_task(self.stop_provider())
                     raise
 
                 await asyncio.sleep(self.config.audio.initial_backoff_seconds)

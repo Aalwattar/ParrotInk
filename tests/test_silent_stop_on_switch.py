@@ -2,18 +2,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from engine.config import Config
-from main import AppCoordinator, AppState
+from main import AppState
 
 
 @pytest.mark.asyncio
-async def test_silent_stop_on_provider_switch():
+async def test_silent_stop_on_provider_switch(coordinator):
     """Verify that AppCoordinator triggers a silent stop when provider changes mid-session."""
-    cfg = Config()
-    cfg.transcription.provider = "openai"
-
-    ui_bridge = MagicMock()
-    coordinator = AppCoordinator(cfg, ui_bridge)
+    coordinator.config.transcription.provider = "openai"
     coordinator._loop = MagicMock()  # Mock loop for run_coroutine_threadsafe
 
     # Force listening state
@@ -25,7 +20,9 @@ async def test_silent_stop_on_provider_switch():
     # Change provider
     with patch("asyncio.run_coroutine_threadsafe") as mock_run:
         # Update config to trigger observer
-        cfg.update_and_save({"transcription": {"provider": "assemblyai"}}, blocking=True)
+        coordinator.config.update_and_save(
+            {"transcription": {"provider": "assemblyai"}}, blocking=True
+        )
 
         # ASSERT: run_coroutine_threadsafe was called with stop_listening(silent=True)
         # We check the arguments of the first call

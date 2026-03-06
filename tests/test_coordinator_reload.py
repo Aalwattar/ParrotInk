@@ -3,20 +3,18 @@ from unittest.mock import MagicMock
 import pytest
 import tomli_w
 
-from engine.config import Config
-from main import AppCoordinator
-
 
 @pytest.mark.asyncio
-async def test_coordinator_handles_config_reload(tmp_path):
+async def test_coordinator_handles_config_reload(tmp_path, coordinator):
     config_path = tmp_path / "config.toml"
     config_path.write_text(tomli_w.dumps({"hotkeys": {"hotkey": "v"}}), encoding="utf-8")
 
-    cfg = Config.from_file(config_path)
+    # Update coordinator's config to point to our test file
+    coordinator.config.reload(path=config_path)
+
     # Mock components
     ui_bridge = MagicMock()
-
-    coordinator = AppCoordinator(cfg, ui_bridge)
+    coordinator.ui_bridge = ui_bridge
 
     # Track original monitor to verify it updated
     monitor = coordinator.input_monitor
@@ -32,7 +30,7 @@ async def test_coordinator_handles_config_reload(tmp_path):
     config_path.write_text(tomli_w.dumps(updated_data), encoding="utf-8")
 
     # Reload
-    cfg.reload(path=config_path)
+    coordinator.config.reload(path=config_path)
 
     # Verify Coordinator updated its components
     assert monitor.hotkey == "r"

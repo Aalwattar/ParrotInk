@@ -47,6 +47,8 @@ async def test_openai_dialect_b_payload():
         if "noise_reduction" in audio_input and audio_input["noise_reduction"] is not None:
             assert audio_input["noise_reduction"]["type"] in ["near_field", "far_field"]
 
+        await provider.stop()
+
 
 @pytest.mark.asyncio
 async def test_openai_dialect_b_events():

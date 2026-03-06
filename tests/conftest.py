@@ -72,3 +72,20 @@ def guard_session_monitor():
     """Prevent SessionMonitor from starting a background thread during tests."""
     with patch("engine.platform_win.session.SessionMonitor.start"):
         yield
+
+
+@pytest.fixture(autouse=True)
+def guard_coordinator_watchdog():
+    """Prevent AppCoordinator from starting its background watchdog task in tests."""
+    with patch("main.AppCoordinator._hook_watchdog_task_run"):
+        yield
+
+
+@pytest.fixture
+async def coordinator(config):
+    """Provides a clean AppCoordinator instance with proper async shutdown."""
+    from main import AppCoordinator
+
+    coord = AppCoordinator(config)
+    yield coord
+    await coord.shutdown()

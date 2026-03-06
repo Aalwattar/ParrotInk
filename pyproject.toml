@@ -63,6 +63,7 @@ dev = [
     "types-keyboard>=0.13.2.20250801",
     "pyinstaller>=6.18.0",
     "pre-commit>=4.5.1",
+    "pytest-timeout>=2.4.0",
 ]
 
 [tool.ruff]
@@ -110,9 +111,13 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q"
+addopts = "-ra -q --timeout=30"
 testpaths = [
     "tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::ResourceWarning",
 ]
 markers = [
     'integration: marks tests as integration tests (deselect with "-m \"not integration\"")',

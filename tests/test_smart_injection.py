@@ -3,16 +3,6 @@ from unittest.mock import patch
 
 import pytest
 
-from engine.config import Config
-from main import AppCoordinator
-
-
-@pytest.fixture
-def coordinator():
-    c = Config()
-    coord = AppCoordinator(c)
-    return coord
-
 
 @pytest.mark.asyncio
 async def test_smart_inject_append_only(coordinator):
