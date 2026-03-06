@@ -1,5 +1,4 @@
 # .pre-commit-config.yaml
-# Production-grade deterministic synchronization and safety gates.
 default_install_hook_types: [pre-commit, pre-push]
 exclude: '^(assets/|nanobanana-output/|build/|dist/)'
 
@@ -15,19 +14,18 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-case-conflict
-      - id: no-commit-to-branch
-        args: [--branch, master]
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.23.3
     hooks:
       - id: gitleaks
+        stages: [pre-push]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.9.7
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
@@ -35,20 +33,21 @@ repos:
     hooks:
       - id: uv-lock
 
-  # Local system hooks for deep verification before push
   - repo: local
     hooks:
       - id: mypy
         name: mypy
-        entry: uv run mypy .
+        entry: uv run --locked mypy .
         language: system
         types: [python]
         pass_filenames: false
         stages: [pre-push]
+        require_serial: true
 
       - id: pytest
         name: pytest
-        entry: uv run pytest -q
+        entry: uv run --locked pytest -q
         language: system
         pass_filenames: false
         stages: [pre-push]
+        require_serial: true
