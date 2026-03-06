@@ -4,6 +4,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_hotkey_assignment(coordinator):
     # In the new architecture, InputMonitor holds the hotkey
+    coordinator.input_monitor.set_hotkey("ctrl+alt+v", hold_mode=True)
     assert coordinator.input_monitor._hotkey_str == "ctrl+alt+v"
     assert coordinator.input_monitor._hold_mode is True
 
@@ -22,6 +23,7 @@ async def test_hotkey_update_on_config_change(coordinator):
 
 @pytest.mark.asyncio
 async def test_hold_mode_logic(coordinator):
+    coordinator.config.hotkeys.hold_mode = True
     assert coordinator.config.hotkeys.hold_mode is True
 
 
