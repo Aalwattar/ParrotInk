@@ -7,21 +7,22 @@ from main import AppState
 
 @pytest.mark.asyncio
 async def test_silent_stop_on_provider_switch(coordinator):
-    """Verify that AppCoordinator triggers a silent stop when provider changes mid-session."""
-    coordinator.config.transcription.provider = "openai"
+    """Verify that AppCoordinator performs a silent stop when provider changes mid-session."""
+    # 1. Setup active listening state
+    coordinator.state = AppState.LISTENING
+    coordinator.stop_listening = AsyncMock()
     coordinator._loop = MagicMock()  # Mock loop for run_coroutine_threadsafe
 
-    # Force listening state
-    coordinator.state = AppState.LISTENING
-
-    # Mock stop_listening
-    coordinator.stop_listening = AsyncMock()
-
-    # Change provider
+    # 2. Trigger a config change that switches provider
     with patch("asyncio.run_coroutine_threadsafe") as mock_run:
-        # Update config to trigger observer
+        new_config = coordinator.config
+        # Switch from openai to assemblyai (or vice-versa)
+        current = coordinator.config.transcription.provider
+        target = "assemblyai" if current == "openai" else "openai"
+        new_config.transcription.provider = target
+
         coordinator.config.update_and_save(
-            {"transcription": {"provider": "assemblyai"}}, blocking=True
+            {"transcription": {"provider": target}}, path="test_switch.toml", blocking=True
         )
 
         # ASSERT: run_coroutine_threadsafe was called with stop_listening(silent=True)
@@ -30,3 +31,9 @@ async def test_silent_stop_on_provider_switch(coordinator):
         # The first arg is the coroutine object from stop_listening(silent=True)
         # We can verify coordinator.stop_listening was called with silent=True
         coordinator.stop_listening.assert_called_with(silent=True)
+
+    # Cleanup
+    import os
+
+    if os.path.exists("test_switch.toml"):
+        os.remove("test_switch.toml")

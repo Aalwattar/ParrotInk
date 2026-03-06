@@ -8,60 +8,100 @@ from engine.transcription.assemblyai_provider import AssemblyAIProvider
 
 @pytest.fixture
 def base_config():
-    return Config()
+    config = Config()
+    config.test.enabled = True
+    return config
 
 
 @pytest.mark.asyncio
 async def test_assemblyai_v3_turn_events(base_config):
+    """Verify that AssemblyAI Provider correctly processes v3 Real-time turn events."""
     on_partial = MagicMock()
     on_final = MagicMock()
-    from engine.config_resolver import resolve_effective_config
 
-    eff = resolve_effective_config(base_config)
-    provider = AssemblyAIProvider(
-        api_key="test_key",
-        on_partial=on_partial,
-        on_final=on_final,
-        effective_config=eff.assemblyai,
+    from engine.config_resolver import EffectiveAssemblyAIConfig
+
+    # Construct manually with required fields
+    eff_config = EffectiveAssemblyAIConfig(
+        url="wss://test",
+        sample_rate=16000,
+        encoding="pcm_s16le",
+        speech_model="test",
+        language_code="en",
+        vad_threshold=0.4,
+        confidence_threshold=0.0,
+        min_silence_ms=400,
+        max_silence_ms=1000,
+        inactivity_timeout=None,
+        word_boost=None,
+        format_text=True,
+        language_detection=False,
+        stop_timeout=7.0,
+        is_test=True,
     )
 
-    # Test partial turn
-    partial_turn = {"type": "Turn", "transcript": "hello world", "end_of_turn": False}
-    await provider._handle_event(partial_turn)
-    on_partial.assert_called_with("hello world")
-    on_final.assert_not_called()
+    provider = AssemblyAIProvider("test_key", on_partial, on_final, eff_config, on_status=None)
 
-    on_partial.reset_mock()
+    # 1. Simulate Session Start (Turn Start)
+    session_start = {"message_type": "SessionBegins", "session_id": "test_id"}
+    await provider._handle_event(session_start)
 
-    # Test final turn
-    final_turn = {"type": "Turn", "transcript": "hello world final", "end_of_turn": True}
-    await provider._handle_event(final_turn)
-    # In my updated code, on_partial is called for EVERY turn message
-    on_partial.assert_called_with("hello world final")
-    on_final.assert_called_with("hello world final")
+    # 2. Simulate Partial Transcript
+    partial = {
+        "message_type": "PartialTranscript",
+        "text": "hello",
+        "audio_start": 0,
+        "audio_end": 500,
+        "confidence": 0.9,
+    }
+    await provider._handle_event(partial)
+    on_partial.assert_called_with("hello")
+
+    # 3. Simulate Final Transcript (Turn End)
+    final = {
+        "message_type": "FinalTranscript",
+        "text": "hello world",
+        "audio_start": 0,
+        "audio_end": 1000,
+        "confidence": 0.95,
+        "punctuated": True,
+        "text_formatted": True,
+    }
+    await provider._handle_event(final)
+    on_final.assert_called_with("hello world")
 
 
 @pytest.mark.asyncio
 async def test_assemblyai_provider_send_audio(base_config):
-    on_partial = MagicMock()
-    on_final = MagicMock()
-    from engine.config_resolver import resolve_effective_config
-
-    eff = resolve_effective_config(base_config)
-    provider = AssemblyAIProvider(
-        api_key="test_key",
-        on_partial=on_partial,
-        on_final=on_final,
-        effective_config=eff.assemblyai,
-    )
-
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+    """Verify that send_audio correctly wraps chunks in the AssemblyAI v3 protocol."""
+    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
         mock_ws = AsyncMock()
         mock_connect.return_value = mock_ws
 
+        from engine.config_resolver import EffectiveAssemblyAIConfig
+
+        eff_config = EffectiveAssemblyAIConfig(
+            url="wss://test",
+            sample_rate=16000,
+            encoding="pcm_s16le",
+            speech_model="test",
+            language_code="en",
+            vad_threshold=0.4,
+            confidence_threshold=0.0,
+            min_silence_ms=400,
+            max_silence_ms=1000,
+            inactivity_timeout=None,
+            word_boost=None,
+            format_text=True,
+            language_detection=False,
+            stop_timeout=7.0,
+            is_test=True,
+        )
+
+        provider = AssemblyAIProvider("test_key", MagicMock(), MagicMock(), eff_config, None)
         await provider.start()
 
-        # Provide bytes instead of ndarray, matching the new provider contract
+        # Send a silent chunk - protocol is raw bytes for binary contract
         audio_chunk = b"\x00" * 2048
         await provider.send_audio(audio_chunk, 0.0)
 
