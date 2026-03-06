@@ -1,0 +1,46 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: "Lint, Type Check & Test"
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked --group dev
+
+      - name: Lint (Ruff)
+        run: uv run --locked ruff check .
+
+      - name: Type Check (Mypy)
+        run: uv run --locked mypy .
+
+      - name: Run Tests
+        run: uv run --locked pytest -q
