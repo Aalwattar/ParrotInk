@@ -25,7 +25,7 @@ def show_onboarding_blocking() -> bool:
     # 1. WINDOW SETUP
     style = tb.Style(theme="superhero")
     root = style.master
-    root.withdraw()
+    root.withdraw()  # type: ignore[attr-defined]
 
     window = tb.Toplevel(master=root)
     window.title("ParrotInk - Welcome")
