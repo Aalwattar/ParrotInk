@@ -9,20 +9,18 @@ changelog:
       labels:
         - feature
         - feat
-      re: "^feat.*"
+        - enhancement
     - title: "🐛 Bug Fixes & Stability"
       labels:
         - bug
         - fix
-      re: "^fix.*"
     - title: "🛠️ Maintenance & CI/CD"
       labels:
         - chore
         - refactor
         - build
-      re: "^(chore|refactor|build|ci).*"
+        - ci
     - title: "📝 Documentation"
       labels:
         - documentation
         - docs
-      re: "^docs.*"
