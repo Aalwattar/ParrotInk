@@ -18,10 +18,10 @@ import ttkbootstrap as tb
 from PIL import Image, ImageDraw
 
 from .app_types import AppState, ProviderType
-from .constants import URL_HOMEPAGE, URL_ISSUES
 from .logging import get_logger
 from .stats import StatsManager
-from .ui_utils import get_app_version
+from .ui_menu import build_tray_menu
+from .ui_utils import get_resource_path
 
 if TYPE_CHECKING:
     from .config import Config
@@ -60,6 +60,8 @@ class TrayApp:
         on_toggle_startup: Callable[[bool], None] | None = None,
         on_toggle_hold_mode: Callable[[bool], None] | None = None,
         on_mic_profile_change: Callable[[str], None] | None = None,
+        on_latency_profile_change: Callable[[str], None] | None = None,
+        on_toggle_realtime_punctuation: Callable[[bool], None] | None = None,
         on_reload_config: Callable[[], None] | None = None,
         on_check_updates: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
@@ -82,6 +84,8 @@ class TrayApp:
         self.on_toggle_startup = on_toggle_startup
         self.on_toggle_hold_mode = on_toggle_hold_mode
         self.on_mic_profile_change = on_mic_profile_change
+        self.on_latency_profile_change = on_latency_profile_change
+        self.on_toggle_realtime_punctuation = on_toggle_realtime_punctuation
         self.on_reload_config = on_reload_config
         self.on_check_updates = on_check_updates
         self.availability = availability or {"openai": True, "assemblyai": True}
@@ -167,6 +171,47 @@ class TrayApp:
         # Enter the hidden Master mainloop
         self.ui_root.mainloop()
 
+    def _get_icon_asset(self, state: AppState) -> Optional[Image.Image]:
+        """
+        Attempts to load a custom .ico asset for the given state.
+        Returns the Image object if successful, None otherwise.
+        """
+        mapping = {
+            AppState.IDLE: "tray_idle.ico",
+            AppState.LISTENING: "tray_listening.ico",
+            AppState.CONNECTING: "tray_connecting.ico",
+            AppState.ERROR: "tray_error.ico",
+            AppState.STOPPING: "tray_transition.ico",
+            AppState.SHUTTING_DOWN: "tray_transition.ico",
+        }
+
+        filename = mapping.get(state)
+        if not filename:
+            return None
+
+        icon_path = Path(get_resource_path(os.path.join("assets", "icons", filename)))
+        if icon_path.exists():
+            try:
+                # Return the image object. pystray handles resizing if needed.
+                return Image.open(icon_path)
+            except Exception as e:
+                logger.warning(f"Failed to load icon asset {icon_path}: {e}")
+
+        return None
+
+    def _get_icon_image(self, state: AppState) -> Image.Image:
+        """
+        Returns the best available icon for the state:
+        1. Custom .ico asset from assets/icons/
+        2. Dynamically generated colored square (Fallback)
+        """
+        asset = self._get_icon_asset(state)
+        if asset:
+            return asset
+
+        # Fallback to dynamic generation
+        return self._create_image(self._get_icon_color(state))
+
     def _create_image(self, color: str) -> Image.Image:
         image = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
         dc = ImageDraw.Draw(image)
@@ -212,6 +257,18 @@ class TrayApp:
     def _on_mic_profile_selection(self, icon: pystray.Icon, profile: str) -> None:
         if self.on_mic_profile_change:
             self.on_mic_profile_change(profile)
+
+    def _on_latency_profile_selection(self, icon: pystray.Icon, profile: str) -> None:
+        if self.on_latency_profile_change:
+            self.on_latency_profile_change(profile)
+
+    def _on_toggle_realtime_punctuation_clicked(
+        self, icon: pystray.Icon, item: pystray.MenuItem
+    ) -> None:
+        if self.on_toggle_realtime_punctuation:
+            # We toggle based on current config state
+            current = self.config.providers.assemblyai.advanced.format_text
+            self.on_toggle_realtime_punctuation(not current)
 
     def _on_change_hotkey_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         if self.on_before_hotkey_change:
@@ -290,142 +347,7 @@ class TrayApp:
             open_settings("sound")
 
     def _create_menu(self) -> pystray.Menu:
-        version = get_app_version()
-
-        def no_op(
-            icon: Optional[pystray.Icon] = None, item: Optional[pystray.MenuItem] = None
-        ) -> None:
-            pass
-
-        # UI Implementation: Version label is clickable if update is found.
-        # We use a distinct text and BOLD formatting if an update is available.
-        version_label = f"ParrotInk v{version}"
-        on_click: Callable = no_op
-        is_enabled = False
-        is_default = False
-
-        if self.latest_version:
-            version_label = f"✨ UPDATE AVAILABLE: {self.latest_version} (Current: v{version})"
-            on_click = self._on_update_clicked
-            is_enabled = True
-            is_default = True
-
-        menu_items = []
-
-        # 1. Hardware Fix Links (High Priority)
-        if self.audio_error_type:
-            fix_label = (
-                "🚨 FIX: Check Privacy & security > Microphone"
-                if self.audio_error_type == "privacy"
-                else "🚨 FIX: Open Sound Settings"
-            )
-            menu_items.append(pystray.MenuItem(fix_label, self._on_fix_mic_clicked, default=True))
-            menu_items.append(pystray.Menu.SEPARATOR)
-
-        # 2. Version and Standard Items
-        menu_items.extend(
-            [
-                pystray.MenuItem(version_label, on_click, enabled=is_enabled, default=is_default),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem(
-                    "OpenAI",
-                    lambda i, it: self._on_provider_selection(i, "openai"),
-                    checked=lambda i: self.current_provider == "openai",
-                    radio=True,
-                ),
-                pystray.MenuItem(
-                    "AssemblyAI",
-                    lambda i, it: self._on_provider_selection(i, "assemblyai"),
-                    checked=lambda i: self.current_provider == "assemblyai",
-                    radio=True,
-                ),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Statistics...", self._on_show_stats_clicked),
-                pystray.MenuItem(
-                    "Settings",
-                    pystray.Menu(
-                        pystray.MenuItem(
-                            "Setup API Keys",
-                            pystray.Menu(
-                                pystray.MenuItem(
-                                    "Set OpenAI Key...",
-                                    lambda: self._on_set_key_clicked("openai_api_key", "OpenAI"),
-                                ),
-                                pystray.MenuItem(
-                                    "Set AssemblyAI Key...",
-                                    lambda: self._on_set_key_clicked(
-                                        "assemblyai_api_key", "AssemblyAI"
-                                    ),
-                                ),
-                            ),
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            lambda it: f"Change Hotkey... ({self.config.hotkeys.hotkey.upper()})",
-                            self._on_change_hotkey_clicked,
-                        ),
-                        pystray.MenuItem(
-                            "Hold to Talk",
-                            self._on_toggle_hold_mode_clicked,
-                            checked=lambda it: self.config.hotkeys.hold_mode,
-                        ),
-                        pystray.MenuItem(
-                            "Enable Audio Feedback",
-                            self._on_toggle_sounds_clicked,
-                            checked=lambda it: self.sounds_enabled,
-                        ),
-                        pystray.MenuItem(
-                            "Run at Startup",
-                            self._on_toggle_startup_clicked,
-                            checked=lambda it: self.config.interaction.run_at_startup,
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            "Show HUD",
-                            self._on_toggle_hud_clicked,
-                            checked=lambda it: self.config.ui.floating_indicator.enabled,
-                        ),
-                        pystray.MenuItem(
-                            "HUD Click-Through",
-                            self._on_toggle_click_through_clicked,
-                            checked=lambda it: self.config.ui.floating_indicator.click_through,
-                            enabled=lambda it: self.config.ui.floating_indicator.enabled,
-                        ),
-                    ),
-                ),
-                pystray.MenuItem(
-                    "Configuration",
-                    pystray.Menu(
-                        pystray.MenuItem("Open Configuration File", self._open_config),
-                        pystray.MenuItem(
-                            "Reload Configuration",
-                            self._on_reload_config_clicked,
-                            enabled=lambda it: self.state in (AppState.IDLE, AppState.ERROR),
-                        ),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem("Open Log Folder", self._open_log_folder),
-                    ),
-                ),
-                pystray.MenuItem(
-                    "Help",
-                    pystray.Menu(
-                        pystray.MenuItem(
-                            "View Documentation", lambda: webbrowser.open(URL_HOMEPAGE)
-                        ),
-                        pystray.MenuItem("Report an Issue", lambda: webbrowser.open(URL_ISSUES)),
-                        pystray.Menu.SEPARATOR,
-                        pystray.MenuItem(
-                            "Check for Updates...",
-                            lambda: self.on_check_updates() if self.on_check_updates else None,
-                        ),
-                    ),
-                ),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Quit", self._on_tray_quit),
-            ]
-        )
-
-        return pystray.Menu(*menu_items)
+        return build_tray_menu(self)
 
     def _on_tray_quit(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         """Triggered only when the user explicitly clicks 'Quit' in the menu."""
@@ -442,14 +364,14 @@ class TrayApp:
     def _create_icon(self) -> pystray.Icon:
         return pystray.Icon(
             "parrotink",
-            self._create_image(self._get_icon_color(self.state)),
+            self._get_icon_image(self.state),
             "ParrotInk",
             self._create_menu(),
         )
 
     def set_state(self, state: AppState) -> None:
         self.state = state
-        self.icon.icon = self._create_image(self._get_icon_color(state))
+        self.icon.icon = self._get_icon_image(state)
         if self.indicator:
             is_rec = state == AppState.LISTENING
             self.indicator.update_status(is_rec)

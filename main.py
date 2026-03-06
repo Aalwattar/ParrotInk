@@ -697,7 +697,9 @@ def handle_cli():
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress console output")
     parser.add_argument("--log-file", type=str, help="Override default log file path")
     parser.add_argument(
-        "--background", action="store_true", help="Start without already running warning"
+        "--background",
+        action="store_true",
+        help="Start in background mode (suppresses onboarding and notifications)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -727,33 +729,41 @@ def handle_cli():
 if __name__ == "__main__":
     cli_args = handle_cli()
 
-    # Fail Fast for GUI mode
-    if cli_args.command == "run":
-        try:
-            config = load_config()
-            if sys.platform == "win32":
-                from engine.platform_win.startup import sync_startup_with_config
-
-                sync_startup_with_config(config.interaction.run_at_startup)
-        except ConfigError as e:
-            msg = f"Configuration invalid:\n\n{e}"
-            logger.error(f"[CONFIG ERROR] {e}")
+    # Senior Architecture: Load configuration exactly ONCE.
+    # This prevents redundant I/O and ensures consistency between the startup check
+    # and the main GUI loop.
+    try:
+        config = load_config()
+    except ConfigError as e:
+        msg = f"Configuration invalid:\n\n{e}"
+        logger.error(f"[CONFIG ERROR] {e}")
+        # Always show a message box for configuration failures in GUI mode
+        if cli_args.command == "run":
             ctypes.windll.user32.MessageBoxW(0, msg, "Configuration Error", 0x10)
-            sys.exit(1)
+        else:
+            print(f"\n[CONFIG ERROR] {e}", file=sys.stderr)
+        sys.exit(1)
 
+    # 1. Sync Windows Startup (Authoritative Sync)
+    if cli_args.command == "run" and sys.platform == "win32":
+        from engine.platform_win.startup import sync_startup_with_config
+
+        sync_startup_with_config(config.interaction.run_at_startup)
+
+    # 2. Single Instance Protection
     instance = SingleInstance(MUTEX_NAME_TEMPLATE.format(APP_NAME=APP_NAME))
     if instance.already_running:
         if not cli_args.background:
             instance.show_warning()
         sys.exit(0)
 
+    # 3. Command Routing
     if cli_args.command == "set-key":
         account_map = {
             "openai": ("openai_api_key", "OpenAI"),
             "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
         }
         account_id, provider_name = account_map[cli_args.provider]
-        # Added missing title argument for CLI mode
         key = ask_key(None, f"Set {provider_name} Key")
         if key:
             SecurityManager.set_key(account_id, key)
@@ -763,7 +773,6 @@ if __name__ == "__main__":
     if cli_args.command == "config":
         from engine.config import explain_config
 
-        config = load_config()
         if cli_args.explain:
             explain_config(config, verbose=cli_args.verbose)
         sys.exit(0)
@@ -771,16 +780,27 @@ if __name__ == "__main__":
     if cli_args.command == "eval":
         from engine.eval_main import main_eval
 
+        # We pass the already loaded config to sub-mains if they support it
+        # or let them load it themselves if needed (usually they use load_config too)
         asyncio.run(main_eval(cli_args))
         sys.exit(0)
 
-    # Standard run mode
-    config = load_config()
+    # Standard run mode (GUI)
     configure_logging(
         config,
         verbose_count=cli_args.verbose,
         quiet=cli_args.quiet,
     )
+
+    # 4. Onboarding Popup (Gatekeeper)
+    # We run this before main_gui to ensure it blocks and acts as a pure introduction.
+    if not cli_args.background and config.ui.show_onboarding_popup:
+        from engine.onboarding_ui import show_onboarding_blocking
+
+        dont_show_again = show_onboarding_blocking()
+        if dont_show_again:
+            logger.info("User requested to hide onboarding popup in the future.")
+            config.update_and_save({"ui": {"show_onboarding_popup": False}}, blocking=True)
 
     from engine.gui_main import main_gui
 

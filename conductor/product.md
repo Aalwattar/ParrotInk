@@ -26,15 +26,15 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
 ### 2.5 System Tray Application
 - The application will run as a background process with an icon in the system tray.
-- **Modern UI:** The tray icon uses a "Modern Square" design with rounded corners and a vibrant Fluent-inspired color palette.
-- **Visual Feedback:** The icon color indicates state: Neutral (Idle), Microsoft Blue (Listening), Red (Error).
-- A context menu on the tray icon will allow the user to:
-    - **Dynamic Version Header:** Displays the current version. If a newer version is available on GitHub, the label updates to include "(Update Available: vX.Y.Z)" and becomes clickable, allowing the user to open the release page in their browser.
-    - Enable or disable transcription.
-    - Select the active transcription provider.
-    - Open the settings/configuration file.
-    - **Reload Configuration:** Manually refresh and apply settings from `config.toml` without restarting the application.
-    - Exit the application.
+- **Professional Identity:** The tray icon uses high-quality, custom `.ico` assets to provide a polished, "Fluent" visual identity on Windows.
+- **Visual Feedback:** The icon changes based on state: Idle, Listening, Connecting, Error, and Transition. If assets are missing, the system automatically falls back to a robust, color-coded dynamic square generation (Grey, Blue, Yellow, Red).
+- A redesigned context menu on the tray icon allows the user to:
+    - **Dynamic Version Header:** Displays the current version and update status (Top-level).
+    - **Transcription Sub-menu:** Select active Provider and Microphone Profile.
+    - **Settings Sub-menu:** Configure hotkeys, "Hold to Talk" mode, and Audio Feedback.
+    - **Tools Sub-menu:** Access Statistics dashboard, open config/log folders, and reload settings.
+    - **Help Sub-menu:** View documentation, report issues, and check for updates manually.
+    - **Quit:** Exit the application.
 
 ### 2.6. Configuration
 - All settings will be managed through a local configuration file in TOML format for easy editing.
@@ -100,9 +100,15 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Non-Intrusive:** Notifications are integrated directly into the tray menu's version label to avoid interrupting the user's workflow.
     - **Rate-Limit Aware:** The system respects GitHub API rate limits and handles offline states or API errors gracefully.
 
-    ## 2.14 CI/CD & Automation
+    ### 2.14 CI/CD & Automation
     - **Automated Quality Gate:** A GitHub Actions CI workflow automatically runs linters (Ruff), type checkers (Mypy), and unit tests (Pytest) on every push to `main` and all pull requests.
-    - **Automated Releases:** A dedicated Release workflow builds the standalone Windows executable and creates a GitHub Release with version-verified assets (EXE and SHA256 checksum) whenever a new version tag (e.g., `v1.2.3`) is pushed.## 3. Technical Specifications
+    - **Automated Releases:** A dedicated Release workflow builds the standalone Windows executable and creates a GitHub Release with version-verified assets (EXE and SHA256 checksum) whenever a new version tag (e.g., `v1.2.3`) is pushed.
+
+    ### 2.15 First-Run Onboarding
+    - **Welcome Popup:** A professional, dark-themed welcome window (using `ttkbootstrap`) appears automatically when the application is launched for the first time.
+    - **Educational Content:** The popup introduces the system tray interaction model, explains the state-based color coding of the tray icon, and provides clear directions for adding API keys via the Settings menu.
+    - **Configurable Suppression:** Users can choose to "Don't show this again," which permanently saves the preference to the configuration file. The popup is also automatically suppressed when the application is launched with the `--background` flag.
+    - **Blocking Gatekeeper:** The onboarding window acts as a blocking modal before the main application logic starts, ensuring new users are properly oriented before the tray icon appears.
 
 ### 3.1. Audio Pipeline
 - **Audio Capture:** Use `sounddevice` for microphone input.

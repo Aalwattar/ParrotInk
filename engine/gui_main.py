@@ -156,6 +156,25 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
+    def on_latency_profile_change(profile):
+        def apply():
+            config.update_and_save({"transcription": {"latency_profile": profile}})
+            logger.info(f"Performance Profile changed to: {profile}")
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
+    def on_toggle_realtime_punctuation(enabled):
+        def apply():
+            # This is specific to AssemblyAI in our current schema
+            config.update_and_save(
+                {"providers": {"assemblyai": {"advanced": {"format_text": enabled}}}}
+            )
+            logger.info(f"Real-time Punctuation {'enabled' if enabled else 'disabled'}")
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
     def on_before_hotkey_change():
         logger.info("Pausing hooks for hotkey recording...")
         # 1. Stop dictation immediately
@@ -245,6 +264,8 @@ async def main_gui(cli_args):
         on_toggle_startup=on_toggle_startup,
         on_toggle_hold_mode=on_toggle_hold_mode,
         on_mic_profile_change=on_mic_profile_change,
+        on_latency_profile_change=on_latency_profile_change,
+        on_toggle_realtime_punctuation=on_toggle_realtime_punctuation,
         on_reload_config=on_reload_config,
         on_check_updates=on_check_updates,
         initial_provider=config.transcription.provider,

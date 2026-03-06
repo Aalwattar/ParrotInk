@@ -117,7 +117,7 @@ class TranscriptionConfig(BaseModel):
         default="openai", validation_alias=AliasChoices("provider", "active_provider")
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
-    mic_profile: Literal["headset", "laptop", "none"] = "headset"
+    mic_profile: Literal["headset", "laptop", "none"] = "none"
 
 
 class AppTestConfig(BaseModel):
@@ -229,6 +229,7 @@ class ProvidersConfig(BaseModel):
 
 class UIConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    show_onboarding_popup: bool = True
     floating_indicator: FloatingIndicatorConfig = Field(default_factory=FloatingIndicatorConfig)
 
 
@@ -353,17 +354,86 @@ class Config(BaseModel):
                 else:
                     doc = tomlkit.document()
 
-                # Deep update the tomlkit document with our validated data
-                def update_toml_doc(target, source):
-                    for key, value in source.items():
-                        if isinstance(value, dict):
-                            if key not in target or not isinstance(target[key], dict):
-                                target[key] = tomlkit.table()
-                            update_toml_doc(target[key], value)
-                        else:
-                            target[key] = value
+                # Senior Architecture: Logic-preserving TOML updater
+                def update_toml_doc(target, source, model_cls) -> bool:
+                    """
+                    Recursively updates a tomlkit document while preserving style.
+                    Returns True if any non-default values were added or updated.
+                    """
+                    from tomlkit.container import Container
+                    from tomlkit.items import Comment, Table
 
-                update_toml_doc(doc, data)
+                    try:
+                        default_instance = model_cls()
+                    except Exception:
+                        default_instance = None
+
+                    changed = False
+
+                    for key, value in source.items():
+                        if key.startswith("_"):
+                            continue
+
+                        if isinstance(value, dict):
+                            field = model_cls.model_fields.get(key)
+                            if not field:
+                                continue
+
+                            # Ensure the section exists in TOML if we're about to add to it
+                            if key not in target:
+                                # We only create the table if it contains non-default values
+                                # We use a temporary table to check this
+                                temp_table = tomlkit.table()
+                                if update_toml_doc(temp_table, value, field.annotation):
+                                    target[key] = temp_table
+                                    changed = True
+                            else:
+                                if update_toml_doc(target[key], value, field.annotation):
+                                    changed = True
+                        else:
+                            # Scalar value update logic
+                            is_default = False
+                            if default_instance and hasattr(default_instance, key):
+                                if value == getattr(default_instance, key):
+                                    is_default = True
+
+                            if key in target:
+                                # Existing key: always update to match live config
+                                # (preserves comments and position)
+                                if target[key] != value:
+                                    target[key] = value
+                                    changed = True
+                            elif not is_default:
+                                # New key: only add if it's a non-default value
+                                # SMART PLACEMENT: Insert before its commented-out default
+                                container = target.value if isinstance(target, Table) else target
+                                insertion_idx = None
+
+                                if isinstance(container, Container):
+                                    for i, (_item_key, item_val) in enumerate(container.body):
+                                        if isinstance(item_val, Comment):
+                                            ct = item_val.trivia.comment.strip()
+                                            if (
+                                                ct.startswith(f"# {key} =")
+                                                or ct.startswith(f"#{key} =")
+                                                or ct.startswith(f"# {key}=")
+                                                or ct.startswith(f"#{key}=")
+                                            ):
+                                                insertion_idx = i
+                                                break
+
+                                if insertion_idx is not None and hasattr(container, "_insert_at"):
+                                    try:
+                                        container._insert_at(insertion_idx, key, value)
+                                    except Exception:
+                                        target[key] = value
+                                else:
+                                    target[key] = value
+                                changed = True
+
+                    return changed
+
+                update_toml_doc(doc, data, type(self))
 
                 # Add a helpful header if it's a new file
                 if not path.exists() or not doc.as_string().strip().startswith("#"):

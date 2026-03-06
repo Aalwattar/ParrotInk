@@ -79,9 +79,26 @@ def test_tray_menu_structure(mocker, config):
         # First item should be version header
         assert "ParrotInk v" in items[0].text
         assert items[0].enabled is False
-        # Second item is separator
-        assert items[2].text == "OpenAI"
+        # Statistics should be top level
+        assert items[1].text == "Statistics..."
+        # Transcription is after a separator
+        assert items[3].text == "Transcription"
         assert all(item.text != "Status: Ready" for item in items)
+
+        # Check Transcription sub-menu
+        trans_menu = items[3].submenu
+        trans_items = list(trans_menu)
+        assert trans_items[0].text == "Provider"
+        # Index 1 is separator
+        assert trans_items[2].text == "Response Speed"
+        assert trans_items[3].text == "Noise Suppression (OpenAI Only)"
+        assert trans_items[4].text == "Real-time Punctuation"
+
+        # Check Providers sub-menu
+        providers_menu = trans_items[0].submenu
+        provider_items = list(providers_menu)
+        assert provider_items[0].text == "OpenAI"
+        assert provider_items[1].text == "AssemblyAI"
 
 
 def test_tray_settings_menu_hold_mode(mocker, config):
