@@ -57,6 +57,7 @@ class HudOverlay:
         self._click_through = click_through
         self.text_queue: queue.Queue[str | tuple[str, Any]] = queue.Queue()
         self.last_text = ""
+        self.last_partial_text = ""
         self.last_status = None
         self.last_provider = config.transcription.provider if config else None
         self.voice_active = False
@@ -109,6 +110,7 @@ class HudOverlay:
             qsize = self.text_queue.qsize()
             if qsize > 0:
                 latest_text = None
+                latest_partial = None
                 latest_status = None
                 latest_voice = None
                 latest_provider = None
@@ -122,6 +124,11 @@ class HudOverlay:
                             kind, payload = item
                             if kind == "TEXT":
                                 latest_text = payload
+                                # Important: when new final text arrives,
+                                # the previous partial is now part of it.
+                                latest_partial = ""
+                            elif kind == "PARTIAL":
+                                latest_partial = payload
                             elif kind == "STATUS":
                                 latest_status = payload
                             elif kind == "VOICE":
@@ -132,11 +139,14 @@ class HudOverlay:
                                 latest_settings = payload
                         else:
                             latest_text = item
+                            latest_partial = ""
                     except queue.Empty:
                         break
 
                 if latest_text is not None:
                     self.last_text = latest_text
+                if latest_partial is not None:
+                    self.last_partial_text = latest_partial
                 if latest_status is not None:
                     self.last_status = latest_status
                 if latest_voice is not None:
@@ -157,6 +167,7 @@ class HudOverlay:
                     getattr(self, "last_status", None),
                     getattr(self, "voice_active", False),
                     getattr(self, "last_provider", None),
+                    partial_text=getattr(self, "last_partial_text", ""),
                 )
                 self._update_window()
             return 0
@@ -349,7 +360,8 @@ class HudOverlay:
             self.text_queue.put(("VOICE", active))
 
     def update_partial_text(self, text: str):
-        self.update_text(text)
+        if HUD_AVAILABLE:
+            self.text_queue.put(("PARTIAL", text))
 
     def apply_click_through(self, enabled: bool):
         """Dynamically toggles click-through style."""

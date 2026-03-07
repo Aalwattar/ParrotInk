@@ -44,6 +44,7 @@ class EffectiveAssemblyAIConfig:
     sample_rate: int
     encoding: str
     speech_model: str
+    prompt: str
     language_code: str
     vad_threshold: float
     confidence_threshold: float
@@ -64,5 +65,6 @@ class EffectiveConfig:
     chunk_ms: int
     hotkey: str
     hold_mode: bool
+    partial_results: bool
     openai: EffectiveOpenAIConfig
     assemblyai: EffectiveAssemblyAIConfig

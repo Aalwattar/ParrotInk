@@ -30,10 +30,18 @@ def test_input_monitor_start_stop():
     monitor.set_hotkey("ctrl+v")
 
     # Mock user32.SetWindowsHookExW to avoid actual OS hook in unit test
-    with patch("ctypes.windll.user32.SetWindowsHookExW", return_value=123):
-        with patch("ctypes.windll.user32.UnhookWindowsHookEx"):
-            with patch("ctypes.windll.user32.GetMessageW", return_value=0):  # Exit immediately
-                monitor.start()
-                assert monitor.is_running is True
-                monitor.stop()
-                assert monitor.is_running is False
+    with (
+        patch("ctypes.windll.user32.SetWindowsHookExW", return_value=123),
+        patch("ctypes.windll.user32.UnhookWindowsHookEx"),
+        patch("ctypes.windll.user32.GetMessageW", return_value=0),
+        patch("threading.Thread") as mock_thread,
+    ):
+        # Configure mock thread to pretend it's the hook thread
+        mock_thread.return_value.start = MagicMock()
+
+        monitor.start()
+        assert monitor.is_running is True
+
+        # In this test, stop() should just clear the flag since thread isn't real
+        monitor.stop()
+        assert monitor.is_running is False

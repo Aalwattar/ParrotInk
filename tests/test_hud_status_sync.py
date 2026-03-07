@@ -78,8 +78,8 @@ def test_hud_truncation_logic(hud):
     h._committed_text = "a" * 100
     h._render_preview()
 
-    # Get the last call arguments
-    args, _ = mock_impl.update_partial_text.call_args
+    # Get the last call arguments for update_text (committed text)
+    args, _ = mock_impl.update_text.call_args
     display_text = args[0]
     assert display_text.startswith("…")
     assert len(display_text) <= h.config.ui.floating_indicator.max_characters

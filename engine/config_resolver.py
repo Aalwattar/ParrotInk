@@ -2,6 +2,9 @@ from typing import Any, Optional
 
 from .app_types import EffectiveAssemblyAIConfig, EffectiveConfig, EffectiveOpenAIConfig
 from .config import LATENCY_PROFILES, MIC_PROFILES, Config
+from .logging import get_logger
+
+logger = get_logger("ConfigResolver")
 
 
 def resolve_effective_config(config: Config) -> EffectiveConfig:
@@ -84,7 +87,15 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
 
     params["speech_model"] = aai_core.speech_model
 
-    if aai_adv.keyterms_prompt:
+    # Priority Logic: prompt vs keyterms_prompt (mutual exclusivity)
+    if aai_core.prompt:
+        params["prompt"] = aai_core.prompt
+        if aai_adv.keyterms_prompt:
+            logger.warning(
+                "Both 'prompt' and 'keyterms_prompt' provided for AssemblyAI. "
+                "'prompt' takes precedence; 'keyterms_prompt' ignored."
+            )
+    elif aai_adv.keyterms_prompt:
         import json
 
         params["keyterms_prompt"] = json.dumps(aai_adv.keyterms_prompt)
@@ -108,9 +119,11 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     params["min_end_of_turn_silence_when_confident"] = str(aai_min_silence)
     params["max_turn_silence"] = str(aai_max_silence)
 
-    if params:
-        separator = "&" if "?" in aai_url else "?"
-        aai_url = f"{aai_url}{separator}{urlencode(params)}"
+    # Update URL with resolved parameters
+    if "?" in aai_url:
+        aai_url = f"{aai_url}&{urlencode(params)}"
+    else:
+        aai_url = f"{aai_url}?{urlencode(params)}"
 
     if config.test.enabled:
         aai_url = config.test.assemblyai_mock_url
@@ -124,13 +137,16 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         sample_rate=config.audio.capture_sample_rate,
         encoding="pcm_s16le",
         speech_model=aai_core.speech_model,
+        prompt=aai_core.prompt,
         language_code=aai_core.language_code,
         vad_threshold=aai_core.vad_threshold,
         confidence_threshold=aai_confidence,
         min_silence_ms=aai_min_silence,
         max_silence_ms=aai_max_silence,
         inactivity_timeout=resolved_timeout,
-        word_boost=aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None,
+        word_boost=None
+        if aai_core.prompt
+        else (aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None),
         format_text=aai_adv.format_text,
         language_detection=aai_adv.language_detection,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
@@ -144,6 +160,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         chunk_ms=config.audio.chunk_ms,
         hotkey=config.hotkeys.hotkey,
         hold_mode=config.hotkeys.hold_mode,
+        partial_results=config.transcription.partial_results,
         openai=resolved_openai,
         assemblyai=resolved_aai,
     )

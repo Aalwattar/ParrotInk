@@ -81,6 +81,7 @@ class IndicatorWindow:
         self._last_redraw_at = 0.0
         self._visible = False
         self._session_id = 0
+        self._is_running = False
 
         # Import inside __init__ to pick up test mocks/patches correctly
         import engine.hud_renderer
@@ -150,6 +151,10 @@ class IndicatorWindow:
         return True
 
     def start(self):
+        if self._is_running:
+            return
+        self._is_running = True
+
         if hasattr(self.impl, "start"):
             self.impl.start()
         elif hasattr(self.impl, "run"):
@@ -248,6 +253,8 @@ class IndicatorWindow:
 
     def update_partial_text(self, text: str):
         self.on_partial(text)
+        if hasattr(self.impl, "update_partial_text"):
+            self.impl.update_partial_text(text)
 
     def on_final(self, text: str, linger_seconds: Optional[float] = None):
         if self._committed_text:
@@ -264,32 +271,50 @@ class IndicatorWindow:
             self.impl.update_voice_active(active)
 
     def _render_preview(self):
-        full_text = self._committed_text
-        if self._current_partial_text:
-            if full_text:
-                full_text += " "
-            full_text += self._current_partial_text
+        committed = self._committed_text
+        partial = self._current_partial_text
 
         max_chars = DEFAULT_MAX_CHARS
         if self.config:
             max_chars = self.config.ui.floating_indicator.max_characters
 
-        if not full_text:
+        # Logic for status messages when text is empty
+        if not committed and not partial:
             if self._last_status_msg and self._last_status_msg not in (
                 STATUS_LISTENING,
                 STATUS_FINALIZED,
             ):
-                display_text = self._last_status_msg
+                committed = self._last_status_msg
             elif self.is_recording:
-                display_text = STATUS_LISTENING
-            else:
-                display_text = ""
-        elif len(full_text) > max_chars:
-            display_text = "…" + full_text[-(max_chars - 1) :]
-        else:
-            display_text = full_text
+                committed = STATUS_LISTENING
 
-        if hasattr(self.impl, "update_partial_text"):
-            self.impl.update_partial_text(display_text)
+        # Truncation handling (simplified, the style handles complex truncation)
+        if len(committed) + len(partial) > max_chars:
+            # Basic safety truncation for IPC
+            if len(committed) > max_chars:
+                committed = "…" + committed[-(max_chars - 5) :]
+                partial = ""
+            else:
+                partial = partial[: (max_chars - len(committed))]
+
+        # High-Fidelity Path: If the implementation supports dual-text, use it.
+        # This is what enables 'Shaded Partials' in the Skia HUD.
+        if hasattr(self.impl, "update_text") and hasattr(self.impl, "update_partial_text"):
+            # Note: We call update_text first which usually clears partial in HudOverlay,
+            # then update_partial_text to set the new one.
+            self.impl.update_text(committed)
+            if partial:
+                self.impl.update_partial_text(partial)
         else:
-            self.impl.update_text(display_text)
+            # Fallback path for GDI/Mock
+            full_text = committed
+            if partial:
+                if full_text:
+                    full_text += " "
+                full_text += partial
+            self.impl.update_text(full_text)
+            # Update GdiFallback last_text specifically if it's that class
+            if hasattr(self.impl, "last_text"):
+                self.impl.last_text = full_text
+
+            self.impl.update_text(full_text)

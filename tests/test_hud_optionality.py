@@ -35,6 +35,7 @@ def test_on_final_lingers_on_fallback():
             # on_final should trigger _render_preview
             indicator.on_final("final text", linger_seconds=1.0)
 
-            # Since GdiFallbackWindow HAS update_partial_text, it uses it
-            assert indicator.impl.partial_text == "final text"
+            # Since GdiFallbackWindow HAS update_text, it uses it for the result
+            assert indicator.impl.last_text == "final text"
+
             mock_linger.assert_called_once_with(1.0)

@@ -118,6 +118,7 @@ class TranscriptionConfig(BaseModel):
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
     mic_profile: Literal["headset", "laptop", "none"] = "none"
+    partial_results: bool = False
 
 
 class AppTestConfig(BaseModel):
@@ -178,7 +179,8 @@ class AssemblyAICoreConfig(BaseModel):
     region: Literal["us", "eu"] = "us"
     language_code: str = "en"
     vad_threshold: float = 0.4
-    speech_model: str = "universal-streaming-english"
+    speech_model: str = "u3-rt-pro"
+    prompt: str = ""
     inactivity_timeout_seconds: int = 0
 
     @field_validator("inactivity_timeout_seconds")

@@ -346,13 +346,15 @@ class AppCoordinator:
         if not text:
             return
 
-        # Forward to floating indicator
+        # 1. Forward to floating indicator (Always show in HUD for responsiveness)
         self.ui_bridge.update_partial_text(text)
 
-        if self.loop:
-            asyncio.run_coroutine_threadsafe(
-                self.injection_controller.smart_inject(text), self.loop
-            )
+        # 2. Inject into target application (Only if enabled in config)
+        if self.config.transcription.partial_results:
+            if self.loop:
+                asyncio.run_coroutine_threadsafe(
+                    self.injection_controller.smart_inject(text), self.loop
+                )
 
     def on_final(self, text: str):
         if self.session_cancelled:
