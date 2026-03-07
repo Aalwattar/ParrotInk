@@ -53,7 +53,6 @@ class EffectiveAssemblyAIConfig:
     inactivity_timeout: Optional[int]
     word_boost: Optional[List[str]]
     format_text: bool
-    language_detection: bool
     stop_timeout: float
     is_test: bool
 

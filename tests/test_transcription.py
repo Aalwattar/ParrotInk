@@ -36,7 +36,6 @@ async def test_assemblyai_v3_turn_events(base_config):
         inactivity_timeout=None,
         word_boost=None,
         format_text=True,
-        language_detection=False,
         stop_timeout=7.0,
         is_test=True,
     )
@@ -95,7 +94,6 @@ async def test_assemblyai_provider_send_audio(base_config):
             inactivity_timeout=None,
             word_boost=None,
             format_text=True,
-            language_detection=False,
             stop_timeout=7.0,
             is_test=True,
         )

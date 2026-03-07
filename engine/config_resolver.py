@@ -100,14 +100,20 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
 
         params["keyterms_prompt"] = json.dumps(aai_adv.keyterms_prompt)
 
-    if aai_core.language_code != "en":
+    # Language Handling: Auto-detection vs Manual ISO code
+    if not aai_core.language_code:
+        # If language is empty, enable auto-detection for supported models.
+        # Universal-3 Pro and U3 Multilingual support this on V3.
+        if aai_core.speech_model in ("u3-rt-pro", "universal-streaming-multilingual", "whisper-rt"):
+            params["language_detection"] = "true"
+        else:
+            # Fallback for English-only model (universal-streaming-english)
+            params["language_code"] = "en"
+    else:
         params["language_code"] = aai_core.language_code
 
     if aai_adv.format_text:
         params["format_turns"] = "true"
-
-    if aai_adv.language_detection:
-        params["language_detection"] = "true"
 
     params["vad_threshold"] = str(aai_core.vad_threshold)
 
@@ -148,7 +154,6 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         if aai_core.prompt
         else (aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None),
         format_text=aai_adv.format_text,
-        language_detection=aai_adv.language_detection,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
     )

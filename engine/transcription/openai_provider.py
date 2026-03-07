@@ -104,6 +104,13 @@ class OpenAIProvider(BaseProvider):
 
         cfg = self.effective_config
 
+        transcription_config = {
+            "model": cfg.transcription_model,
+            "prompt": cfg.prompt,
+        }
+        if cfg.language:
+            transcription_config["language"] = cfg.language
+
         # Build session.update using the nested Transcription Session Object shape
         # session.type is REQUIRED for transcription-only sessions via session.update
         update_event = {
@@ -113,11 +120,7 @@ class OpenAIProvider(BaseProvider):
                 "audio": {
                     "input": {
                         "format": {"type": "audio/pcm", "rate": 24000},
-                        "transcription": {
-                            "model": cfg.transcription_model,
-                            "language": cfg.language,
-                            "prompt": cfg.prompt,
-                        },
+                        "transcription": transcription_config,
                         "turn_detection": {
                             "type": cfg.turn_detection_type,
                             "threshold": cfg.vad_threshold,
