@@ -88,11 +88,12 @@ ParrotInk is a **portable** application. There is no installer needed; just down
 
 ParrotInk requires you to bring your own API key. You only pay the AI providers for the raw milliseconds of audio they process.
 
-### 🏆 AssemblyAI (Best for English & European Languages)
-**Optimized for professional use and low-latency response.**
-- **Why we recommend it:** If you are dictating in **English, Spanish, French, or German**, AssemblyAI’s Streaming V3 is arguably the most accurate and responsive real-time model available today.
-- **Get Started for $0:** New users currently receive **$50 in free credit** upon signing up. You can start dictating immediately without paying a single penny.
-- **Setup:** Copy your API Key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/) and paste it into the ParrotInk tray menu.
+### 🏆 AssemblyAI (Best for Professional English & Speed)
+**Featuring Universal-3 Pro (`u3-rt-pro`) and Instructional Prompting.**
+- **Why we recommend it:** The latest **U3 Pro** model is the industry benchmark for streaming accuracy. It supports **Instructional Prompting**, allowing you to guide the AI (e.g., "Always use medical terminology" or "Format as a list").
+- **Get Started for $0:** New users currently receive **$50 in free credit** upon signing up.
+- **Advanced Features:** Supports **Shaded Partials** in the HUD, letting you see the AI "thinking" in real-time before finalizing the text.
+- **Setup:** Paste your key from the [AssemblyAI Dashboard](https://www.assemblyai.com/dashboard/) into the ParrotInk menu.
 
 ### 🟢 OpenAI (The Global & RTL Powerhouse)
 **Unmatched support for 50+ languages and Arabic.**

@@ -118,6 +118,7 @@ class TranscriptionConfig(BaseModel):
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
     mic_profile: Literal["headset", "laptop", "none"] = "none"
+    partial_results: bool = False
 
 
 class AppTestConfig(BaseModel):
@@ -140,7 +141,8 @@ class OpenAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
     transcription_model: str = "gpt-4o-mini-transcribe"
-    language: str = "en"
+    # ISO-639-1 code (e.g., 'en', 'ar'). If empty, model auto-detects.
+    language: str = ""
     session_rotation_seconds: int = 3300
 
     @field_validator("transcription_model")
@@ -148,6 +150,17 @@ class OpenAICoreConfig(BaseModel):
     def validate_model(cls, v: str) -> str:
         if v.startswith("gpt-realtime"):
             raise ValueError("Conversational models not supported. Use 'gpt-4o-mini-transcribe'.")
+        return v
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        # OpenAI supports many languages via Whisper, but we check for common 2-letter codes.
+        # If the string is not a valid ISO-639-1 style code (2-3 chars), we default to auto.
+        v = v.strip().lower()
+        if v and (len(v) < 2 or len(v) > 3):
+            logger.warning(f"Invalid OpenAI language code '{v}'. Defaulting to 'Auto' (empty).")
+            return ""
         return v
 
 
@@ -176,9 +189,11 @@ class AssemblyAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ws_url: str = "wss://streaming.assemblyai.com/v3/ws"
     region: Literal["us", "eu"] = "us"
-    language_code: str = "en"
+    # ISO code (e.g., 'en', 'es'). If empty, enables auto-detection on V3 models.
+    language_code: str = ""
     vad_threshold: float = 0.4
-    speech_model: str = "universal-streaming-english"
+    speech_model: str = "u3-rt-pro"
+    prompt: str = ""
     inactivity_timeout_seconds: int = 0
 
     @field_validator("inactivity_timeout_seconds")
@@ -186,6 +201,18 @@ class AssemblyAICoreConfig(BaseModel):
     def check_inactivity_timeout(cls, v):
         if v != 0 and (v < 5 or v > 3600):
             raise ValueError("Inactivity timeout must be 0 or between 5 and 3600 seconds")
+        return v
+
+    @field_validator("language_code")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        # AssemblyAI U3/V3 models support en, es, fr, de, it, pt.
+        # Whisper (V3) supports many more.
+        # We perform a basic check. If it's a known invalid length, default to auto.
+        v = v.strip().lower()
+        if v and (len(v) < 2 or len(v) > 3):
+            logger.warning(f"Invalid AssemblyAI language code '{v}'. Defaulting to 'Auto' (empty).")
+            return ""
         return v
 
 
@@ -197,7 +224,6 @@ class AssemblyAIAdvancedConfig(BaseModel):
     end_of_turn_confidence_threshold: float = 0.4
     min_end_of_turn_silence_when_confident_ms: int = 400
     max_turn_silence_ms: int = 1000
-    language_detection: bool = False
 
     @field_validator("keyterms_prompt")
     @classmethod

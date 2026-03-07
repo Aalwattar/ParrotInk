@@ -162,7 +162,10 @@ def show_onboarding_blocking() -> bool:
 
     def on_close():
         window.destroy()
-        root.destroy()
+        try:
+            root.destroy()
+        except Exception:
+            pass
 
     tb.Button(footer, text="GET STARTED", command=on_close, bootstyle=PRIMARY, width=18).pack(
         side=RIGHT
@@ -173,11 +176,20 @@ def show_onboarding_blocking() -> bool:
     window.grab_set()
     window.wait_window()
 
-    # Senior Architecture: Reset the ttkbootstrap Style singleton.
+    # Senior Architecture: Clean up aggressively to prevent cross-thread GC panics.
+    # 1. Reset the ttkbootstrap Style singleton
     try:
         tb.Style.instance = None
     except Exception:
         pass
+
+    # 2. Clear the images list so PhotoImages are deleted NOW on the main thread
+    images.clear()
+
+    # 3. Force garbage collection immediately to clean up Tkinter objects on the main thread
+    import gc
+
+    gc.collect()
 
     return dont_show_again.get()
 

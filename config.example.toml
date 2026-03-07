@@ -143,6 +143,11 @@
 # Options: "headset", "laptop", "none"
 # mic_profile = "none"
 
+# If true, the app will type partial (interim) results as you speak.
+# If false (Default), it will only type the final, high-confidence sentence.
+# Note: The HUD floating indicator will show partials regardless of this setting.
+# partial_results = false
+
 # --- OpenAI Configuration ---
 
 [providers.openai.core]
@@ -184,8 +189,14 @@
 # language_code = "en"
 
 # The transcription model to use.
-# Use "universal-streaming-english" for English.
-# speech_model = "universal-streaming-english"
+# Options:
+# "u3-rt-pro" (Default) - Latest model with instructional prompting support.
+# "universal-streaming-english" - Legacy English-only model.
+# speech_model = "u3-rt-pro"
+
+# Natural language instructions to guide the transcription (e.g. "Use medical terms").
+# Note: Mutual exclusive with 'keyterms_prompt'. If both are set, 'prompt' wins.
+# prompt = ""
 
 # Server-side VAD sensitivity. Range: 0.0 to 1.0.
 # vad_threshold = 0.4

@@ -154,11 +154,13 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                     pystray.Menu(
                         pystray.MenuItem(
                             "Set OpenAI Key...",
-                            lambda: app._on_set_key_clicked("openai_api_key", "OpenAI"),
+                            lambda i, it: app._on_set_key_clicked("openai_api_key", "OpenAI"),
                         ),
                         pystray.MenuItem(
                             "Set AssemblyAI Key...",
-                            lambda: app._on_set_key_clicked("assemblyai_api_key", "AssemblyAI"),
+                            lambda i, it: app._on_set_key_clicked(
+                                "assemblyai_api_key", "AssemblyAI"
+                            ),
                         ),
                     ),
                 ),

@@ -99,6 +99,12 @@ class TrayApp:
         self._ui_ready = threading.Event()
         self.audio_error_type: Optional[str] = None  # Track specific audio errors
         self._popup_active = False  # Guard for concurrent popups
+
+        # Senior Architecture: Prevent Tcl_AsyncDelete cross-thread panics by keeping
+        # a strong reference to all generated PIL Images. If PIL.ImageTk is loaded,
+        # destroying an Image on a non-Tcl thread crashes the app.
+        self._icon_cache: dict[AppState, Image.Image] = {}
+
         self.icon = self._create_icon()
         self._stop_event = threading.Event()
         self.stats_manager = StatsManager()
@@ -160,16 +166,19 @@ class TrayApp:
     def _run_ui_loop(self):
         """Dedicated background thread for the Tcl/Tk interpreter."""
         global _master_root
-        if _master_root is None:
-            # Senior Architecture: Use 'darkly' for a luxury, monochromatic feel.
-            _master_root = tb.Window(themename="darkly")
-            _master_root.withdraw()
+        try:
+            if _master_root is None:
+                # Senior Architecture: Use 'darkly' for a luxury, monochromatic feel.
+                _master_root = tb.Window(themename="darkly")
+                _master_root.withdraw()
 
-        self.ui_root = _master_root
-        self._ui_ready.set()
+            self.ui_root = _master_root
+            self._ui_ready.set()
 
-        # Enter the hidden Master mainloop
-        self.ui_root.mainloop()
+            # Enter the hidden Master mainloop
+            self.ui_root.mainloop()
+        except Exception as e:
+            logger.error(f"FATAL: UI Master Loop crashed: {e}", exc_info=True)
 
     def _get_icon_asset(self, state: AppState) -> Optional[Image.Image]:
         """
@@ -205,12 +214,19 @@ class TrayApp:
         1. Custom .ico asset from assets/icons/
         2. Dynamically generated colored square (Fallback)
         """
+        # Senior Architecture: Check cache first to avoid GC cross-thread Tkinter panics
+        if state in self._icon_cache:
+            return self._icon_cache[state]
+
         asset = self._get_icon_asset(state)
         if asset:
+            self._icon_cache[state] = asset
             return asset
 
         # Fallback to dynamic generation
-        return self._create_image(self._get_icon_color(state))
+        generated = self._create_image(self._get_icon_color(state))
+        self._icon_cache[state] = generated
+        return generated
 
     def _create_image(self, color: str) -> Image.Image:
         image = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))

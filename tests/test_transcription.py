@@ -27,6 +27,7 @@ async def test_assemblyai_v3_turn_events(base_config):
         sample_rate=16000,
         encoding="pcm_s16le",
         speech_model="test",
+        prompt="",
         language_code="en",
         vad_threshold=0.4,
         confidence_threshold=0.0,
@@ -35,7 +36,6 @@ async def test_assemblyai_v3_turn_events(base_config):
         inactivity_timeout=None,
         word_boost=None,
         format_text=True,
-        language_detection=False,
         stop_timeout=7.0,
         is_test=True,
     )
@@ -85,6 +85,7 @@ async def test_assemblyai_provider_send_audio(base_config):
             sample_rate=16000,
             encoding="pcm_s16le",
             speech_model="test",
+            prompt="",
             language_code="en",
             vad_threshold=0.4,
             confidence_threshold=0.0,
@@ -93,7 +94,6 @@ async def test_assemblyai_provider_send_audio(base_config):
             inactivity_timeout=None,
             word_boost=None,
             format_text=True,
-            language_detection=False,
             stop_timeout=7.0,
             is_test=True,
         )

@@ -96,6 +96,7 @@ class HudStyle(ABC):
         status_override: Optional[str] = None,
         voice_active: bool = False,
         provider: Optional[str] = None,
+        partial_text: str = "",
     ):
         pass
 
@@ -117,25 +118,42 @@ class GlassStyle(HudStyle):
         status_override: Optional[str] = None,
         voice_active: bool = False,
         provider: Optional[str] = None,
+        partial_text: str = "",
     ):
         canvas.clear(skia.ColorTRANSPARENT)
         _ensure_text_resources()
 
         # 1. Content Preparation
-        is_listening_placeholder = (not text or text == STATUS_LISTENING) and is_recording
+        # If we have both, combine them for truncation check
+        full_display_text = text + partial_text
+
+        is_listening_placeholder = (
+            not full_display_text or full_display_text == STATUS_LISTENING
+        ) and is_recording
+
         if is_listening_placeholder:
-            display_text = STATUS_LISTENING
+            display_committed = STATUS_LISTENING
+            display_partial = ""
         else:
-            display_text = text if text else "..."
+            display_committed = text
+            display_partial = partial_text
 
-        if len(display_text) > TEXT_MAX_LENGTH:
-            display_text = "…" + display_text[-(TEXT_MAX_LENGTH - 1) :]
+        # Truncation logic (keep the end)
+        total_len = len(display_committed) + len(display_partial)
+        if total_len > TEXT_MAX_LENGTH:
+            # Prioritize keeping partial text visible
+            excess = total_len - TEXT_MAX_LENGTH
+            if len(display_committed) > excess + 5:
+                display_committed = "…" + display_committed[excess + 1 :]
+            else:
+                # If committed is too short, truncate partial too (rare)
+                display_committed = "…"
+                display_partial = display_partial[-(TEXT_MAX_LENGTH - 5) :]
 
-        rtl = is_rtl(display_text)
+        rtl = is_rtl(display_committed + display_partial)
 
         # 2. Modern Text Layout (Handles RTL/Shaping)
         para_style = skia.textlayout_ParagraphStyle()
-        # Use kStart/kEnd or explicit kLeft/kRight based on detected direction
         if rtl:
             para_style.setTextAlign(skia.textlayout_TextAlign.kRight)
         else:
@@ -143,22 +161,38 @@ class GlassStyle(HudStyle):
 
         builder = skia.textlayout_ParagraphBuilder(para_style, _FONT_COLLECTION, _UNICODE_MGR)
 
-        text_style = skia.textlayout_TextStyle()
+        # Style for Committed (Final) Text
+        committed_style = skia.textlayout_TextStyle()
         if is_listening_placeholder:
-            text_style.setColor(skia.ColorSetARGB(180, 255, 255, 255))
+            committed_style.setColor(skia.ColorSetARGB(180, 255, 255, 255))
         else:
-            text_style.setColor(skia.ColorWHITE)
+            committed_style.setColor(skia.ColorWHITE)
+        committed_style.setFontSize(TEXT_SIZE)
+        committed_style.setFontFamilies(["Segoe UI", "Arial", "sans-serif"])
 
-        text_style.setFontSize(TEXT_SIZE)
-        # Segoe UI is excellent for Arabic on Windows
-        text_style.setFontFamilies(["Segoe UI", "Arial", "sans-serif"])
+        # Style for Partial (Thinking) Text - Dimmed
+        partial_style = skia.textlayout_TextStyle()
+        partial_style.setColor(skia.ColorSetARGB(120, 200, 200, 200))  # Muted Gray/Alpha
+        partial_style.setFontSize(TEXT_SIZE)
+        partial_style.setFontFamilies(["Segoe UI", "Arial", "sans-serif"])
 
-        builder.pushStyle(text_style)
-        builder.addText(display_text)
-        builder.pop()
+        if display_committed:
+            builder.pushStyle(committed_style)
+            builder.addText(display_committed)
+            builder.pop()
+
+        if display_partial:
+            # Add a leading space if needed
+            if display_committed and not display_committed.endswith(" "):
+                builder.pushStyle(partial_style)
+                builder.addText(" ")
+                builder.pop()
+
+            builder.pushStyle(partial_style)
+            builder.addText(display_partial)
+            builder.pop()
 
         paragraph = builder.Build()
-        # Layout with a fixed width to get intrinsic width
         paragraph.layout(self.max_capsule_width)
         text_width = paragraph.MaxIntrinsicWidth
 

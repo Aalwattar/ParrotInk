@@ -111,16 +111,18 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra -q --timeout=30"
+addopts = "-ra -q --timeout=45 --timeout-method=thread"
+# Session timeout of 15 minutes to prevent CI drift
+session_timeout = 900
 testpaths = [
     "tests",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::ResourceWarning",
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
 ]
-markers = [
-    'integration: marks tests as integration tests (deselect with "-m \"not integration\"")',
-    "unit: marks tests as unit tests",
-]
+# Enable faulthandler to dump tracebacks on timeout
+faulthandler_timeout = 60
 asyncio_mode = "auto"

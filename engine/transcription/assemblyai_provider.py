@@ -147,23 +147,27 @@ class AssemblyAIProvider(BaseProvider):
 
         if text is not None:
             if msg_type == "Turn":
-                # In V3, transcripts within a Turn are cumulative.
-                clean_text = text.strip()
-                if clean_text:
-                    self.on_partial(text)
-                    self.last_transcript = text
+                # In V3, transcripts within a Turn are cumulative for that specific turn.
+                # However, our engine handles multiple 'final' segments across a session.
+                # The 'transcript' here is the FULL text of the current turn so far.
 
                 if event.get("end_of_turn"):
                     # Senior Privacy Implementation: Use structured metadata for automatic redaction
                     logger.debug("AssemblyAI Final (Turn)", extra={"text": text})
                     self.on_final(text)
-                    self.last_transcript = ""
+                    self.last_transcript = ""  # Reset for next turn
+                else:
+                    # It's a partial update
+                    if text.strip():
+                        self.on_partial(text)
+                        self.last_transcript = text
 
             elif msg_type == "FinalTranscript":
-                # Senior Privacy Implementation: Use structured metadata for automatic redaction
-                logger.debug("AssemblyAI Final", extra={"text": text})
+                # Legacy V2 support
+                logger.debug("AssemblyAI Final (Legacy)", extra={"text": text})
                 self.on_final(text)
             elif msg_type == "PartialTranscript":
+                # Legacy V2 support
                 self.on_partial(text)
 
         elif "error" in event:
