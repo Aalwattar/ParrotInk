@@ -111,6 +111,9 @@ class AppCoordinator:
         self._retry_mic_task: Optional[asyncio.Task] = None
         self._last_audio_failure_reason: Optional[str] = None
 
+        # Auto-Select Provider (Senior Architecture: Startup Guard)
+        self._ensure_valid_provider()
+
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
 
@@ -232,6 +235,31 @@ class AppCoordinator:
             "openai": is_valid("openai", self.config.get_openai_key()),
             "assemblyai": is_valid("assemblyai", self.config.get_assemblyai_key()),
         }
+
+    def _ensure_valid_provider(self):
+        """
+        Senior Architecture: Auto-Selection Logic.
+        If the current provider is invalid AND exactly one other provider is valid,
+        automatically switch to that provider.
+        """
+        if self.config.test.enabled:
+            return
+
+        availability = self.get_provider_availability()
+        current_provider = self.config.transcription.provider
+
+        # If current provider is valid, do nothing
+        if availability.get(current_provider, False):
+            return
+
+        # Current is invalid. Check how many others are valid.
+        valid_providers = [p for p, valid in availability.items() if valid]
+
+        if len(valid_providers) == 1:
+            new_provider = valid_providers[0]
+            logger.info(f"Auto-switching provider from {current_provider} to {new_provider}")
+            self.config.update_and_save({"transcription": {"provider": new_provider}})
+            # Since update_and_save triggers observers, AppCoordinator will sync its internal state.
 
     async def ensure_connected(self):
         """Proxy to connection manager."""
@@ -411,13 +439,12 @@ class AppCoordinator:
         availability = self.get_provider_availability()
         if not availability.get(self.config.transcription.provider, False):
             logger.error(f"Missing API Key for {self.config.transcription.provider}")
-            provider_title = self.config.transcription.provider.title()
-            msg = f"Please set your {provider_title} API Key in the Credentials menu."
+            msg = "Provider Missing API Key. Right-click Tray Icon > Settings to configure."
             self.ui_bridge.notify(msg, "Missing API Key")
 
             # Show onboarding instructions in HUD
             self.set_state(AppState.ERROR)
-            self.ui_bridge.update_status_message("API Key Required. Check Settings.")
+            self.ui_bridge.update_status_message(msg)
             self.ui_bridge.update_partial_text("Open Tray Menu > Settings to add your key.")
             return
 

@@ -90,7 +90,15 @@ async def main_gui(cli_args):
         def apply():
             SecurityManager.set_key(account_id, key)
             logger.info(f"API Key updated for: {account_id}")
+
+            # Senior Architecture: Dynamic Auto-Selection
+            coordinator._ensure_valid_provider()
+
             ui_bridge.update_availability(coordinator.get_provider_availability())
+
+            # Sync Tray Menu selection if it was changed by _ensure_valid_provider
+            ui_bridge.update_provider(config.transcription.provider)
+
             ui_bridge.notify(
                 f"API Key for {account_id.replace('_api_key', '').title()} "
                 "has been saved securely.",

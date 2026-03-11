@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Auto-select provider to the one that has API setup if there's only one, and refine missing API key message.**
+- [x] **Track: Auto-select provider to the one that has API setup if there's only one, and refine missing API key message.**
 *Link: [./tracks/auto_provider_selection_20260311/](./tracks/auto_provider_selection_20260311/)*
