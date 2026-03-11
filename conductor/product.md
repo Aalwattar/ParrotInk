@@ -41,7 +41,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 - Configurable options will include:
     - API provider selection, API keys, and **Test Mode** toggle.
     - **Secure Credential Management:** API keys are stored securely in the Windows Credential Manager and never saved in plain text configuration files.
-    - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode.
+    - **Smart UI Validation:** Providers are automatically disabled (grayed out) in the system tray if their required credentials are missing, unless in Test Mode. If exactly one provider has a valid key, the application automatically selects it to streamline onboarding.
+    - **Smart Provider Auto-Selection:** If the current provider lacks an API key but another provider is configured, the application automatically switches the active provider. This happens at startup and dynamically whenever keys are updated.
     - **User-Friendly Profiles:** High-level `latency_profile` (fast, balanced, accurate) and `mic_profile` (headset, laptop, none) simplify complex engineering parameters. `headset` is the default to ensure high accuracy with noise reduction enabled.
     - **Granular Advanced Settings:** Power users can still override profiles to fine-tune VAD thresholds, models, and silence durations.
     - **Configuration Fidelity:** All engine parameters are exposed and respected. Programmatic saves (via UI) utilize style-preserving TOML to ensure all user comments and document structure are maintained.
