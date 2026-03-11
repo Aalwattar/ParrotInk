@@ -30,6 +30,7 @@ WIN_WIDTH = 1000
 WIN_HEIGHT = 52
 DEFAULT_Y_OFFSET = 60
 DEFAULT_REFRESH_RATE_MS = 50
+HUD_HEALTH_TIMEOUT_MS = 50
 
 
 try:
@@ -374,3 +375,22 @@ class HudOverlay:
         else:
             style &= ~win32con.WS_EX_TRANSPARENT
         win32gui.SetWindowLong(self._hwnd, win32con.GWL_EXSTYLE, style)
+
+    def is_responsive(self) -> bool:
+        """
+        Checks if the HUD window is responsive to Win32 messages.
+        Uses WM_NULL ping with a timeout to detect hangs.
+        """
+        if not HUD_AVAILABLE or not self._hwnd:
+            return False
+
+        try:
+            # SMTO_ABORTIFHUNG (0x0002): Returns immediately if the window is already hung.
+            # WM_NULL (0x0000) is a safe no-op message.
+            result, _ = win32gui.SendMessageTimeout(
+                self._hwnd, win32con.WM_NULL, 0, 0, win32con.SMTO_ABORTIFHUNG, HUD_HEALTH_TIMEOUT_MS
+            )
+            # SendMessageTimeout returns (result, lResult). If result is 0, it failed/timed out.
+            return result != 0
+        except Exception:
+            return False

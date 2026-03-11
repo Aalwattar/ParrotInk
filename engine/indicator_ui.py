@@ -140,14 +140,28 @@ class IndicatorWindow:
     @property
     def is_alive(self):
         """Returns True if the underlying HUD thread is active and responsive."""
+        return self.is_healthy()
+
+    def is_healthy(self) -> bool:
+        """
+        Comprehensive health check.
+        Returns True if the HUD is responsive to Win32 messages.
+        """
         if isinstance(self.impl, GdiFallbackWindow):
             return True
+
+        # 1. Check Python Thread status
         if self._thread and not self._thread.is_alive():
+            # If it's not alive, it's definitely not healthy
             return False
-        # Check window handle
-        if hasattr(self.impl, "_hwnd") and self.impl._hwnd is None:
-            # It might still be starting, but if it has exited (hwnd set back to None), it's dead
-            return False
+
+        # 2. Check Win32 Responsiveness
+        # Senior Architecture: This is the critical Win32 ping
+        if hasattr(self.impl, "is_responsive"):
+            if not self.impl.is_responsive():
+                # Window exists but isn't pumping messages
+                return False
+
         return True
 
     def start(self):

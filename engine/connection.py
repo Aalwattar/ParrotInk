@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 from typing import Callable, Optional
 
@@ -42,7 +43,11 @@ class ConnectionManager:
         self._last_fail_time = 0.0
         self._last_activity_time = 0.0
         self._idle_timer_task: Optional[asyncio.Task] = None
-        self._stop_lock = asyncio.Lock()
+
+        # Concurrency & Lifecycle
+        self._state_lock = asyncio.Lock()
+        self._connect_task: Optional[asyncio.Task] = None
+        self._generation = 0
 
     @property
     def config(self) -> Config:
@@ -70,14 +75,13 @@ class ConnectionManager:
         Idempotent connection management.
         Ensures the provider is connected based on connection_mode.
         """
-
         # Always cancel any pending idle timer if we are ensuring connection
         if self._idle_timer_task:
             self._idle_timer_task.cancel()
             self._idle_timer_task = None
 
+        # Pre-check rotation/type-mismatch (may trigger an immediate stop_provider)
         if self.provider and self.provider.is_running:
-            # Check for rotation
             if self.config.transcription.provider == "openai":
                 age = time.time() - self._session_start_time
                 rotation_threshold = self.config.providers.openai.core.session_rotation_seconds
@@ -91,14 +95,11 @@ class ConnectionManager:
                     else:
                         logger.info(f"Rotating OpenAI session due to age ({age:.1f}s).")
                         await self.stop_provider()
-                        # Fall through to reconnect
                 elif self._rotation_pending and not is_listening:
                     logger.info("Performing pending OpenAI session rotation.")
                     await self.stop_provider()
                     self._rotation_pending = False
-                    # Fall through to reconnect
 
-            # Check if provider type matches configuration
             if self.provider and self.provider.get_type() != self.config.transcription.provider:
                 logger.info(
                     f"Provider type mismatch ({self.provider.get_type()} != "
@@ -106,123 +107,177 @@ class ConnectionManager:
                 )
                 if not is_listening:
                     await self.stop_provider()
-                    # Fall through to reconnect
-                else:
-                    # If listening, we can't switch safely mid-stream
-                    pass
 
-        if self.provider and self.provider.is_running:
-            return
-
-        # Initialize provider if not exists
-        if not self.provider:
-            self.provider = TranscriptionFactory.create(
-                self.config,
-                on_partial=self.on_partial,
-                on_final=self.on_final,
-                on_status=self.on_status,
-            )
-            self.audio_adapter = AudioAdapter(
-                capture_rate_hz=self.config.audio.capture_sample_rate,
-                provider_spec=self.provider.get_audio_spec(),
-                energy_threshold=self.config.audio.voice_activity_threshold,
-            )
-
-        # Connect
-        now = time.time()
-        time_since_fail = now - self._last_fail_time
-        if time_since_fail < self._backoff_delay:
-            wait_time = self._backoff_delay - time_since_fail
-            logger.warning(f"Connection backoff active. Waiting {wait_time:.1f}s...")
-            await asyncio.sleep(wait_time)
-
-        logger.info(f"Connecting to {self.config.transcription.provider}...")
-        self.set_state(AppState.CONNECTING)
-        if self.on_status:
-            self.on_status(STATUS_CONNECTING)
-
-        retry_count = self.config.audio.max_retries
-        current_attempt = 0
-
-        while current_attempt < retry_count:
-            current_attempt += 1
-            try:
-                logger.debug(
-                    f"Starting provider {self.config.transcription.provider} "
-                    f"(Attempt {current_attempt}/{retry_count})..."
-                )
-                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
-                    await self.provider.start()
-                    # Wait for server handshake/ready signal
-                    await self.provider.wait_for_ready()
-                logger.debug("Provider started and ready.")
-                self._session_start_time = time.time()
-                self._rotation_pending = False
-                self._backoff_delay = self.config.audio.initial_backoff_seconds
-                logger.info("Connected successfully.")
-
-                # Centrally transition the UI to Ready once the provider is fully established
-                if self.on_status:
-                    self.on_status(STATUS_READY)
-
-                # If we are NOT in the middle of a listening command, transition to IDLE
-                if not is_listening:
-                    self.set_state(AppState.IDLE)
-
-                # Success - break loop
+        # Fast path / task coalescing under a short lock only.
+        async with self._state_lock:
+            if self.provider and self.provider.is_running:
                 return
 
-            except (TimeoutError, asyncio.CancelledError, Exception) as e:
-                is_last_attempt = current_attempt >= retry_count
-                error_msg = f"Connection attempt {current_attempt} failed: {type(e).__name__} - {e}"
-
-                if isinstance(e, asyncio.CancelledError) and not is_last_attempt:
-                    logger.warning(f"{error_msg}. Retrying...")
-                    if self.on_status:
-                        self.on_status(STATUS_RETRYING)
-                elif is_last_attempt:
-                    logger.error(f"{error_msg}. Giving up.")
-                    if self.on_status:
-                        self.on_status(STATUS_FAILED)
-                else:
-                    wait_s = self.config.audio.initial_backoff_seconds
-                    logger.warning(f"{error_msg}. Retrying in {wait_s}s...")
-                    if self.on_status:
-                        self.on_status(STATUS_RETRYING)
-
-                if is_last_attempt:
-                    self._last_fail_time = time.time()
-                    self._backoff_delay = min(
-                        self._backoff_delay * 2, self.config.audio.max_backoff_seconds
+            if self._connect_task and not self._connect_task.done():
+                task = self._connect_task
+            else:
+                if self.provider is None:
+                    provider = TranscriptionFactory.create(
+                        self.config,
+                        on_partial=self.on_partial,
+                        on_final=self.on_final,
+                        on_status=self.on_status,
                     )
+                    self.provider = provider
+                    self.audio_adapter = AudioAdapter(
+                        capture_rate_hz=self.config.audio.capture_sample_rate,
+                        provider_spec=provider.get_audio_spec(),
+                        energy_threshold=self.config.audio.voice_activity_threshold,
+                    )
+                else:
+                    provider = self.provider
 
-                    # Force a cleanup of the provider if it exists before clearing references
-                    await self.stop_provider()
+                generation = self._generation
+                task = asyncio.create_task(
+                    self._connect_with_retry(provider, generation, is_listening),
+                    name="connection-manager-connect",
+                )
+                self._connect_task = task
 
-                    self.set_state(AppState.ERROR)
+        # Await outside the lock so we don't block concurrent stops.
+        await task
+
+    async def _connect_with_retry(
+        self, provider: BaseProvider, generation: int, is_listening: bool
+    ):
+        try:
+            # Initial Backoff Application
+            now = time.time()
+            time_since_fail = now - self._last_fail_time
+            if time_since_fail < self._backoff_delay:
+                wait_time = self._backoff_delay - time_since_fail
+                logger.warning(f"Connection backoff active. Waiting {wait_time:.1f}s...")
+                await asyncio.sleep(wait_time)
+
+            logger.info(f"Connecting to {self.config.transcription.provider}...")
+            self.set_state(AppState.CONNECTING)
+            if self.on_status:
+                self.on_status(STATUS_CONNECTING)
+
+            retry_count = self.config.audio.max_retries
+            current_attempt = 0
+            delay = self.config.audio.initial_backoff_seconds
+
+            while current_attempt < retry_count:
+                current_attempt += 1
+
+                # Abort early if ownership has changed
+                async with self._state_lock:
+                    stale = self._generation != generation or self.provider is not provider
+                if stale:
+                    logger.debug("Connection aborted: Stale generation.")
+                    return
+
+                try:
+                    logger.debug(
+                        f"Starting provider {self.config.transcription.provider} "
+                        f"(Attempt {current_attempt}/{retry_count})..."
+                    )
+                    async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
+                        await provider.start()
+                        await provider.wait_for_ready()
+
+                    # Commit success only if this attempt still owns the state
+                    async with self._state_lock:
+                        stale = self._generation != generation or self.provider is not provider
+                        if not stale:
+                            self._session_start_time = time.time()
+                            self._rotation_pending = False
+                            self._backoff_delay = self.config.audio.initial_backoff_seconds
+
+                    if stale:
+                        logger.info("Connected after invalidated. Cleaning up orphan provider.")
+                        with contextlib.suppress(Exception):
+                            await provider.stop()
+                        return
+
+                    logger.info("Connected successfully.")
+                    if self.on_status:
+                        self.on_status(STATUS_READY)
+
+                    if not is_listening:
+                        self.set_state(AppState.IDLE)
+
+                    return  # Success - break out of the retry loop
+
+                except asyncio.CancelledError:
+                    # Required for graceful shutdown. Ensure provider is stopped.
+                    logger.debug("Connect task cancelled. Stopping provider.")
+                    with contextlib.suppress(Exception):
+                        await provider.stop()
                     raise
 
-                await asyncio.sleep(self.config.audio.initial_backoff_seconds)
+                except (TimeoutError, Exception) as e:
+                    is_last_attempt = current_attempt >= retry_count
+                    error_msg = (
+                        f"Connection attempt {current_attempt} failed: {type(e).__name__} - {e}"
+                    )
+
+                    # Partial failure cleanup before retry
+                    with contextlib.suppress(Exception):
+                        await provider.stop()
+
+                    if is_last_attempt:
+                        logger.error(f"{error_msg}. Giving up.")
+                        if self.on_status:
+                            self.on_status(STATUS_FAILED)
+                    else:
+                        logger.warning(f"{error_msg}. Retrying in {delay}s...")
+                        if self.on_status:
+                            self.on_status(STATUS_RETRYING)
+                        await asyncio.sleep(delay)
+                        delay = min(delay * 2, self.config.audio.max_backoff_seconds)
+
+            # If we reach here, we've exhausted all retries
+            self._last_fail_time = time.time()
+            self._backoff_delay = min(
+                self._backoff_delay * 2, self.config.audio.max_backoff_seconds
+            )
+            self.set_state(AppState.ERROR)
+
+        finally:
+            # Ensure we clear the task reference if we are the current task
+            async with self._state_lock:
+                if self._connect_task is asyncio.current_task():
+                    self._connect_task = None
 
     async def stop_provider(self):
-        """Stops the current provider and cleans up adapters."""
-        async with self._stop_lock:
+        """Stops the current provider and cleans up adapters safely."""
+        # Detach global state first, under a short lock.
+        async with self._state_lock:
+            self._generation += 1
+            provider = self.provider
+            connect_task = self._connect_task
+            adapter = self.audio_adapter
+
+            self.provider = None
+            self._connect_task = None
+            self.audio_adapter = None
+
             if self._idle_timer_task:
                 self._idle_timer_task.cancel()
                 self._idle_timer_task = None
 
-            if self.provider:
-                try:
-                    async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
-                        await self.provider.stop()
-                except Exception as e:
-                    logger.error(f"Error stopping provider ({type(e).__name__}): {e}")
+        # Cancel in-flight connect outside the lock.
+        if connect_task and connect_task is not asyncio.current_task():
+            connect_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await connect_task
 
-                if self.audio_adapter:
-                    self.audio_adapter.close()
+        # Stop provider outside the lock.
+        if provider:
+            with contextlib.suppress(Exception):
+                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
+                    await provider.stop()
 
-                self.provider = None
-                self.audio_adapter = None
+        # Cleanup audio adapter
+        if adapter:
+            adapter.close()
 
     def start_idle_timer(self):
         """Starts the idle timeout timer if configured."""
@@ -244,9 +299,10 @@ class ConnectionManager:
                 now = time.time()
                 elapsed = now - self._last_activity_time
                 if elapsed >= timeout:
-                    if self.provider and self.provider.is_running:
-                        logger.info(f"Closing warm connection after {timeout}s idle.")
-                        await self.stop_provider()
+                    # Don't strictly check self.provider.is_running here because
+                    # we want stop_provider() to cleanly increment the generation regardless.
+                    logger.info(f"Closing warm connection after {timeout}s idle.")
+                    await self.stop_provider()
                     break
                 await asyncio.sleep(min(1.0, timeout - elapsed))
         except asyncio.CancelledError:

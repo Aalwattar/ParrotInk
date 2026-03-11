@@ -131,10 +131,11 @@ class TrayApp:
 
         # If we have an indicator, check if it's still alive/healthy
         if self.indicator:
-            if getattr(self.indicator, "is_alive", True):
+            # Senior Architecture: Use robust Win32 health probe
+            if self.indicator.is_healthy():
                 return True
             else:
-                logger.warning("Indicator detected as dead. Re-initializing.")
+                logger.warning("HUD Indicator detected as unhealthy or dead. Re-initializing.")
                 try:
                     self.indicator.stop()
                 except Exception:
