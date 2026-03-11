@@ -1,8 +1,0 @@
-{
-  "track_id": "aai_u3_pro_prompt_20260304",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-03-04T12:31:00Z",
-  "updated_at": "2026-03-04T12:31:00Z",
-  "description": "Support AssemblyAI Universal-3 Pro (u3-rt-pro) with instructional prompting and resolve the HUD delay issue."
-}
