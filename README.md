@@ -166,12 +166,17 @@ ParrotInk follows a **Portable-First** configuration strategy. It looks for its 
 1.  **Portable Mode**: A `config.toml` file located in the same folder as the `ParrotInk.exe`. (Ideal for USB drives or custom installs).
 2.  **Standard Mode**: `%APPDATA%\ParrotInk\config.toml` (Used if no local file is found).
 
+**How to modify settings:**
+1.  Right-click the tray icon and select **Tools > 1. Open Configuration File**.
+2.  Edit the `config.toml` in your preferred text editor (like Notepad).
+3.  **Crucial:** After saving your changes, right-click the tray icon and select **Tools > 2. Load Configuration** for the changes to take effect immediately without restarting the app.
+
 **Available Tuning:**
 - **HUD Styles**: Customize the Skia-powered HUD appearance.
 - **Acoustic Profiles**: Switch between `Headset` (near-field) and `Laptop Mic` (far-field) profiles.
 - **Latency Tuning**: Choose between `Fast`, `Balanced`, or `Accurate` profiles to match your speaking pace.
 
-Detailed documentation on all technical settings can be found in the [config.example.toml](./config.example.toml) file.
+Detailed documentation on all technical settings and their default values can be found in the [config.example.toml](./config.example.toml) file located in the project root.
 
 ---
 

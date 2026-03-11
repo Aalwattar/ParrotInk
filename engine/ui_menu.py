@@ -211,13 +211,14 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
         pystray.MenuItem(
             "Tools",
             pystray.Menu(
-                pystray.MenuItem("Open Configuration File", app._open_config),
-                pystray.MenuItem("Open Log Folder", app._open_log_folder),
+                pystray.MenuItem("1. Open Configuration File", app._open_config),
                 pystray.MenuItem(
-                    "Reload Configuration",
+                    "2. Load Configuration",
                     app._on_reload_config_clicked,
                     enabled=lambda it: app.state in (AppState.IDLE, AppState.ERROR),
                 ),
+                pystray.Menu.SEPARATOR,
+                pystray.MenuItem("Open Logs Folder", app._open_log_folder),
             ),
         )
     )
