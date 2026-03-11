@@ -1,10 +1,13 @@
 import threading
 import time
 
+import pytest
+
 from engine.config import Config
-from engine.hud_renderer import HudOverlay
+from engine.hud_renderer import HUD_AVAILABLE, HudOverlay
 
 
+@pytest.mark.skipif(not HUD_AVAILABLE, reason="HUD not available in this environment")
 def test_hud_is_responsive_real_window():
     """
     Verification that the WM_NULL ping actually works against a live HUD window.
@@ -33,6 +36,7 @@ def test_hud_is_responsive_real_window():
         hud.stop()
 
 
+@pytest.mark.skipif(not HUD_AVAILABLE, reason="HUD not available in this environment")
 def test_hud_is_responsive_no_window():
     hud = HudOverlay()
     assert hud.is_responsive() is False, "HUD without window should not be responsive"
