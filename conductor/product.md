@@ -111,6 +111,12 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Configurable Suppression:** Users can choose to "Don't show this again," which permanently saves the preference to the configuration file. The popup is also automatically suppressed when the application is launched with the `--background` flag.
     - **Blocking Gatekeeper:** The onboarding window acts as a blocking modal before the main application logic starts, ensuring new users are properly oriented before the tray icon appears.
 
+    ### 2.16. Audio Device Selection & Robustness
+    - **Granular Device Control:** Users can select a specific microphone for audio capture by name or partial name in the configuration.
+    - **Robust Fallbacks:** If a configured device is unavailable, the system automatically falls back to the system's default recording device.
+    - **Communication Ducking Mitigation:** The application utilizes WASAPI Shared mode with automatic conversion to prevent Windows from aggressively lowering the volume of other applications (ducking) during active recording sessions.
+    - **Responsive Initialization:** Audio stream initialization is performed in an isolated background thread, ensuring that hotkey triggers remain responsive even if the audio driver takes time to open.
+
 ### 3.1. Audio Pipeline
 - **Audio Capture:** Use `sounddevice` for microphone input.
 - **Encoding & Streaming:**
