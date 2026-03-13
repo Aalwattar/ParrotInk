@@ -145,11 +145,15 @@ class AudioStreamer:
 
         self.async_q.put_nowait((chunk, capture_time))
 
-    def _get_device_index(self) -> Optional[int]:
+    def _get_device_index(self, force_refresh: bool = False) -> Optional[int]:
         """Finds the device index based on the configured device name using the cache."""
         if not self.device_name or self.device_name.lower() == "default":
             # Fast-Path: PortAudio handles "None" as the system default instantly.
             return None
+
+        if force_refresh:
+            logger.info(f"Forcing audio device cache refresh for '{self.device_name}'...")
+            self.refresh_devices()
 
         def _find_in_list(devices: list) -> Optional[int]:
             # 1. Try exact match on name + WASAPI preference
@@ -181,74 +185,97 @@ class AudioStreamer:
             return idx
 
         # 2. Fallback: Refresh cache and try again
-        logger.info(f"Device '{self.device_name}' not in cache. Refreshing...")
-        self.refresh_devices()
-        return _find_in_list(self._cached_devices)
+        if not force_refresh:
+            logger.info(f"Device '{self.device_name}' not in cache. Refreshing...")
+            self.refresh_devices()
+            return _find_in_list(self._cached_devices)
+
+        return None
 
     def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
         """Helper to try mono, then stereo capture at a given sample rate."""
         chunk_size_adjusted = int(self.chunk_size * (sample_rate / self.sample_rate))
 
-        device_index = self._get_device_index()
-        if device_index is not None:
-            logger.info(f"Using specific audio device: {self.device_name} (Index: {device_index})")
+        # We try opening the stream. If it fails once, we refresh cache and try one more time.
+        last_exception = None
+        for attempt in range(2):
+            force_refresh = attempt > 0
+            device_index = self._get_device_index(force_refresh=force_refresh)
 
-        # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode.
-        # CRITICAL FIX: Only apply WasapiSettings if the device is actually a WASAPI device.
-        extra_settings = None
-        try:
-            # If no device_index, we need to know what the default device actually is
-            # to check its Host API.
-            target_idx = device_index if device_index is not None else sd.default.device[0]
+            if device_index is not None:
+                logger.info(
+                    f"Using specific audio device: {self.device_name} (Index: {device_index})"
+                )
 
-            # Use cache if possible for performance
-            devices = self._cached_devices if self._cached_devices else list(sd.query_devices())
-            host_apis = (
-                self._cached_hostapis if self._cached_hostapis else list(sd.query_hostapis())
-            )
+            # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode.
+            extra_settings = None
+            try:
+                # If no device_index, we need to know what the default device actually is
+                # to check its Host API.
+                target_idx = device_index if device_index is not None else sd.default.device[0]
 
-            if target_idx is not None and 0 <= target_idx < len(devices):
-                device_info = devices[target_idx]
-                host_api_idx = device_info.get("hostapi")
+                # Use cache if possible for performance
+                devices = self._cached_devices if self._cached_devices else list(sd.query_devices())
+                host_apis = (
+                    self._cached_hostapis if self._cached_hostapis else list(sd.query_hostapis())
+                )
 
-                if host_api_idx is not None and 0 <= host_api_idx < len(host_apis):
-                    host_api_name = host_apis[host_api_idx]["name"]
-                    if host_api_name == "Windows WASAPI":
-                        extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
-                        logger.debug("Applying WASAPI Shared Mode settings.")
-                    else:
-                        logger.debug(f"Not applying WASAPI settings for host API: {host_api_name}")
-        except (AttributeError, Exception) as e:
-            logger.debug(f"Skipping WASAPI settings: {e}")
-            pass
+                if target_idx is not None and 0 <= target_idx < len(devices):
+                    device_info = devices[target_idx]
+                    host_api_idx = device_info.get("hostapi")
 
-        try:
-            stream = sd.InputStream(
-                samplerate=sample_rate,
-                channels=1,
-                device=device_index,
-                dtype=DEFAULT_DTYPE,
-                blocksize=chunk_size_adjusted,
-                callback=self._callback,
-                extra_settings=extra_settings,
-            )
-            return stream
-        except Exception as e:
-            logger.debug(f"Mono capture at {sample_rate}Hz failed: {e}. Trying stereo...")
+                    if host_api_idx is not None and 0 <= host_api_idx < len(host_apis):
+                        host_api_name = host_apis[host_api_idx]["name"]
+                        if host_api_name == "Windows WASAPI":
+                            extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
+                            logger.debug("Applying WASAPI Shared Mode settings.")
+                        else:
+                            logger.debug(
+                                f"Not applying WASAPI settings for host API: {host_api_name}"
+                            )
+            except (AttributeError, Exception) as e:
+                logger.debug(f"Skipping WASAPI settings: {e}")
+                pass
+
             try:
                 stream = sd.InputStream(
                     samplerate=sample_rate,
-                    channels=2,
+                    channels=1,
                     device=device_index,
                     dtype=DEFAULT_DTYPE,
                     blocksize=chunk_size_adjusted,
                     callback=self._callback,
                     extra_settings=extra_settings,
                 )
-                logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
                 return stream
-            except Exception as e2:
-                raise e2
+            except Exception as e:
+                logger.debug(
+                    f"Mono capture at {sample_rate}Hz failed on attempt {attempt + 1}: {e}"
+                )
+                last_exception = e
+                # If first attempt, retry with fresh cache.
+                # If second attempt, fall through to try stereo.
+                if not force_refresh:
+                    continue
+
+                # If we're here, it's the second attempt and mono still failed. Try stereo.
+                try:
+                    stream = sd.InputStream(
+                        samplerate=sample_rate,
+                        channels=2,
+                        device=device_index,
+                        dtype=DEFAULT_DTYPE,
+                        blocksize=chunk_size_adjusted,
+                        callback=self._callback,
+                        extra_settings=extra_settings,
+                    )
+                    logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
+                    return stream
+                except Exception as e2:
+                    last_exception = e2
+                    break  # Give up on this sample rate
+
+        raise last_exception
 
     async def start(self, loop: asyncio.AbstractEventLoop | None = None):
         """Starts the audio capture stream with robust fallbacks."""
