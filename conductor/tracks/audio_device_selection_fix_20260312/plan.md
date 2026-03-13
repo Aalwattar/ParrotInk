@@ -18,3 +18,4 @@
 - [x] Task: Fix PaErrorCode -9984 by guarding WASAPI settings.
 - [x] Task: Enhance device selection to prioritize WASAPI host API.
 - [x] Task: Add robustness guards for device and host API indices.
+- [x] Task: Implement 'Fast-Path' optimization for Default device to eliminate hotkey latency.

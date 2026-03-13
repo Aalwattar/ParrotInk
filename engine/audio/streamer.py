@@ -71,6 +71,28 @@ class AudioStreamer:
         self._last_drop_log = 0.0
         self.last_status = None
 
+        # Senior Optimization: Cache device indices to avoid expensive re-scans.
+        self._cached_devices: list = []
+        self._cached_hostapis: list = []
+        self._wasapi_index: int = -1
+        self.refresh_devices()
+
+    def refresh_devices(self):
+        """Refreshes the internal cache of audio devices and host APIs."""
+        try:
+            self._cached_devices = list(sd.query_devices())
+            self._cached_hostapis = list(sd.query_hostapis())
+            self._wasapi_index = -1
+            for i, api in enumerate(self._cached_hostapis):
+                if api["name"] == "Windows WASAPI":
+                    self._wasapi_index = i
+                    break
+            logger.debug(
+                f"Audio device cache refreshed. Found {len(self._cached_devices)} devices."
+            )
+        except Exception as e:
+            logger.warning(f"Failed to refresh audio device cache: {e}")
+
     def _callback(self, indata: np.ndarray, frames: int, time_info, status):
         """This is called (from a separate thread) for each audio block."""
         if status:
@@ -124,29 +146,22 @@ class AudioStreamer:
         self.async_q.put_nowait((chunk, capture_time))
 
     def _get_device_index(self) -> Optional[int]:
-        """Finds the device index based on the configured device name."""
+        """Finds the device index based on the configured device name using the cache."""
         if not self.device_name or self.device_name.lower() == "default":
+            # Fast-Path: PortAudio handles "None" as the system default instantly.
             return None
 
-        try:
-            devices = sd.query_devices()
-            host_apis = sd.query_hostapis()
-            wasapi_api_index = -1
-            for i, api in enumerate(host_apis):
-                if api["name"] == "Windows WASAPI":
-                    wasapi_api_index = i
-                    break
-
+        def _find_in_list(devices: list) -> Optional[int]:
             # 1. Try exact match on name + WASAPI preference
             for i, d in enumerate(devices):
                 if d["name"] == self.device_name and d["max_input_channels"] > 0:
-                    if wasapi_api_index != -1 and d["hostapi"] == wasapi_api_index:
+                    if self._wasapi_index != -1 and d["hostapi"] == self._wasapi_index:
                         return i
 
             # 2. Try substring match + WASAPI preference
             for i, d in enumerate(devices):
                 if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
-                    if wasapi_api_index != -1 and d["hostapi"] == wasapi_api_index:
+                    if self._wasapi_index != -1 and d["hostapi"] == self._wasapi_index:
                         return i
 
             # 3. Fallback: Try exact match on name (any host API)
@@ -158,11 +173,17 @@ class AudioStreamer:
             for i, d in enumerate(devices):
                 if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
                     return i
+            return None
 
-        except Exception as e:
-            logger.warning(f"Could not query audio devices: {e}")
+        # 1. Try finding in cache
+        idx = _find_in_list(self._cached_devices)
+        if idx is not None:
+            return idx
 
-        return None
+        # 2. Fallback: Refresh cache and try again
+        logger.info(f"Device '{self.device_name}' not in cache. Refreshing...")
+        self.refresh_devices()
+        return _find_in_list(self._cached_devices)
 
     def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
         """Helper to try mono, then stereo capture at a given sample rate."""
@@ -174,17 +195,20 @@ class AudioStreamer:
 
         # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode.
         # CRITICAL FIX: Only apply WasapiSettings if the device is actually a WASAPI device.
-        # Passing WasapiSettings to an MME or DirectSound device causes PaErrorCode -9984.
         extra_settings = None
         try:
-            devices = sd.query_devices()
-            # If no device_index, use default input
+            # If no device_index, we need to know what the default device actually is
+            # to check its Host API.
             target_idx = device_index if device_index is not None else sd.default.device[0]
 
-            # Robustness Guard: Ensure index is valid before querying info
+            # Use cache if possible for performance
+            devices = self._cached_devices if self._cached_devices else list(sd.query_devices())
+            host_apis = (
+                self._cached_hostapis if self._cached_hostapis else list(sd.query_hostapis())
+            )
+
             if target_idx is not None and 0 <= target_idx < len(devices):
                 device_info = devices[target_idx]
-                host_apis = sd.query_hostapis()
                 host_api_idx = device_info.get("hostapi")
 
                 if host_api_idx is not None and 0 <= host_api_idx < len(host_apis):
@@ -195,7 +219,6 @@ class AudioStreamer:
                     else:
                         logger.debug(f"Not applying WASAPI settings for host API: {host_api_name}")
         except (AttributeError, Exception) as e:
-            # Non-Windows, older sounddevice, or query failure
             logger.debug(f"Skipping WASAPI settings: {e}")
             pass
 
