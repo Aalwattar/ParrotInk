@@ -187,6 +187,10 @@ class HudOverlay:
             logger.error("HUD not available (import failure)")
             return
 
+        if self._hwnd:
+            logger.warning("HudOverlay.run called while window already exists. Skipping.")
+            return
+
         try:
             hinst = GetModuleHandle(None)
             class_name = "ParrotInkSkiaHUD"

@@ -82,6 +82,7 @@ class IndicatorWindow:
         self._visible = False
         self._session_id = 0
         self._is_running = False
+        self._init_time = time.time()
 
         # Import inside __init__ to pick up test mocks/patches correctly
         import engine.hud_renderer
@@ -150,12 +151,16 @@ class IndicatorWindow:
         # Senior Architecture: If we are using a mock (GdiFallbackWindow) but the environment
         # supports a real HUD (HUD_AVAILABLE is True) and the user has it enabled, we are in
         # a degraded state (Unhealthy). This allows the supervisor to attempt recovery.
+        #
+        # NOTE: We allow a 5-second grace period after init to prevent rapid loops
+        # if the real HUD keeps failing immediately.
         if isinstance(self.impl, GdiFallbackWindow):
             if self.config and self.config.ui.floating_indicator.enabled:
                 import engine.hud_renderer
 
                 if getattr(engine.hud_renderer, "HUD_AVAILABLE", False):
-                    return False
+                    if time.time() - self._init_time > 5.0:
+                        return False
             return True
 
         # 1. Check Python Thread status

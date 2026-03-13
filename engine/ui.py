@@ -111,6 +111,7 @@ class TrayApp:
 
         # Lazy-load indicator
         self.indicator: Optional["IndicatorWindow"] = None
+        self._indicator_lock = threading.Lock()
         self._is_stopped = False
         self._ensure_indicator()
 
@@ -119,48 +120,49 @@ class TrayApp:
         Safely creates or verifies the floating indicator.
         Returns True if indicator exists and is ready, False otherwise.
         """
-        # If disabled in config, ensure we don't have one
-        if not self.config.ui.floating_indicator.enabled:
+        with self._indicator_lock:
+            # If disabled in config, ensure we don't have one
+            if not self.config.ui.floating_indicator.enabled:
+                if self.indicator:
+                    try:
+                        self.indicator.stop()
+                    except Exception:
+                        pass
+                    self.indicator = None
+                return False
+
+            # If we have an indicator, check if it's still alive/healthy
             if self.indicator:
+                # Senior Architecture: Use robust Win32 health probe
+                if self.indicator.is_healthy():
+                    return True
+                else:
+                    logger.info("HUD Indicator detected as unhealthy or dead. Re-initializing.")
+                    try:
+                        self.indicator.stop()
+                    except Exception:
+                        pass
+                    self.indicator = None
+
+            # If enabled but not created (or just died), try to create it
+            if not self.indicator:
                 try:
-                    self.indicator.stop()
-                except Exception:
-                    pass
-                self.indicator = None
-            return False
+                    from .indicator_ui import IndicatorWindow
 
-        # If we have an indicator, check if it's still alive/healthy
-        if self.indicator:
-            # Senior Architecture: Use robust Win32 health probe
-            if self.indicator.is_healthy():
-                return True
-            else:
-                logger.info("HUD Indicator detected as unhealthy or dead. Re-initializing.")
-                try:
-                    self.indicator.stop()
-                except Exception:
-                    pass
-                self.indicator = None
-
-        # If enabled but not created (or just died), try to create it
-        if not self.indicator:
-            try:
-                from .indicator_ui import IndicatorWindow
-
-                logger.info("Lazily initializing IndicatorWindow.")
-                self.indicator = IndicatorWindow(config=self.config)
-                # Start its thread
-                if not self._is_stopped:
-                    self.indicator.start()
-                return True
-            except (ImportError, RuntimeError) as e:
-                # Catching specific setup/dependency failures
-                logger.error(f"Failed to initialize indicator (dependency issue): {e}")
-                return False
-            except Exception as e:
-                # Catch-all for unexpected HUD creation failures
-                logger.error(f"Unexpected HUD creation failure: {e}", exc_info=True)
-                return False
+                    logger.info("Lazily initializing IndicatorWindow.")
+                    self.indicator = IndicatorWindow(config=self.config)
+                    # Start its thread
+                    if not self._is_stopped:
+                        self.indicator.start()
+                    return True
+                except (ImportError, RuntimeError) as e:
+                    # Catching specific setup/dependency failures
+                    logger.error(f"Failed to initialize indicator (dependency issue): {e}")
+                    return False
+                except Exception as e:
+                    # Catch-all for unexpected HUD creation failures
+                    logger.error(f"Unexpected HUD creation failure: {e}", exc_info=True)
+                    return False
 
         return True
 

@@ -387,7 +387,7 @@ class AppCoordinator:
 
         # 2. Inject into target application (Only if enabled in config)
         if self.config.transcription.partial_results:
-            if self.loop:
+            if self.loop and self.injection_controller:
                 asyncio.run_coroutine_threadsafe(
                     self.injection_controller.smart_inject(text), self.loop
                 )
@@ -408,7 +408,7 @@ class AppCoordinator:
         self.ui_bridge.update_final_text(text)
 
         # Ensure final text is fully synchronized and add a trailing space
-        if self.loop:
+        if self.loop and self.injection_controller:
             asyncio.run_coroutine_threadsafe(
                 self.injection_controller.smart_inject(text + " ", is_final=True), self.loop
             )
@@ -478,6 +478,11 @@ class AppCoordinator:
         self.set_state(AppState.CONNECTING)
 
         try:
+            # Senior Architecture: Self-Healing Pipeline
+            if self.pipeline is None:
+                logger.warning("Pipeline was None during start_listening. Re-initializing.")
+                self.pipeline = AudioPipeline(self.streamer)
+
             # 1. Capture anchor point
             if self.config.interaction.cancel_on_click_outside_anchor:
                 self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
