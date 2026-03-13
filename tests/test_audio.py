@@ -1,4 +1,5 @@
-import time
+import asyncio
+import unittest
 from unittest.mock import patch
 
 import numpy as np
@@ -6,33 +7,22 @@ import numpy as np
 from engine.audio import AudioStreamer
 
 
-def test_audio_streamer_init():
-    """Verify that AudioStreamer initializes with correct sample rate and chunk size."""
-    streamer = AudioStreamer(sample_rate=16000, chunk_size=1024)
-    assert streamer.sample_rate == 16000
-    assert streamer.chunk_size == 1024
-    assert not streamer.is_running
+class TestAudioStreamer(unittest.IsolatedAsyncioTestCase):
+    def test_audio_streamer_init(self):
+        """Verify that AudioStreamer initializes with correct sample rate and chunk size."""
+        streamer = AudioStreamer(sample_rate=16000, chunk_size=1024)
+        self.assertEqual(streamer.sample_rate, 16000)
+        self.assertEqual(streamer.chunk_size, 1024)
+        self.assertFalse(streamer.is_running)
 
+    @patch("sounddevice.InputStream")
+    async def test_audio_normalization_mono(self, mock_input_stream):
+        """Test normalization of already mono audio."""
+        loop = asyncio.get_event_loop()
 
-def test_audio_normalization_mono():
-    """Test normalization of already mono audio."""
-    import asyncio
-    import threading
-
-    loop = asyncio.new_event_loop()
-
-    # Run loop in thread
-    def run_loop(loop):
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
-
-    t = threading.Thread(target=run_loop, args=(loop,), daemon=True)
-    t.start()
-
-    try:
-        with patch("sounddevice.InputStream"):
+        try:
             streamer = AudioStreamer()
-            streamer.start(loop=loop)
+            await streamer.start(loop=loop)
 
             chunk = np.array([0.1, 0.2, 0.3], dtype=np.float32)
             # Simulate callback
@@ -42,35 +32,23 @@ def test_audio_normalization_mono():
             for _ in range(20):
                 if streamer.async_q.qsize() == 1:
                     break
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
 
-            assert streamer.async_q.qsize() == 1
+            self.assertEqual(streamer.async_q.qsize(), 1)
             normalized, _ = streamer.async_q.get_nowait()
-            assert np.array_equal(normalized, chunk)
+            self.assertTrue(np.array_equal(normalized, chunk))
             streamer.stop()
-    finally:
-        loop.call_soon_threadsafe(loop.stop)
-        t.join(timeout=1.0)
+        finally:
+            pass
 
+    @patch("sounddevice.InputStream")
+    async def test_audio_normalization_stereo(self, mock_input_stream):
+        """Test normalization of stereo audio (downmixing)."""
+        loop = asyncio.get_event_loop()
 
-def test_audio_normalization_stereo():
-    """Test normalization of stereo audio (downmixing)."""
-    import asyncio
-    import threading
-
-    loop = asyncio.new_event_loop()
-
-    def run_loop(loop):
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
-
-    t = threading.Thread(target=run_loop, args=(loop,), daemon=True)
-    t.start()
-
-    try:
-        with patch("sounddevice.InputStream"):
+        try:
             streamer = AudioStreamer()
-            streamer.start(loop=loop)
+            await streamer.start(loop=loop)
 
             # 2 channels, 3 frames
             chunk = np.array([[0.1, 0.5], [0.2, 0.6], [0.3, 0.7]], dtype=np.float32)
@@ -79,17 +57,16 @@ def test_audio_normalization_stereo():
             for _ in range(20):
                 if streamer.async_q.qsize() == 1:
                     break
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
 
-            assert streamer.async_q.qsize() == 1
+            self.assertEqual(streamer.async_q.qsize(), 1)
             normalized, _ = streamer.async_q.get_nowait()
             # Mean of [0.1, 0.5] is 0.3, etc.
             expected = np.array([0.3, 0.4, 0.5], dtype=np.float32)
-            assert np.allclose(normalized, expected)
+            self.assertTrue(np.allclose(normalized, expected))
             streamer.stop()
-    finally:
-        loop.call_soon_threadsafe(loop.stop)
-        t.join(timeout=1.0)
+        finally:
+            pass
 
 
 def test_play_sound_missing_file():
@@ -98,3 +75,7 @@ def test_play_sound_missing_file():
 
     # Should not raise anything
     play_sound("non_existent.wav")
+
+
+if __name__ == "__main__":
+    unittest.main()

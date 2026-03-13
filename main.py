@@ -50,7 +50,11 @@ class AppCoordinator:
         chunk_ms = config.audio.chunk_ms
         chunk_size = (sample_rate * chunk_ms) // 1000
 
-        self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
+        self.streamer = AudioStreamer(
+            sample_rate=sample_rate,
+            chunk_size=chunk_size,
+            device_name=config.audio.input_device,
+        )
         self.connection_manager = ConnectionManager(
             config,
             self.on_partial,
@@ -179,6 +183,7 @@ class AppCoordinator:
 
         # 2. Update connection manager config (crucial for provider switching)
         self.connection_manager.config = config
+        self.streamer.device_name = config.audio.input_device
 
         # 3. Force provider reset to apply new settings (e.g. prompt, thresholds)
         if self.loop:

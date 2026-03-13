@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import AsyncGenerator, Tuple, cast
+from typing import AsyncGenerator, Optional, Tuple, cast
 
 import numpy as np
 import sounddevice as sd
@@ -51,9 +51,16 @@ def check_audio_invariants(chunk: np.ndarray) -> None:
 
 
 class AudioStreamer:
-    def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        chunk_size: int = 1024,
+        device_name: Optional[str] = None,
+    ):
         self.sample_rate = sample_rate
+
         self.chunk_size = chunk_size
+        self.device_name = device_name
         self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(
             maxsize=QUEUE_MAX_SIZE
         )
@@ -116,16 +123,53 @@ class AudioStreamer:
 
         self.async_q.put_nowait((chunk, capture_time))
 
+    def _get_device_index(self) -> Optional[int]:
+        """Finds the device index based on the configured device name."""
+        if not self.device_name or self.device_name.lower() == "default":
+            return None
+
+        try:
+            devices = sd.query_devices()
+            # Try exact match first
+            for i, d in enumerate(devices):
+                if d["name"] == self.device_name and d["max_input_channels"] > 0:
+                    return i
+            # Try substring match
+            for i, d in enumerate(devices):
+                if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
+                    return i
+        except Exception as e:
+            logger.warning(f"Could not query audio devices: {e}")
+
+        return None
+
     def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
         """Helper to try mono, then stereo capture at a given sample rate."""
         chunk_size_adjusted = int(self.chunk_size * (sample_rate / self.sample_rate))
+
+        device_index = self._get_device_index()
+        if device_index is not None:
+            logger.info(f"Using specific audio device: {self.device_name} (Index: {device_index})")
+
+        # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode
+        # with auto-convert. sounddevice doesn't easily expose the 'Role' property,
+        # but ensuring Shared mode (exclusive=False) is the most compatible path for Windows.
+        extra_settings = None
+        try:
+            extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
+        except (AttributeError, Exception):
+            # Non-Windows or older sounddevice
+            pass
+
         try:
             stream = sd.InputStream(
                 samplerate=sample_rate,
                 channels=1,
+                device=device_index,
                 dtype=DEFAULT_DTYPE,
                 blocksize=chunk_size_adjusted,
                 callback=self._callback,
+                extra_settings=extra_settings,
             )
             return stream
         except Exception as e:
@@ -134,16 +178,18 @@ class AudioStreamer:
                 stream = sd.InputStream(
                     samplerate=sample_rate,
                     channels=2,
+                    device=device_index,
                     dtype=DEFAULT_DTYPE,
                     blocksize=chunk_size_adjusted,
                     callback=self._callback,
+                    extra_settings=extra_settings,
                 )
                 logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
                 return stream
             except Exception as e2:
                 raise e2
 
-    def start(self, loop: asyncio.AbstractEventLoop | None = None):
+    async def start(self, loop: asyncio.AbstractEventLoop | None = None):
         """Starts the audio capture stream with robust fallbacks."""
         if self.is_running:
             return
@@ -159,37 +205,46 @@ class AudioStreamer:
 
         self._drop_count = 0
 
-        rates_to_try = [self.sample_rate]
-        if self.sample_rate not in (44100, 48000):
-            rates_to_try.extend([44100, 48000])
+        # Senior Architecture: Thread Isolation
+        # Opening a PortAudio stream can be a slow, blocking call that hangs the UI/Hotkey thread.
+        # We run it in a background thread to ensure responsiveness.
+        def _open_and_start():
+            rates_to_try = [self.sample_rate]
+            if self.sample_rate not in (44100, 48000):
+                rates_to_try.extend([44100, 48000])
 
-        last_error = None
-        for rate in rates_to_try:
-            try:
-                # Guard against ZeroDivisionError just in case
-                if self.sample_rate == 0:
-                    self.sample_rate = rate
+            last_error = None
+            for rate in rates_to_try:
+                try:
+                    # Guard against ZeroDivisionError just in case
+                    if self.sample_rate == 0:
+                        self.sample_rate = rate
 
-                self._stream = self._try_open_stream(rate)
-                if rate != self.sample_rate:
-                    self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
-                    self.sample_rate = rate
-                break
-            except Exception as e:
-                logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
-                last_error = e
+                    self._stream = self._try_open_stream(rate)
+                    if rate != self.sample_rate:
+                        self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
+                        self.sample_rate = rate
+                    break
+                except Exception as e:
+                    logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
+                    last_error = e
 
-        if self._stream is None:
-            err_msg = str(last_error) if last_error else "Unknown error"
-            logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
-            raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
+            if self._stream is None:
+                err_msg = str(last_error) if last_error else "Unknown error"
+                logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
+                raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
 
-        self._stream.start()
+            self._stream.start()
+
+        # Run the blocking open/start in an executor
+        await self._loop.run_in_executor(None, _open_and_start)
         self.is_running = True
-        logger.info(
-            f"Audio capture started at {self._stream.samplerate}Hz "
-            f"(channels={self._stream.channels})"
-        )
+
+        if self._stream:
+            logger.info(
+                f"Audio capture started at {self._stream.samplerate}Hz "
+                f"(channels={self._stream.channels})"
+            )
 
     def stop(self):
         """Stops the audio capture stream."""
