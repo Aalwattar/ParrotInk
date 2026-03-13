@@ -22,7 +22,7 @@ from engine.constants import (
 from engine.credential_ui import ask_key
 from engine.injection import InjectionController
 from engine.interaction import InputMonitor
-from engine.logging import configure_logging, get_logger
+from engine.logging import configure_logging, get_logger, set_global_level
 from engine.mouse import MouseMonitor
 from engine.platform_win.constants import MUTEX_NAME_TEMPLATE
 from engine.platform_win.instance import SingleInstance
@@ -185,7 +185,10 @@ class AppCoordinator:
         self.connection_manager.config = config
         self.streamer.device_name = config.audio.input_device
 
-        # 3. Force provider reset to apply new settings (e.g. prompt, thresholds)
+        # 3. Update logging level dynamically
+        set_global_level(config.logging.file_level)
+
+        # 4. Force provider reset to apply new settings (e.g. prompt, thresholds)
         if self.loop:
             asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
 
