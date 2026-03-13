@@ -7,10 +7,6 @@ This file tracks all major tracks for the project. Each track has its own detail
 Link: [audio_device_selection_fix_20260312](./tracks/audio_device_selection_fix_20260312/)
 
 ---
-## [x] Track: Dynamic Logging Reload
-Link: [logging_reload_fix_20260312](./tracks/logging_reload_fix_20260312/)
-
----
 ## [ ] Track: Auto Provider Selection
 Link: [auto_provider_selection_20260311](./tracks/auto_provider_selection_20260311/)
 
