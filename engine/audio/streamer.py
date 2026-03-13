@@ -155,6 +155,9 @@ class AudioStreamer:
             logger.info(f"Forcing audio device cache refresh for '{self.device_name}'...")
             self.refresh_devices()
 
+        assert self.device_name is not None
+        device_name_lower = self.device_name.lower()
+
         def _find_in_list(devices: list) -> Optional[int]:
             # 1. Try exact match on name + WASAPI preference
             for i, d in enumerate(devices):
@@ -164,7 +167,7 @@ class AudioStreamer:
 
             # 2. Try substring match + WASAPI preference
             for i, d in enumerate(devices):
-                if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
+                if device_name_lower in d["name"].lower() and d["max_input_channels"] > 0:
                     if self._wasapi_index != -1 and d["hostapi"] == self._wasapi_index:
                         return i
 
@@ -175,7 +178,7 @@ class AudioStreamer:
 
             # 4. Fallback: Try substring match (any host API)
             for i, d in enumerate(devices):
-                if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
+                if device_name_lower in d["name"].lower() and d["max_input_channels"] > 0:
                     return i
             return None
 
@@ -275,7 +278,9 @@ class AudioStreamer:
                     last_exception = e2
                     break  # Give up on this sample rate
 
-        raise last_exception
+        if last_exception:
+            raise last_exception
+        raise AudioHardwareError("Unknown audio capture failure")
 
     async def start(self, loop: asyncio.AbstractEventLoop | None = None):
         """Starts the audio capture stream with robust fallbacks."""
