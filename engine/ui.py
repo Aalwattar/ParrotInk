@@ -135,7 +135,7 @@ class TrayApp:
             if self.indicator.is_healthy():
                 return True
             else:
-                logger.warning("HUD Indicator detected as unhealthy or dead. Re-initializing.")
+                logger.info("HUD Indicator detected as unhealthy or dead. Re-initializing.")
                 try:
                     self.indicator.stop()
                 except Exception:
