@@ -216,6 +216,30 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
         _listener.start()
 
 
+def set_global_level(level: str):
+    """
+    Updates the logging level for all active handlers dynamically.
+    Ensures that changes to the configuration are applied immediately.
+    """
+    global _listener
+
+    level_map = {
+        "error": logging.ERROR,
+        "info": logging.INFO,
+        "verbose": logging.DEBUG,
+    }
+    # Default to ERROR if invalid level provided
+    target_level = level_map.get(level.lower(), logging.ERROR)
+
+    # Senior Architecture: We modify the handlers within the QueueListener.
+    # This avoids re-initializing file handles or losing logs in transit.
+    if _listener:
+        for handler in _listener.handlers:
+            handler.setLevel(target_level)
+
+    get_logger("Logging").info(f"Logging level updated to: {level.upper()}")
+
+
 def get_logger(name: str):
     """Returns a logger with the given name."""
     return logging.getLogger(name)
