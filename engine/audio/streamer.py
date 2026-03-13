@@ -130,14 +130,35 @@ class AudioStreamer:
 
         try:
             devices = sd.query_devices()
-            # Try exact match first
+            host_apis = sd.query_hostapis()
+            wasapi_api_index = -1
+            for i, api in enumerate(host_apis):
+                if api["name"] == "Windows WASAPI":
+                    wasapi_api_index = i
+                    break
+
+            # 1. Try exact match on name + WASAPI preference
+            for i, d in enumerate(devices):
+                if d["name"] == self.device_name and d["max_input_channels"] > 0:
+                    if wasapi_api_index != -1 and d["hostapi"] == wasapi_api_index:
+                        return i
+
+            # 2. Try substring match + WASAPI preference
+            for i, d in enumerate(devices):
+                if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
+                    if wasapi_api_index != -1 and d["hostapi"] == wasapi_api_index:
+                        return i
+
+            # 3. Fallback: Try exact match on name (any host API)
             for i, d in enumerate(devices):
                 if d["name"] == self.device_name and d["max_input_channels"] > 0:
                     return i
-            # Try substring match
+
+            # 4. Fallback: Try substring match (any host API)
             for i, d in enumerate(devices):
                 if self.device_name.lower() in d["name"].lower() and d["max_input_channels"] > 0:
                     return i
+
         except Exception as e:
             logger.warning(f"Could not query audio devices: {e}")
 
@@ -151,14 +172,31 @@ class AudioStreamer:
         if device_index is not None:
             logger.info(f"Using specific audio device: {self.device_name} (Index: {device_index})")
 
-        # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode
-        # with auto-convert. sounddevice doesn't easily expose the 'Role' property,
-        # but ensuring Shared mode (exclusive=False) is the most compatible path for Windows.
+        # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode.
+        # CRITICAL FIX: Only apply WasapiSettings if the device is actually a WASAPI device.
+        # Passing WasapiSettings to an MME or DirectSound device causes PaErrorCode -9984.
         extra_settings = None
         try:
-            extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
-        except (AttributeError, Exception):
-            # Non-Windows or older sounddevice
+            devices = sd.query_devices()
+            # If no device_index, use default input
+            target_idx = device_index if device_index is not None else sd.default.device[0]
+
+            # Robustness Guard: Ensure index is valid before querying info
+            if target_idx is not None and 0 <= target_idx < len(devices):
+                device_info = devices[target_idx]
+                host_apis = sd.query_hostapis()
+                host_api_idx = device_info.get("hostapi")
+
+                if host_api_idx is not None and 0 <= host_api_idx < len(host_apis):
+                    host_api_name = host_apis[host_api_idx]["name"]
+                    if host_api_name == "Windows WASAPI":
+                        extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
+                        logger.debug("Applying WASAPI Shared Mode settings.")
+                    else:
+                        logger.debug(f"Not applying WASAPI settings for host API: {host_api_name}")
+        except (AttributeError, Exception) as e:
+            # Non-Windows, older sounddevice, or query failure
+            logger.debug(f"Skipping WASAPI settings: {e}")
             pass
 
         try:
