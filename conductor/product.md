@@ -70,7 +70,8 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - Simple post-processing rules for the transcribed text.
 
     ### 2.9. Distribution
-    - **Standalone Executable:** The application can be packaged as a single, portable Windows executable (`ParrotInk.exe`) for easy distribution and installation.
+    - **Standard Installer (Recommended):** The primary distribution method is a professional Inno Setup installer (`ParrotInk-Setup.exe`). It installs to `%LOCALAPPDATA%\ParrotInk`, handles clean auto-updates (stopping running instances), and manages system shortcuts.
+    - **Portable Executable:** A standalone `ParrotInk.exe` remains available for advanced or temporary use, with the caveat that moving the file after setup may break "Run at Startup" functionality.
     - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\ParrotInk` directory, ensuring it works even when launched from read-only locations.
     - **Single Instance Protection:** The application uses a Win32 Mutex to ensure only one instance is running at a time, preventing hotkey and microphone conflicts. If a second instance is launched, it displays a helpful notification and exits gracefully.
     - **Automation-Friendly:** A `--background` CLI flag allows the application to start silently without the "already running" warning, ideal for startup scripts and automation.
