@@ -30,7 +30,7 @@ WIN_WIDTH = 1000
 WIN_HEIGHT = 52
 DEFAULT_Y_OFFSET = 60
 DEFAULT_REFRESH_RATE_MS = 50
-HUD_HEALTH_TIMEOUT_MS = 50
+HUD_HEALTH_TIMEOUT_MS = 500
 
 
 try:
@@ -185,6 +185,10 @@ class HudOverlay:
         """
         if not HUD_AVAILABLE:
             logger.error("HUD not available (import failure)")
+            return
+
+        if self._hwnd:
+            logger.warning("HudOverlay.run called while window already exists. Skipping.")
             return
 
         try:

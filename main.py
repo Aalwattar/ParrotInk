@@ -22,7 +22,7 @@ from engine.constants import (
 from engine.credential_ui import ask_key
 from engine.injection import InjectionController
 from engine.interaction import InputMonitor
-from engine.logging import configure_logging, get_logger
+from engine.logging import configure_logging, get_logger, set_global_level
 from engine.mouse import MouseMonitor
 from engine.platform_win.constants import MUTEX_NAME_TEMPLATE
 from engine.platform_win.instance import SingleInstance
@@ -50,7 +50,11 @@ class AppCoordinator:
         chunk_ms = config.audio.chunk_ms
         chunk_size = (sample_rate * chunk_ms) // 1000
 
-        self.streamer = AudioStreamer(sample_rate=sample_rate, chunk_size=chunk_size)
+        self.streamer = AudioStreamer(
+            sample_rate=sample_rate,
+            chunk_size=chunk_size,
+            device_name=config.audio.input_device,
+        )
         self.connection_manager = ConnectionManager(
             config,
             self.on_partial,
@@ -179,8 +183,12 @@ class AppCoordinator:
 
         # 2. Update connection manager config (crucial for provider switching)
         self.connection_manager.config = config
+        self.streamer.device_name = config.audio.input_device
 
-        # 3. Force provider reset to apply new settings (e.g. prompt, thresholds)
+        # 3. Update logging level dynamically
+        set_global_level(config.logging.file_level)
+
+        # 4. Force provider reset to apply new settings (e.g. prompt, thresholds)
         if self.loop:
             asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
 
@@ -379,7 +387,7 @@ class AppCoordinator:
 
         # 2. Inject into target application (Only if enabled in config)
         if self.config.transcription.partial_results:
-            if self.loop:
+            if self.loop and self.injection_controller:
                 asyncio.run_coroutine_threadsafe(
                     self.injection_controller.smart_inject(text), self.loop
                 )
@@ -400,7 +408,7 @@ class AppCoordinator:
         self.ui_bridge.update_final_text(text)
 
         # Ensure final text is fully synchronized and add a trailing space
-        if self.loop:
+        if self.loop and self.injection_controller:
             asyncio.run_coroutine_threadsafe(
                 self.injection_controller.smart_inject(text + " ", is_final=True), self.loop
             )

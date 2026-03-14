@@ -97,6 +97,7 @@ class InteractionConfig(BaseModel):
 
 class AudioConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    input_device: str = "default"
     capture_sample_rate: int = 16000
     chunk_ms: int = 100
     connection_mode: Literal["on_demand", "warm", "always_on"] = "warm"

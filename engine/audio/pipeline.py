@@ -33,7 +33,7 @@ class AudioPipeline:
             return
 
         self._is_running = True
-        self.streamer.start(loop=loop)
+        await self.streamer.start(loop=loop)
 
         # Guard against zero sample rate just in case, though streamer handles it
         if getattr(self.streamer, "sample_rate", 16000) != adapter.capture_rate_hz:

@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import AsyncGenerator, Tuple, cast
+from typing import AsyncGenerator, Optional, Tuple, cast
 
 import numpy as np
 import sounddevice as sd
@@ -51,9 +51,16 @@ def check_audio_invariants(chunk: np.ndarray) -> None:
 
 
 class AudioStreamer:
-    def __init__(self, sample_rate: int = 16000, chunk_size: int = 1024):
+    def __init__(
+        self,
+        sample_rate: int = 16000,
+        chunk_size: int = 1024,
+        device_name: Optional[str] = None,
+    ):
         self.sample_rate = sample_rate
+
         self.chunk_size = chunk_size
+        self.device_name = device_name
         self.async_q: asyncio.Queue[Tuple[np.ndarray, float]] = asyncio.Queue(
             maxsize=QUEUE_MAX_SIZE
         )
@@ -63,6 +70,28 @@ class AudioStreamer:
         self._drop_count = 0
         self._last_drop_log = 0.0
         self.last_status = None
+
+        # Senior Optimization: Cache device indices to avoid expensive re-scans.
+        self._cached_devices: list = []
+        self._cached_hostapis: list = []
+        self._wasapi_index: int = -1
+        self.refresh_devices()
+
+    def refresh_devices(self):
+        """Refreshes the internal cache of audio devices and host APIs."""
+        try:
+            self._cached_devices = list(sd.query_devices())
+            self._cached_hostapis = list(sd.query_hostapis())
+            self._wasapi_index = -1
+            for i, api in enumerate(self._cached_hostapis):
+                if api["name"] == "Windows WASAPI":
+                    self._wasapi_index = i
+                    break
+            logger.debug(
+                f"Audio device cache refreshed. Found {len(self._cached_devices)} devices."
+            )
+        except Exception as e:
+            logger.warning(f"Failed to refresh audio device cache: {e}")
 
     def _callback(self, indata: np.ndarray, frames: int, time_info, status):
         """This is called (from a separate thread) for each audio block."""
@@ -116,34 +145,144 @@ class AudioStreamer:
 
         self.async_q.put_nowait((chunk, capture_time))
 
+    def _get_device_index(self, force_refresh: bool = False) -> Optional[int]:
+        """Finds the device index based on the configured device name using the cache."""
+        if not self.device_name or self.device_name.lower() == "default":
+            # Fast-Path: PortAudio handles "None" as the system default instantly.
+            return None
+
+        if force_refresh:
+            logger.info(f"Forcing audio device cache refresh for '{self.device_name}'...")
+            self.refresh_devices()
+
+        assert self.device_name is not None
+        device_name_lower = self.device_name.lower()
+
+        def _find_in_list(devices: list) -> Optional[int]:
+            # 1. Try exact match on name + WASAPI preference
+            for i, d in enumerate(devices):
+                if d["name"] == self.device_name and d["max_input_channels"] > 0:
+                    if self._wasapi_index != -1 and d["hostapi"] == self._wasapi_index:
+                        return i
+
+            # 2. Try substring match + WASAPI preference
+            for i, d in enumerate(devices):
+                if device_name_lower in d["name"].lower() and d["max_input_channels"] > 0:
+                    if self._wasapi_index != -1 and d["hostapi"] == self._wasapi_index:
+                        return i
+
+            # 3. Fallback: Try exact match on name (any host API)
+            for i, d in enumerate(devices):
+                if d["name"] == self.device_name and d["max_input_channels"] > 0:
+                    return i
+
+            # 4. Fallback: Try substring match (any host API)
+            for i, d in enumerate(devices):
+                if device_name_lower in d["name"].lower() and d["max_input_channels"] > 0:
+                    return i
+            return None
+
+        # 1. Try finding in cache
+        idx = _find_in_list(self._cached_devices)
+        if idx is not None:
+            return idx
+
+        # 2. Fallback: Refresh cache and try again
+        if not force_refresh:
+            logger.info(f"Device '{self.device_name}' not in cache. Refreshing...")
+            self.refresh_devices()
+            return _find_in_list(self._cached_devices)
+
+        return None
+
     def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
         """Helper to try mono, then stereo capture at a given sample rate."""
         chunk_size_adjusted = int(self.chunk_size * (sample_rate / self.sample_rate))
-        try:
-            stream = sd.InputStream(
-                samplerate=sample_rate,
-                channels=1,
-                dtype=DEFAULT_DTYPE,
-                blocksize=chunk_size_adjusted,
-                callback=self._callback,
-            )
-            return stream
-        except Exception as e:
-            logger.debug(f"Mono capture at {sample_rate}Hz failed: {e}. Trying stereo...")
+
+        # We try opening the stream. If it fails once, we refresh cache and try one more time.
+        last_exception = None
+        for attempt in range(2):
+            force_refresh = attempt > 0
+            device_index = self._get_device_index(force_refresh=force_refresh)
+
+            if device_index is not None:
+                logger.info(
+                    f"Using specific audio device: {self.device_name} (Index: {device_index})"
+                )
+
+            # Senior Architecture: Mitigate 'Communication Ducking' by using WASAPI Shared mode.
+            extra_settings = None
+            try:
+                # If no device_index, we need to know what the default device actually is
+                # to check its Host API.
+                target_idx = device_index if device_index is not None else sd.default.device[0]
+
+                # Use cache if possible for performance
+                devices = self._cached_devices if self._cached_devices else list(sd.query_devices())
+                host_apis = (
+                    self._cached_hostapis if self._cached_hostapis else list(sd.query_hostapis())
+                )
+
+                if target_idx is not None and 0 <= target_idx < len(devices):
+                    device_info = devices[target_idx]
+                    host_api_idx = device_info.get("hostapi")
+
+                    if host_api_idx is not None and 0 <= host_api_idx < len(host_apis):
+                        host_api_name = host_apis[host_api_idx]["name"]
+                        if host_api_name == "Windows WASAPI":
+                            extra_settings = sd.WasapiSettings(exclusive=False, auto_convert=True)
+                            logger.debug("Applying WASAPI Shared Mode settings.")
+                        else:
+                            logger.debug(
+                                f"Not applying WASAPI settings for host API: {host_api_name}"
+                            )
+            except (AttributeError, Exception) as e:
+                logger.debug(f"Skipping WASAPI settings: {e}")
+                pass
+
             try:
                 stream = sd.InputStream(
                     samplerate=sample_rate,
-                    channels=2,
+                    channels=1,
+                    device=device_index,
                     dtype=DEFAULT_DTYPE,
                     blocksize=chunk_size_adjusted,
                     callback=self._callback,
+                    extra_settings=extra_settings,
                 )
-                logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
                 return stream
-            except Exception as e2:
-                raise e2
+            except Exception as e:
+                logger.debug(
+                    f"Mono capture at {sample_rate}Hz failed on attempt {attempt + 1}: {e}"
+                )
+                last_exception = e
+                # If first attempt, retry with fresh cache.
+                # If second attempt, fall through to try stereo.
+                if not force_refresh:
+                    continue
 
-    def start(self, loop: asyncio.AbstractEventLoop | None = None):
+                # If we're here, it's the second attempt and mono still failed. Try stereo.
+                try:
+                    stream = sd.InputStream(
+                        samplerate=sample_rate,
+                        channels=2,
+                        device=device_index,
+                        dtype=DEFAULT_DTYPE,
+                        blocksize=chunk_size_adjusted,
+                        callback=self._callback,
+                        extra_settings=extra_settings,
+                    )
+                    logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
+                    return stream
+                except Exception as e2:
+                    last_exception = e2
+                    break  # Give up on this sample rate
+
+        if last_exception:
+            raise last_exception
+        raise AudioHardwareError("Unknown audio capture failure")
+
+    async def start(self, loop: asyncio.AbstractEventLoop | None = None):
         """Starts the audio capture stream with robust fallbacks."""
         if self.is_running:
             return
@@ -159,37 +298,46 @@ class AudioStreamer:
 
         self._drop_count = 0
 
-        rates_to_try = [self.sample_rate]
-        if self.sample_rate not in (44100, 48000):
-            rates_to_try.extend([44100, 48000])
+        # Senior Architecture: Thread Isolation
+        # Opening a PortAudio stream can be a slow, blocking call that hangs the UI/Hotkey thread.
+        # We run it in a background thread to ensure responsiveness.
+        def _open_and_start():
+            rates_to_try = [self.sample_rate]
+            if self.sample_rate not in (44100, 48000):
+                rates_to_try.extend([44100, 48000])
 
-        last_error = None
-        for rate in rates_to_try:
-            try:
-                # Guard against ZeroDivisionError just in case
-                if self.sample_rate == 0:
-                    self.sample_rate = rate
+            last_error = None
+            for rate in rates_to_try:
+                try:
+                    # Guard against ZeroDivisionError just in case
+                    if self.sample_rate == 0:
+                        self.sample_rate = rate
 
-                self._stream = self._try_open_stream(rate)
-                if rate != self.sample_rate:
-                    self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
-                    self.sample_rate = rate
-                break
-            except Exception as e:
-                logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
-                last_error = e
+                    self._stream = self._try_open_stream(rate)
+                    if rate != self.sample_rate:
+                        self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
+                        self.sample_rate = rate
+                    break
+                except Exception as e:
+                    logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
+                    last_error = e
 
-        if self._stream is None:
-            err_msg = str(last_error) if last_error else "Unknown error"
-            logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
-            raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
+            if self._stream is None:
+                err_msg = str(last_error) if last_error else "Unknown error"
+                logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
+                raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
 
-        self._stream.start()
+            self._stream.start()
+
+        # Run the blocking open/start in an executor
+        await self._loop.run_in_executor(None, _open_and_start)
         self.is_running = True
-        logger.info(
-            f"Audio capture started at {self._stream.samplerate}Hz "
-            f"(channels={self._stream.channels})"
-        )
+
+        if self._stream:
+            logger.info(
+                f"Audio capture started at {self._stream.samplerate}Hz "
+                f"(channels={self._stream.channels})"
+            )
 
     def stop(self):
         """Stops the audio capture stream."""

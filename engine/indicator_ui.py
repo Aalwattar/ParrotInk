@@ -82,6 +82,7 @@ class IndicatorWindow:
         self._visible = False
         self._session_id = 0
         self._is_running = False
+        self._init_time = time.time()
 
         # Import inside __init__ to pick up test mocks/patches correctly
         import engine.hud_renderer
@@ -99,13 +100,13 @@ class IndicatorWindow:
                 )
                 # Verify that impl actually initialized (to handle early returns in HudOverlay)
                 if not hasattr(self.impl, "update_status"):
-                    logger.warning("HudOverlay failed to initialize correctly. Falling back.")
+                    logger.info("HudOverlay failed to initialize correctly. Falling back.")
                     self.impl = GdiFallbackWindow(config=config)
             except (ImportError, RuntimeError, AttributeError) as e:
-                logger.error(f"HudOverlay instantiation failed: {e}")
+                logger.info(f"HudOverlay instantiation failed: {e}")
                 self.impl = GdiFallbackWindow(config=config)
             except Exception as e:
-                logger.error(f"Unexpected HUD initialization error: {e}")
+                logger.info(f"Unexpected HUD initialization error: {e}")
                 self.impl = GdiFallbackWindow(config=config)
         else:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")
@@ -147,7 +148,15 @@ class IndicatorWindow:
         Comprehensive health check.
         Returns True if the HUD is responsive to Win32 messages.
         """
+        # Senior Architecture: If we are using a mock (GdiFallbackWindow) but the environment
+        # supports a real HUD (HUD_AVAILABLE is True) and the user has it enabled, we are in
+        # a degraded state (Unhealthy). This allows the supervisor to attempt recovery.
         if isinstance(self.impl, GdiFallbackWindow):
+            if self.config and self.config.ui.floating_indicator.enabled:
+                import engine.hud_renderer
+
+                if getattr(engine.hud_renderer, "HUD_AVAILABLE", False):
+                    return False
             return True
 
         # 1. Check Python Thread status

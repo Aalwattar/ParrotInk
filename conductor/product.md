@@ -50,7 +50,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Verbose Debugging & Structured Logging:** Multi-level, non-blocking logging to console and file, with automatic redaction of secrets and truncation of audio data.
     - **Interactive Hotkey Setup:** Users can record their desired hotkey combination directly through a tray-driven recording dialog.
     - **Diagnostics:** A new `app config --explain` CLI command provides a clear report of how high-level profiles map to specific technical timings and thresholds.
-    - **Live Configuration Refresh:** The application supports an in-place reload mechanism that validates and applies manual edits to the `config.toml` file without requiring a process restart.
+    - **Live Configuration Refresh:** The application supports an in-place reload mechanism that validates and applies manual edits to the `config.toml` file without requiring a process restart. This now includes dynamic logging updates, allowing users to toggle verbosity (e.g., from ERROR to DEBUG) instantly.
     - **Hold to Talk:** A toggle in the Tray menu to switch between "Hold to Talk" and "Smart Toggle" modes.
     - **Hardened Security:** The application strictly validates transcription provider URLs against a hardcoded list of trusted domains. This prevents "Silent Key Theft" by refusing to connect to unauthorized custom endpoints defined in the configuration file.
     - **Optimized Connection Management:** Transcription provider connections are managed with a graceful 7.0-second shutdown timeout, significantly reducing lag and ensuring reliable session finalization.
@@ -110,6 +110,12 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
     - **Educational Content:** The popup introduces the system tray interaction model, explains the state-based color coding of the tray icon, and provides clear directions for adding API keys via the Settings menu.
     - **Configurable Suppression:** Users can choose to "Don't show this again," which permanently saves the preference to the configuration file. The popup is also automatically suppressed when the application is launched with the `--background` flag.
     - **Blocking Gatekeeper:** The onboarding window acts as a blocking modal before the main application logic starts, ensuring new users are properly oriented before the tray icon appears.
+
+    ### 2.16. Audio Device Selection & Robustness
+    - **Granular Device Control:** Users can select a specific microphone for audio capture by name or partial name in the configuration.
+    - **Robust Fallbacks:** If a configured device is unavailable, the system automatically falls back to the system's default recording device.
+    - **Communication Ducking Mitigation:** The application utilizes WASAPI Shared mode with automatic conversion to prevent Windows from aggressively lowering the volume of other applications (ducking) during active recording sessions.
+    - **Responsive Initialization:** Audio stream initialization is performed in an isolated background thread, ensuring that hotkey triggers remain responsive even if the audio driver takes time to open.
 
 ### 3.1. Audio Pipeline
 - **Audio Capture:** Use `sounddevice` for microphone input.

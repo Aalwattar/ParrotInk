@@ -6,7 +6,7 @@
 
 ## 2. Core Libraries
 
-- **sounddevice:** Used for capturing real-time audio from the microphone.
+- **sounddevice:** Used for capturing real-time audio from the microphone. Now enhanced with **WASAPI Shared mode** support for robust platform integration and ducking mitigation on Windows.
 - **numpy:** Used for processing and transforming audio chunks (e.g., float32 to int16 conversion) before transmission.
 - **websockets:** Enables low-latency, real-time streaming of audio data to the transcription APIs.
 - **httpx:** Used for making standard HTTP requests to API endpoints where streaming is not required.

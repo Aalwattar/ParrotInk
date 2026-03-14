@@ -81,6 +81,10 @@
 # refresh_rate_ms = 50
 
 [audio]
+# The name or partial name of the microphone to use for capture.
+# If empty or "default", the system's default recording device is used.
+# input_device = "default"
+
 # Internal sample rate for microphone capture.
 # 16000 is the industry standard for most ASR models.
 # capture_sample_rate = 16000
