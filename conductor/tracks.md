@@ -29,6 +29,3 @@ Link: [stats_page_20260217](./tracks/stats_page_20260217/)
 ---
 
 ---
-
-- [x] **Track: Implement a Windows-native background update manager using PowerShell BITS for efficient, persistent, and low-impact downloads of ParrotInk-Setup.exe.**
-*Link: [./tracks/windows_native_update_manager_20260314/](./tracks/windows_native_update_manager_20260314/)*
