@@ -1,6 +1,68 @@
+import threading
+from enum import Enum, auto
 from unittest.mock import MagicMock, patch
 
-from engine.services.updates import BITSClient, ChecksumVerifier, GitHubClient
+from engine.services.updates import BITSClient, ChecksumVerifier, GitHubClient, UpdateManager
+
+
+class UpdateState(Enum):
+    IDLE = auto()
+    CHECKING = auto()
+    UPDATE_AVAILABLE = auto()
+    DOWNLOADING = auto()
+    READY_TO_INSTALL = auto()
+    ERROR = auto()
+
+
+def test_update_manager_lifecycle():
+    """Verify the high-level state transitions of the UpdateManager."""
+    on_available = MagicMock()
+    stop_event = threading.Event()
+
+    with (
+        patch("engine.services.updates.GitHubClient") as mock_client_cls,
+        patch("engine.services.updates.BITSClient") as mock_bits_cls,
+        patch("engine.services.updates.ChecksumVerifier") as mock_verifier_cls,
+    ):
+        mock_client = mock_client_cls.return_value
+        mock_bits = mock_bits_cls.return_value
+        mock_verifier = mock_verifier_cls.return_value
+
+        manager = UpdateManager(on_available, stop_event)
+
+        # 1. Update found
+        mock_client.fetch_latest_release.return_value = {
+            "tag_name": "v9.9.9",
+            "html_url": "https://test",
+            "installer_url": "https://test/setup.exe",
+            "checksum_url": "https://test/setup.exe.sha256",
+        }
+
+        # 2. Check for updates
+        manager.check_now()
+
+        # Verify BITS download started automatically
+        mock_bits.start_download.assert_called_once()
+        assert manager.state.name == "DOWNLOADING"
+
+        # 3. Simulate download completion
+        mock_bits.get_status.return_value = {
+            "state": "Transferred",
+            "percent": 100,
+            "is_complete": True,
+        }
+
+        # Mock checksum download and verification
+        with patch("httpx.get") as mock_http_get:
+            mock_http_get.return_value = MagicMock(text="mock_hash", status_code=200)
+            mock_verifier.verify.return_value = True
+
+            # Run one poll cycle
+            manager._poll_bits()
+
+            mock_bits.complete_download.assert_called_once()
+            assert manager.state.name == "READY_TO_INSTALL"
+            assert on_available.call_count == 2
 
 
 def test_checksum_verifier_success(tmp_path):
