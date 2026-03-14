@@ -113,6 +113,11 @@ jobs:
       - name: Build exe
         run: .\scripts\build_onefile.ps1
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress
+
       - name: Build Installer (Inno Setup)
         shell: pwsh
         run: |
