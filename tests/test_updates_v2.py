@@ -1,6 +1,79 @@
 from unittest.mock import MagicMock, patch
 
-from engine.services.updates import GitHubClient
+from engine.services.updates import BITSClient, ChecksumVerifier, GitHubClient
+
+
+def test_checksum_verifier_success(tmp_path):
+    """Verify that ChecksumVerifier correctly matches valid hashes."""
+    file_path = tmp_path / "test.exe"
+    file_path.write_bytes(b"test content")
+
+    # Expected SHA256 for "test content"
+    expected_hash = "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72"
+
+    verifier = ChecksumVerifier()
+    assert verifier.verify(file_path, expected_hash) is True
+
+
+def test_checksum_verifier_failure(tmp_path):
+    """Verify that ChecksumVerifier rejects invalid hashes."""
+    file_path = tmp_path / "test.exe"
+    file_path.write_bytes(b"wrong content")
+
+    expected_hash = "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72"
+
+    verifier = ChecksumVerifier()
+    assert verifier.verify(file_path, expected_hash) is False
+
+
+def test_bits_client_start_job():
+    """Verify that BITSClient correctly formats the Start-BitsTransfer command."""
+    client = BITSClient()
+    url = "https://example.com/setup.exe"
+    dest = "C:\\temp\\setup.exe"
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(return_code=0)
+        client.start_download(url, dest)
+
+        # Verify the command
+        args = mock_run.call_args[0][0]
+        assert "Start-BitsTransfer" in args[2]
+        assert f'-Source "{url}"' in args[2]
+        assert f'-Destination "{dest}"' in args[2]
+        assert "-Asynchronous" in args[2]
+        assert '-DisplayName "ParrotInk Update"' in args[2]
+
+
+def test_bits_client_get_status():
+    """Verify that BITSClient correctly parses the status output."""
+    client = BITSClient()
+
+    # Mock output for Get-BitsTransfer
+    # JobState: Transferred, BytesTransferred: 100, TotalBytesToTransfer: 100
+    mock_stdout = "JobState=Transferred;BytesTransferred=1048576;TotalBytesToTransfer=1048576"
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout=mock_stdout, returncode=0)
+        status = client.get_status()
+
+        assert status["state"] == "Transferred"
+        assert status["percent"] == 100
+        assert status["is_complete"] is True
+
+
+def test_bits_client_get_status_in_progress():
+    """Verify parsing for a job in progress."""
+    client = BITSClient()
+    mock_stdout = "JobState=Transferring;BytesTransferred=524288;TotalBytesToTransfer=1048576"
+
+    with patch("subprocess.run") as mock_run:
+        mock_run.return_value = MagicMock(stdout=mock_stdout, returncode=0)
+        status = client.get_status()
+
+        assert status["state"] == "Transferring"
+        assert status["percent"] == 50
+        assert status["is_complete"] is False
 
 
 def test_github_client_asset_extraction():

@@ -1,7 +1,10 @@
 import datetime
+import hashlib
 import os
+import subprocess
 import threading
 import time
+from pathlib import Path
 from typing import Callable, Optional
 
 import httpx
@@ -89,6 +92,122 @@ class GitHubClient:
             logger.error(f"Unexpected error fetching update: {e}", exc_info=True)
 
         return None
+
+
+class BITSClient:
+    """Manages Background Intelligent Transfer Service (BITS) via PowerShell."""
+
+    JOB_NAME = "ParrotInk Update"
+
+    def start_download(self, url: str, dest_path: str) -> bool:
+        """Initiates an asynchronous background download."""
+        logger.info(f"Starting BITS download: {url} -> {dest_path}")
+        # -Asynchronous: returns control to Python immediately
+        # -Priority: Normal (uses idle bandwidth)
+        ps_command = (
+            f'Start-BitsTransfer -Source "{url}" -Destination "{dest_path}" '
+            f'-DisplayName "{self.JOB_NAME}" -Asynchronous -Priority Normal'
+        )
+        try:
+            subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to start BITS transfer: {e.stderr.decode()}")
+            return False
+
+    def get_status(self) -> dict:
+        """Queries the status of the update job.
+
+        Returns:
+            dict: {state: str, percent: int, is_complete: bool}
+        """
+        ps_command = (
+            f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | '
+            "Select-Object JobState, BytesTransferred, TotalBytesToTransfer | "
+            "ForEach-Object { 'JobState=' + $_.JobState + ';BytesTransferred=' + "
+            "$_.BytesTransferred + ';TotalBytesToTransfer=' + $_.TotalBytesToTransfer }"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-Command", ps_command],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            output = result.stdout.strip()
+            if not output:
+                return {"state": "NotFound", "percent": 0, "is_complete": False}
+
+            # Parse simple semicolon-delimited output
+            data = dict(item.split("=") for item in output.split(";") if "=" in item)
+            state = data.get("JobState", "Unknown")
+            transferred = int(data.get("BytesTransferred", 0))
+            total = int(data.get("TotalBytesToTransfer", 0))
+
+            percent = 0
+            if total > 0:
+                percent = int((transferred / total) * 100)
+
+            return {
+                "state": state,
+                "percent": percent,
+                "is_complete": state == "Transferred",
+            }
+        except Exception as e:
+            logger.debug(f"Error querying BITS status: {e}")
+            return {"state": "Error", "percent": 0, "is_complete": False}
+
+    def complete_download(self) -> bool:
+        """Finalizes the transfer and moves the file to the destination."""
+        logger.info("Completing BITS transfer...")
+        ps_command = f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | Complete-BitsTransfer'
+        try:
+            subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to complete BITS transfer: {e}")
+            return False
+
+    def cancel_download(self):
+        """Cancels any existing update job."""
+        ps_command = f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | Remove-BitsTransfer'
+        try:
+            subprocess.run(["powershell", "-Command", ps_command], capture_output=True)
+        except Exception:
+            pass
+
+
+class ChecksumVerifier:
+    """Verifies the integrity of downloaded files using SHA256."""
+
+    def verify(self, file_path: Path | str, expected_hash: str) -> bool:
+        """Computes the SHA256 of the file and compares it to the expected hash.
+
+        Args:
+            file_path: Path to the file to verify.
+            expected_hash: The hex-encoded SHA256 string to match against.
+        """
+        sha256_hash = hashlib.sha256()
+        try:
+            with open(file_path, "rb") as f:
+                # Read in 4KB chunks
+                for byte_block in iter(lambda: f.read(4096), b""):
+                    sha256_hash.update(byte_block)
+
+            actual_hash = sha256_hash.hexdigest().lower()
+            expected_hash = expected_hash.strip().lower()
+
+            if actual_hash == expected_hash:
+                logger.info(f"Checksum verification passed for {file_path}")
+                return True
+
+            logger.error(
+                f"Checksum mismatch for {file_path}. Expected: {expected_hash}, Got: {actual_hash}"
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Failed to verify checksum for {file_path}: {e}")
+            return False
 
 
 class UpdateManager:
