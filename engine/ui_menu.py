@@ -5,6 +5,7 @@ import pystray
 
 from engine.app_types import AppState
 from engine.constants import URL_HOMEPAGE, URL_ISSUES
+from engine.services.updates import UpdateState
 from engine.ui_utils import get_app_version
 
 if TYPE_CHECKING:
@@ -40,10 +41,23 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     is_version_default = False
 
     if app.latest_version:
-        version_label = f"✨ UPDATE AVAILABLE: {app.latest_version}"
-        on_version_click = app._on_update_clicked
-        is_version_enabled = True
-        is_version_default = True
+        if app.update_state == UpdateState.DOWNLOADING:
+            version_label = f"⏳ DOWNLOADING UPDATE: {app.download_percent}%"
+            is_version_enabled = False  # Keep non-clickable during download
+        elif app.update_state == UpdateState.READY_TO_INSTALL:
+            version_label = f"🚀 INSTALL UPDATE: {app.latest_version} (READY)"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+            is_version_default = True
+        elif app.update_state == UpdateState.ERROR:
+            version_label = "❌ UPDATE ERROR (Check Logs)"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+        else:
+            version_label = f"✨ UPDATE AVAILABLE: {app.latest_version}"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+            is_version_default = True
 
     menu_items.append(
         pystray.MenuItem(

@@ -16,9 +16,11 @@ except Exception:
 import pystray
 import ttkbootstrap as tb
 from PIL import Image, ImageDraw
+from win11toast import toast
 
 from .app_types import AppState, ProviderType
 from .logging import get_logger
+from .services.updates import UpdateState
 from .stats import StatsManager
 from .ui_menu import build_tray_menu
 from .ui_utils import get_resource_path
@@ -93,6 +95,8 @@ class TrayApp:
         # Update info
         self.latest_version: Optional[str] = None
         self.release_url: Optional[str] = None
+        self.update_state = UpdateState.IDLE
+        self.download_percent = 0
 
         # Senior Architecture: Thread-safe UI state
         self.ui_root = None
@@ -385,8 +389,17 @@ class TrayApp:
             self.ui_root.after(0, launch)
 
     def _on_update_clicked(self, icon: pystray.Icon, item: pystray.MenuItem):
-        """Opens the GitHub releases page in the default browser."""
-        if self.release_url:
+        """Handles clicks on the version/update menu item."""
+        if self.update_state == UpdateState.READY_TO_INSTALL:
+            # User confirmed installation via menu click
+            if self.on_check_updates:
+                # We reuse the callback to trigger installation if ready
+                # But a cleaner way is to call the coordinator directly via a dedicated callback
+                # For now, we'll assume the manager handles it if we signal it.
+                # Actually, let's just trigger it here if we have access to the manager.
+                # Since TrayApp doesn't have the manager, we'll use the callback.
+                self.on_check_updates()
+        elif self.release_url:
             logger.info(f"Opening update URL: {self.release_url}")
             webbrowser.open(self.release_url)
 
@@ -498,9 +511,26 @@ class TrayApp:
                     data["duration"], data["words"], data["provider"], data["error"]
                 )
             elif msg_type == UIEvent.UPDATE_VERSION_NOTIFICATION:
-                version_tag, release_url = data
+                version_tag, release_url, update_state, percent = data
                 self.latest_version = version_tag
                 self.release_url = release_url
+
+                # If we just reached READY_TO_INSTALL, show a toast
+                if (
+                    update_state == UpdateState.READY_TO_INSTALL
+                    and self.update_state != UpdateState.READY_TO_INSTALL
+                ):
+                    try:
+                        toast(
+                            title="ParrotInk Update Ready",
+                            body=f"Version {version_tag} is ready to install.",
+                            app_id="ParrotInk",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to show update toast: {e}")
+
+                self.update_state = update_state
+                self.download_percent = percent
                 self._refresh_menu()
             elif msg_type == UIEvent.UPDATE_AUDIO_ERROR:
                 self.audio_error_type = data

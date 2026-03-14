@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from engine.app_types import AppState
 from engine.logging import get_logger
+from engine.services.updates import UpdateState
 
 logger = get_logger("UIBridge")
 
@@ -78,9 +79,17 @@ class UIBridge:
         data = {"duration": duration, "words": words, "provider": provider, "error": error}
         self.queue.put((UIEvent.RECORD_STATS, data))
 
-    def update_version_notification(self, version_tag: str, release_url: str):
-        """Signal the UI that a new version is available."""
-        self.queue.put((UIEvent.UPDATE_VERSION_NOTIFICATION, (version_tag, release_url)))
+    def update_version_notification(
+        self,
+        version_tag: str,
+        release_url: str,
+        state: UpdateState = UpdateState.UPDATE_AVAILABLE,
+        percent: int = 0,
+    ):
+        """Signal the UI about update progress or availability."""
+        self.queue.put(
+            (UIEvent.UPDATE_VERSION_NOTIFICATION, (version_tag, release_url, state, percent))
+        )
 
     def update_audio_error(self, error_type: Optional[str]):
         """Signal the UI about a specific audio hardware error."""
