@@ -1,17 +1,13 @@
 import threading
-from enum import Enum, auto
 from unittest.mock import MagicMock, patch
 
-from engine.services.updates import BITSClient, ChecksumVerifier, GitHubClient, UpdateManager
-
-
-class UpdateState(Enum):
-    IDLE = auto()
-    CHECKING = auto()
-    UPDATE_AVAILABLE = auto()
-    DOWNLOADING = auto()
-    READY_TO_INSTALL = auto()
-    ERROR = auto()
+from engine.services.updates import (
+    BITSClient,
+    ChecksumVerifier,
+    GitHubClient,
+    UpdateManager,
+    UpdateState,
+)
 
 
 def test_update_manager_lifecycle():
@@ -63,6 +59,65 @@ def test_update_manager_lifecycle():
             mock_bits.complete_download.assert_called_once()
             assert manager.state.name == "READY_TO_INSTALL"
             assert on_available.call_count == 2
+
+
+def test_update_manager_bits_error():
+    """Verify that UpdateManager handles BITS errors gracefully."""
+    on_available = MagicMock()
+    stop_event = threading.Event()
+
+    with (
+        patch("engine.services.updates.GitHubClient"),
+        patch("engine.services.updates.BITSClient") as mock_bits_cls,
+    ):
+        mock_bits = mock_bits_cls.return_value
+
+        manager = UpdateManager(on_available, stop_event)
+        manager.state = UpdateState.DOWNLOADING
+        manager.latest_release = {"tag_name": "v1", "html_url": "url"}
+
+        # Simulate BITS error
+        mock_bits.get_status.return_value = {
+            "state": "Error",
+            "percent": 0,
+            "is_complete": False,
+        }
+
+        manager._poll_bits()
+
+        assert manager.state == UpdateState.UPDATE_AVAILABLE
+        # Callback should be called to update UI to "Update Available" instead of "Downloading"
+        on_available.assert_called_once()
+
+
+def test_update_manager_temp_file_cleanup():
+    """Verify that UpdateManager cleans up old setup files before downloading."""
+    on_available = MagicMock()
+    stop_event = threading.Event()
+
+    with (
+        patch("engine.services.updates.GitHubClient") as mock_client_cls,
+        patch("engine.services.updates.BITSClient") as mock_bits_cls,
+        patch("engine.services.updates.Path.exists") as mock_exists,
+        patch("engine.services.updates.Path.unlink") as mock_unlink,
+    ):
+        mock_client = mock_client_cls.return_value
+        mock_bits = mock_bits_cls.return_value
+        mock_exists.return_value = True
+
+        manager = UpdateManager(on_available, stop_event)
+
+        mock_client.fetch_latest_release.return_value = {
+            "tag_name": "v9.9.9",
+            "html_url": "url",
+            "installer_url": "https://test/setup.exe",
+        }
+
+        manager.check_now()
+
+        # Should have called unlink because mock_exists was True
+        mock_unlink.assert_called_once()
+        mock_bits.start_download.assert_called_once()
 
 
 def test_checksum_verifier_success(tmp_path):

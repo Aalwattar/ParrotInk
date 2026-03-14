@@ -2,6 +2,7 @@ import datetime
 import hashlib
 import os
 import subprocess
+import tempfile
 import threading
 import time
 from enum import Enum, auto
@@ -288,7 +289,14 @@ class UpdateManager:
             self._finalize_download()
         elif status["state"] in ["Error", "TransientError"]:
             logger.warning(f"BITS download error: {status['state']}")
-            # In a real app, we might retry or revert to IDLE
+            # Revert to available so user can try again (or we can retry later)
+            self.state = UpdateState.UPDATE_AVAILABLE
+            self.on_update_available(
+                self.latest_release["tag_name"],
+                self.latest_release["html_url"],
+                self.state,
+                0,
+            )
         else:
             # Update UI with progress
             self.on_update_available(
@@ -367,11 +375,16 @@ class UpdateManager:
 
                 # Auto-start BITS download if installer URL is present
                 if installer_url:
-                    temp_dir = Path(os.getenv("TEMP", os.getcwd()))
+                    temp_dir = Path(tempfile.gettempdir())
                     self.installer_path = temp_dir / f"ParrotInk-Setup-{remote_tag}.exe"
 
-                    # Ensure we don't have a stale job
+                    # Ensure we don't have a stale job or old file
                     self.bits.cancel_download()
+                    if self.installer_path.exists():
+                        try:
+                            self.installer_path.unlink()
+                        except Exception:
+                            pass
 
                     if self.bits.start_download(installer_url, str(self.installer_path)):
                         self.state = UpdateState.DOWNLOADING
