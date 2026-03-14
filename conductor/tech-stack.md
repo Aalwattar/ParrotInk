@@ -27,6 +27,7 @@
 - **tomlkit:** Used for style-preserving TOML management to maintain user comments and formatting when saving configuration programmatically.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 - **Inno Setup (ISCC):** (Build Tool) Used to create a professional Windows installer (`ParrotInk-Setup.exe`) that manages installation, uninstallation, and process-aware updates.
+- **Windows BITS (Background Intelligent Transfer Service):** (Integrated OS Service) Leveraged via PowerShell to perform robust, low-impact, and persistent background downloads of application updates.
 - **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
 - **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
 - **webbrowser:** (Standard Library) Used to securely open the GitHub releases page in the user's default browser.
