@@ -517,8 +517,8 @@ class TrayApp:
 
                 # If we just reached READY_TO_INSTALL, show a toast
                 if (
-                    update_state == UpdateState.READY_TO_INSTALL
-                    and self.update_state != UpdateState.READY_TO_INSTALL
+                    getattr(update_state, "name", "") == "READY_TO_INSTALL"
+                    and getattr(self.update_state, "name", "") != "READY_TO_INSTALL"
                 ):
                     try:
                         toast(

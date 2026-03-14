@@ -28,7 +28,7 @@ from engine.platform_win.constants import MUTEX_NAME_TEMPLATE
 from engine.platform_win.instance import SingleInstance
 from engine.platform_win.paths import APP_NAME
 from engine.security import SecurityManager
-from engine.services.updates import UpdateManager
+from engine.services.updates import UpdateManager, UpdateState
 from engine.ui_bridge import UIBridge
 from engine.ui_utils import show_startup_toast
 
@@ -121,10 +121,19 @@ class AppCoordinator:
         # Shutdown orchestration
         self._shutdown_lock = asyncio.Lock()
 
-    def _on_update_available(self, version_tag: str, release_url: str):
+    def _on_update_available(
+        self,
+        version_tag: str,
+        release_url: str,
+        state: UpdateState = UpdateState.UPDATE_AVAILABLE,
+        percent: int = 0,
+    ):
         """Callback from UpdateManager when a new version is detected."""
-        logger.info(f"Update detected: {version_tag}. Notifying UI.")
-        self.ui_bridge.update_version_notification(version_tag, release_url)
+        logger.info(
+            f"Update detected: {version_tag}. State: {state.name}, "
+            f"Progress: {percent}%. Notifying UI."
+        )
+        self.ui_bridge.update_version_notification(version_tag, release_url, state, percent)
 
     @property
     def loop(self):

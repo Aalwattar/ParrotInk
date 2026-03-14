@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from engine.services.updates import UpdateState
+
 
 @pytest.fixture
 def mock_ui_bridge():
@@ -30,7 +32,9 @@ async def test_coordinator_callback_pushes_to_bridge(mock_ui_bridge, coordinator
     coordinator.ui_bridge = mock_ui_bridge
     coordinator._on_update_available("v1.2.3", "http://release")
 
-    mock_ui_bridge.update_version_notification.assert_called_once_with("v1.2.3", "http://release")
+    mock_ui_bridge.update_version_notification.assert_called_once_with(
+        "v1.2.3", "http://release", UpdateState.UPDATE_AVAILABLE, 0
+    )
 
 
 @pytest.mark.asyncio

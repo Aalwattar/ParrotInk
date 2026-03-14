@@ -85,6 +85,13 @@ def mock_audio_feedback():
         yield mock
 
 
+@pytest.fixture(autouse=True)
+def mock_win11toast():
+    """Globally prevent win11toast from displaying actual Windows notifications during tests."""
+    with patch("win11toast.toast") as mock:
+        yield mock
+
+
 @pytest.fixture
 def guard_ui_components():
     """

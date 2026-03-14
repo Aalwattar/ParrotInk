@@ -216,7 +216,8 @@ def test_github_client_asset_extraction():
         ],
     }
 
-    with patch("httpx.Client.get") as mock_get:
+    with patch("engine.services.updates.httpx.Client") as mock_client_cls:
+        mock_get = mock_client_cls.return_value.__enter__.return_value.get
         mock_res = MagicMock()
         mock_res.status_code = 200
         mock_res.json.return_value = mock_response
@@ -253,7 +254,8 @@ def test_github_client_missing_assets():
         ],
     }
 
-    with patch("httpx.Client.get") as mock_get:
+    with patch("engine.services.updates.httpx.Client") as mock_client_cls:
+        mock_get = mock_client_cls.return_value.__enter__.return_value.get
         mock_res = MagicMock()
         mock_res.status_code = 200
         mock_res.json.return_value = mock_response
