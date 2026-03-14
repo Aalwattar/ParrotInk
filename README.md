@@ -61,26 +61,35 @@ ParrotInk natively handles mixed-language environments and Right-to-Left (RTL) t
 
 ## 📥 Download & Install
 
-ParrotInk is a **portable** application. There is no installer needed; just download the EXE and run it.
+ParrotInk provides two ways to get started on Windows. We **highly recommend** the Standard Installer for the best experience, including automatic updates and stable shortcut management.
 
-1.  **Download**: Click the button below to get the latest version.
-    [![Download ParrotInk](https://img.shields.io/badge/Download-ParrotInk.exe-brightgreen?style=for-the-badge&logo=windows)](https://github.com/Aalwattar/ParrotInk/releases/latest/download/ParrotInk.exe)
+### 1. Standard Installer (Recommended)
+The most robust way to use ParrotInk. It handles process management, clean updates, and ensures your Start Menu and Desktop shortcuts always point to the right place.
 
-> **⚠️ Note on Windows Security:**
-> Because ParrotInk is a new open-source project and is not yet signed with a paid Microsoft Developer certificate, you may see a "Windows protected your PC" warning.
->
-> To run the app: Click **More info** -> **Run anyway**.
->
-> As this is 100% open-source software, you can always inspect the code or build the EXE yourself from source if you prefer.
+- **Download**: [ParrotInk-Setup.exe (Latest)](https://github.com/Aalwattar/ParrotInk/releases/latest/download/ParrotInk-Setup.exe)
+- **Install Location**: `%LOCALAPPDATA%\ParrotInk` (No Administrator rights required).
+- **Updates**: Simply run the new installer version to automatically stop the app and perform a clean upgrade.
 
-2.  **Launch**: Open `ParrotInk.exe`. You will be greeted by a **Welcome Onboarding** window that explains the basics. You will also see a new icon in your **System Tray** (the small icons area next to your clock).
+### 2. Portable Executable (Advanced)
+A single, standalone `ParrotInk.exe` with no installation required. Ideal for USB drives or temporary use.
+
+- **Download**: [ParrotInk.exe (Latest)](https://github.com/Aalwattar/ParrotInk/releases/latest/download/ParrotInk.exe)
+- **⚠️ Warning:** If you move the `.exe` file after enabling **Run at Startup**, Windows will be unable to find the application at the next boot. We recommend the Standard Installer if you plan to use this feature.
+
+---
+
+## 🚀 Getting Started
+
+1.  **Launch**: Open `ParrotInk-Setup.exe` (or `ParrotInk.exe`).
+2.  **Windows Security**:
+    > Because ParrotInk is a new open-source project and is not yet signed with a paid Microsoft Developer certificate, you may see a "Windows protected your PC" warning.
+    >
+    > To run the app: Click **More info** -> **Run anyway**.
 3.  **Setup API Key**:
-    *   **What is an API Key?** Think of it as a "secret password" that allows ParrotInk to securely talk to the AI models (OpenAI or AssemblyAI) that handle the transcription.
-    *   **How to get one**: Sign up for a free account at [AssemblyAI](https://www.assemblyai.com/dashboard/) or [OpenAI](https://platform.openai.com/api-keys) and copy your "API Key" from their dashboard.
+    *   **What is an API Key?** A "secret password" that allows ParrotInk to securely talk to the AI models (OpenAI or AssemblyAI).
+    *   **How to get one**: Sign up for a free account at [AssemblyAI](https://www.assemblyai.com/dashboard/) or [OpenAI](https://platform.openai.com/api-keys).
     *   **Where to put it**: Right-click the ParrotInk tray icon and select **Settings > API Credentials**.
 4.  **Start Dictating**: Press `Ctrl + Alt + V` (default) and start speaking. Your words will appear instantly at your cursor!
-
-> **Pro Tip:** To have ParrotInk start automatically with your computer, right-click the tray icon and check **Settings > Run at Startup**.
 
 ---
 

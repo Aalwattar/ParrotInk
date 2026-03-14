@@ -1,0 +1,8 @@
+{
+  "track_id": "inno_setup_installer_20260314",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-14T08:00:00Z",
+  "updated_at": "2026-03-14T08:00:00Z",
+  "description": "Create an Inno Setup installer that wraps the standalone executable, handles clean auto-updates, installs to LocalAppData, and integrates with the GitHub Actions release workflow."
+}

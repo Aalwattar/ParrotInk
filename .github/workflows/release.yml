@@ -113,12 +113,26 @@ jobs:
       - name: Build exe
         run: .\scripts\build_onefile.ps1
 
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Build Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          iscc packaging\inno\parrotink.iss
+
       - name: Compute checksum
         shell: pwsh
         run: |
-          Get-FileHash -Algorithm SHA256 dist/ParrotInk.exe |
+          Get-FileHash -Algorithm SHA256 dist\ParrotInk.exe |
             ForEach-Object { "$($_.Hash) ParrotInk.exe" } |
-            Out-File -Encoding ascii dist/ParrotInk.exe.sha256
+            Out-File -Encoding ascii dist\ParrotInk.exe.sha256
+
+          Get-FileHash -Algorithm SHA256 dist\ParrotInk-Setup.exe |
+            ForEach-Object { "$($_.Hash) ParrotInk-Setup.exe" } |
+            Out-File -Encoding ascii dist\ParrotInk-Setup.exe.sha256
 
       - name: Create GitHub Release + upload assets
         uses: softprops/action-gh-release@v2
@@ -130,3 +144,5 @@ jobs:
           files: |
             dist/ParrotInk.exe
             dist/ParrotInk.exe.sha256
+            dist/ParrotInk-Setup.exe
+            dist/ParrotInk-Setup.exe.sha256

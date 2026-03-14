@@ -26,6 +26,7 @@
 - **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
 - **tomlkit:** Used for style-preserving TOML management to maintain user comments and formatting when saving configuration programmatically.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
+- **Inno Setup (ISCC):** (Build Tool) Used to create a professional Windows installer (`ParrotInk-Setup.exe`) that manages installation, uninstallation, and process-aware updates.
 - **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
 - **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
 - **webbrowser:** (Standard Library) Used to securely open the GitHub releases page in the user's default browser.
