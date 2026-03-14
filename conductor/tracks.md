@@ -27,6 +27,3 @@ Link: [startup_toast_20260217](./tracks/startup_toast_20260217/)
 Link: [stats_page_20260217](./tracks/stats_page_20260217/)
 
 ---
-
-- [x] **Track: Create an Inno Setup installer that wraps the standalone executable, handles clean auto-updates, installs to LocalAppData, and integrates with the GitHub Actions release workflow.**
-*Link: [./tracks/inno_setup_installer_20260314/](./tracks/inno_setup_installer_20260314/)*
