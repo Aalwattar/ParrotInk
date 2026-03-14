@@ -1,0 +1,8 @@
+{
+  "track_id": "windows_native_update_manager_20260314",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-14T08:00:00Z",
+  "updated_at": "2026-03-14T08:00:00Z",
+  "description": "Implement a Windows-native background update manager using PowerShell BITS for efficient, persistent, and low-impact downloads of ParrotInk-Setup.exe."
+}
