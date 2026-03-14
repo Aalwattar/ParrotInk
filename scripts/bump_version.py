@@ -17,6 +17,7 @@ def bump_version(new_version: str):
     root = Path(__file__).parent.parent
     pyproject_path = root / "pyproject.toml"
     vinfo_path = root / "packaging" / "pyinstaller" / "version_info.txt"
+    iss_path = root / "packaging" / "inno" / "parrotink.iss"
 
     if not re.match(r"^\d+\.\d+\.\d+$", new_version):
         print(f"Error: Version '{new_version}' must be in X.Y.Z format.")
@@ -50,7 +51,19 @@ def bump_version(new_version: str):
 
         vinfo_path.write_text(v_content, encoding="utf-8")
 
-    # 3. Synchronize uv.lock (The Deterministic Step)
+    # 3. Update Inno Setup script (.iss)
+    if iss_path.exists():
+        print(f"Updating {iss_path}...")
+        iss_content = iss_path.read_text(encoding="utf-8")
+        iss_content = re.sub(
+            r'^#define MyAppVersion ".*"',
+            f'#define MyAppVersion "{new_version}"',
+            iss_content,
+            flags=re.M,
+        )
+        iss_path.write_text(iss_content, encoding="utf-8")
+
+    # 4. Synchronize uv.lock (The Deterministic Step)
     print("Running uv lock...")
     try:
         subprocess.run(["uv", "lock"], check=True, capture_output=True)
