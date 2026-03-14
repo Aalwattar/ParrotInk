@@ -3,10 +3,6 @@
 This file tracks all major tracks for the project. Each track has its own detailed plan in its respective folder.
 
 ---
-## [x] Track: Audio Device Selection & Ducking Mitigation
-Link: [audio_device_selection_fix_20260312](./tracks/audio_device_selection_fix_20260312/)
-
----
 ## [ ] Track: Auto Provider Selection
 Link: [auto_provider_selection_20260311](./tracks/auto_provider_selection_20260311/)
 
