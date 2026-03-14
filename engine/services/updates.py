@@ -66,9 +66,22 @@ class GitHubClient:
                 response.raise_for_status()
                 data = response.json()
 
+                assets = data.get("assets", [])
+                installer_url = None
+                checksum_url = None
+
+                for asset in assets:
+                    name = asset.get("name", "")
+                    if name == "ParrotInk-Setup.exe":
+                        installer_url = asset.get("browser_download_url")
+                    elif name == "ParrotInk-Setup.exe.sha256":
+                        checksum_url = asset.get("browser_download_url")
+
                 return {
                     "tag_name": data.get("tag_name"),
                     "html_url": data.get("html_url"),
+                    "installer_url": installer_url,
+                    "checksum_url": checksum_url,
                 }
         except httpx.HTTPError as e:
             logger.debug(f"GitHub API error: {e}")
