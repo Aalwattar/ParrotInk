@@ -112,6 +112,7 @@ class TrayApp:
         # Lazy-load indicator
         self.indicator: Optional["IndicatorWindow"] = None
         self._indicator_lock = threading.Lock()
+        self._hud_failure_count = 0
         self._is_stopped = False
         self._ensure_indicator()
 
@@ -131,13 +132,30 @@ class TrayApp:
                     self.indicator = None
                 return False
 
+            # Circuit Breaker: If the HUD failed too many times, permanently disable recovery
+            # to prevent CPU pegging loops, and use the mock.
+            if self._hud_failure_count >= 3:
+                # If we don't have a mock indicator yet, create one
+                if not self.indicator or getattr(self.indicator, "is_alive", lambda: False)():
+                    from .indicator_ui import IndicatorWindow
+
+                    # Force disable real HUD for this instance by patching the config temporarily
+                    # Actually, IndicatorWindow falls back to GdiFallbackWindow internally
+                    # if it crashes, but to stop the health loop, we just treat whatever is there
+                    # as healthy, or recreate it once and never check health again.
+                    pass  # We handle this by not checking health below if count >= 3
+
             # If we have an indicator, check if it's still alive/healthy
-            if self.indicator:
+            if self.indicator and self._hud_failure_count < 3:
                 # Senior Architecture: Use robust Win32 health probe
                 if self.indicator.is_healthy():
                     return True
                 else:
-                    logger.info("HUD Indicator detected as unhealthy or dead. Re-initializing.")
+                    self._hud_failure_count += 1
+                    logger.warning(
+                        "HUD Indicator detected as unhealthy or dead "
+                        f"(Failures: {self._hud_failure_count}/3). Re-initializing."
+                    )
                     try:
                         self.indicator.stop()
                     except Exception:
@@ -150,18 +168,39 @@ class TrayApp:
                     from .indicator_ui import IndicatorWindow
 
                     logger.info("Lazily initializing IndicatorWindow.")
+
+                    # If circuit breaker tripped, force fallback by overriding HUD_AVAILABLE locally
+                    if self._hud_failure_count >= 3:
+                        import engine.hud_renderer
+
+                        engine.hud_renderer.HUD_AVAILABLE = False
+                        logger.error(
+                            "HUD Circuit Breaker tripped. Permanently falling back to mock."
+                        )
+
                     self.indicator = IndicatorWindow(config=self.config)
                     # Start its thread
                     if not self._is_stopped:
                         self.indicator.start()
+
+                        # Senior Architecture: State Sync
+                        # If we recreated the HUD during an active session, it will spawn hidden.
+                        # We must sync its state to match the current application state.
+                        is_rec = self.state == AppState.LISTENING
+                        self.indicator.update_status(is_rec)
+                        if is_rec:
+                            self.indicator.show()
+
                     return True
                 except (ImportError, RuntimeError) as e:
                     # Catching specific setup/dependency failures
                     logger.error(f"Failed to initialize indicator (dependency issue): {e}")
+                    self._hud_failure_count += 1
                     return False
                 except Exception as e:
                     # Catch-all for unexpected HUD creation failures
                     logger.error(f"Unexpected HUD creation failure: {e}", exc_info=True)
+                    self._hud_failure_count += 1
                     return False
 
         return True
