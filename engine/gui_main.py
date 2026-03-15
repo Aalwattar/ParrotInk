@@ -264,7 +264,18 @@ async def main_gui(cli_args):
                 return
 
             logger.info("Manual install triggered from UI. Launching installer...")
-            coordinator.update_manager.install_now()
+            if coordinator.update_manager.install_now():
+                # Senior Architecture: Professional Handoff
+                # 1. Brief pause to allow the installer process to initialize
+                # (Proxy for WaitForInputIdle)
+                time.sleep(0.5)
+
+                # 2. Trigger the normal graceful shutdown path
+                logger.info("Handoff successful. Initiating graceful shutdown for update...")
+                if coordinator.loop:
+                    coordinator.loop.call_soon_threadsafe(
+                        lambda: asyncio.create_task(trigger_shutdown("Update Handoff"))
+                    )
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)

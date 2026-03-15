@@ -18,11 +18,10 @@ def test_update_manager_lifecycle():
     with (
         patch("engine.services.updates.GitHubClient") as mock_client_cls,
         patch("engine.services.updates.BITSClient") as mock_bits_cls,
-        patch("engine.services.updates.ChecksumVerifier") as mock_verifier_cls,
+        patch("engine.services.updates.ChecksumVerifier"),
     ):
         mock_client = mock_client_cls.return_value
         mock_bits = mock_bits_cls.return_value
-        mock_verifier = mock_verifier_cls.return_value
 
         manager = UpdateManager(on_available, stop_event)
 
@@ -34,31 +33,34 @@ def test_update_manager_lifecycle():
             "checksum_url": "https://test/setup.exe.sha256",
         }
 
-        # 2. Check for updates
-        manager.check_now()
+        # Force verification to fail so it proceeds to download
+        with patch.object(UpdateManager, "_verify_installer", return_value=False) as mock_v:
+            # 2. Check for updates
+            manager.check_now()
 
-        # Verify BITS download started automatically
-        mock_bits.start_download.assert_called_once()
-        assert manager.state.name == "DOWNLOADING"
+            # Verify BITS download started automatically
+            mock_bits.start_download.assert_called_once()
+            assert manager.state.name == "DOWNLOADING"
 
-        # 3. Simulate download completion
-        mock_bits.get_status.return_value = {
-            "state": "Transferred",
-            "percent": 100,
-            "is_complete": True,
-        }
+            # 3. Simulate download completion
+            mock_bits.get_status.return_value = {
+                "state": "Transferred",
+                "percent": 100,
+                "is_complete": True,
+            }
 
-        # Mock checksum download and verification
-        with patch("httpx.get") as mock_http_get:
-            mock_http_get.return_value = MagicMock(text="mock_hash", status_code=200)
-            mock_verifier.verify.return_value = True
+            # Mock checksum download and verification
+            with patch("httpx.get") as mock_http_get:
+                mock_http_get.return_value = MagicMock(text="mock_hash", status_code=200)
+                # Ensure the next call to _verify_installer (during finalize) returns True
+                mock_v.return_value = True
 
-            # Run one poll cycle
-            manager._poll_bits()
+                # Run one poll cycle
+                manager._poll_bits()
 
-            mock_bits.complete_download.assert_called_once()
-            assert manager.state.name == "READY_TO_INSTALL"
-            assert on_available.call_count == 2
+                mock_bits.complete_download.assert_called_once()
+                assert manager.state.name == "READY_TO_INSTALL"
+                assert on_available.call_count == 2
 
 
 def test_update_manager_bits_error():
@@ -103,7 +105,11 @@ def test_update_manager_temp_file_cleanup():
     ):
         mock_client = mock_client_cls.return_value
         mock_bits = mock_bits_cls.return_value
-        mock_exists.return_value = True
+
+        # mock_exists will be called for pyproject.toml, installer_path, etc.
+        # We need it to return True for the cleanup logic but False for the
+        # "valid installer found" logic.
+        mock_exists.side_effect = lambda: True
 
         manager = UpdateManager(on_available, stop_event)
 
@@ -113,11 +119,13 @@ def test_update_manager_temp_file_cleanup():
             "installer_url": "https://test/setup.exe",
         }
 
-        manager.check_now()
+        # Force verification to fail so it proceeds to cleanup/download
+        with patch.object(UpdateManager, "_verify_installer", return_value=False):
+            manager.check_now()
 
-        # Should have called unlink because mock_exists was True
-        mock_unlink.assert_called_once()
-        mock_bits.start_download.assert_called_once()
+            # Should have called unlink because mock_exists was True
+            mock_unlink.assert_called_once()
+            mock_bits.start_download.assert_called_once()
 
 
 def test_checksum_verifier_success(tmp_path):

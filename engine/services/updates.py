@@ -451,14 +451,28 @@ class UpdateManager:
             logger.warning(f"Failed to parse version strings: {e}")
             self.state = UpdateState.IDLE
 
-    def install_now(self):
-        """Launches the installer and exits the application."""
-        if self.state != UpdateState.READY_TO_INSTALL or not self.installer_path:
-            return
+    def install_now(self) -> bool:
+        """Launches the installer and returns True on success.
 
-        logger.info(f"Launching installer: {self.installer_path}")
+        Uses CREATE_BREAKAWAY_FROM_JOB to ensure the installer survives if the
+        parent application is running inside a restrictive job object.
+        """
+        if self.state != UpdateState.READY_TO_INSTALL or not self.installer_path:
+            return False
+
+        installer_path = str(self.installer_path)
+        logger.info(f"Launching decoupled installer: {installer_path}")
         try:
-            # os.startfile is non-blocking and handles the "runas" verb if needed
-            os.startfile(self.installer_path)
+            # Senior Architecture: Use Breakaway flag to decouple from parent job objects.
+            # This is the industry-standard way to ensure a child setup process
+            # survives parent termination in all Windows environments.
+            create_breakaway_from_job = 0x01000000
+            subprocess.Popen(
+                [installer_path],
+                creationflags=create_breakaway_from_job | subprocess.DETACHED_PROCESS,
+                shell=False,
+            )
+            return True
         except Exception as e:
-            logger.error(f"Failed to launch installer: {e}")
+            logger.error(f"Failed to launch decoupled installer: {e}")
+            return False

@@ -394,23 +394,46 @@ class TrayApp:
         """Handles clicks on the version/update menu item."""
         state_name = getattr(self.update_state, "name", "")
         if state_name == "READY_TO_INSTALL":
-            # User confirmed installation via menu click
-            import ctypes
+            if getattr(self, "_update_popup_active", False):
+                return
+            self._update_popup_active = True
 
-            msg = (
-                "UPDATE READY\n\n"
-                "ParrotInk needs to close to apply the update. "
-                "The application will restart automatically once finished.\n\n"
-                "Proceed with installation now?"
-            )
-            title = "ParrotInk Update"
-            # MB_YESNO (4) | MB_ICONINFORMATION (64) | MB_SETFOREGROUND (65536) = 65604
-            # Yes = 6, No = 7
-            result = ctypes.windll.user32.MessageBoxW(0, msg, title, 65604)
+            def show_confirmation():
+                try:
+                    import ctypes
 
-            if result == 6:  # Yes clicked
-                if self.on_install_update:
-                    self.on_install_update()
+                    msg = (
+                        "UPDATE READY\n\n"
+                        "ParrotInk needs to close to apply the update. "
+                        "The application will restart automatically once finished.\n\n"
+                        "Proceed with installation now?"
+                    )
+                    title = "ParrotInk Update"
+                    # MB_YESNO (4) | MB_ICONINFORMATION (64) | MB_SETFOREGROUND (65536)
+                    # | MB_TOPMOST (262144) = 327748
+                    # Yes = 6, No = 7
+                    logger.info("Showing update confirmation dialog.")
+                    # Senior Architecture: We use 0 as HWND but the dialog is now
+                    # triggered from the main UI thread via .after() for stability.
+                    result = ctypes.windll.user32.MessageBoxW(0, msg, title, 327748)
+                    logger.info(f"Update confirmation result: {result}")
+
+                    if result == 6:  # Yes clicked
+                        logger.info("User confirmed update installation. Triggering callback.")
+                        if self.on_install_update:
+                            self.on_install_update()
+                        else:
+                            logger.warning("on_install_update callback is missing!")
+                finally:
+                    self._update_popup_active = False
+
+            # Senior Architecture: Route the modal dialog through the Tcl/Tk thread
+            # to ensure proper message processing and window ownership.
+            if self.ui_root:
+                self.ui_root.after(0, show_confirmation)
+            else:
+                # Fallback if UI thread isn't ready
+                threading.Thread(target=show_confirmation, daemon=True).start()
         elif self.release_url:
             logger.info(f"Opening update URL: {self.release_url}")
             webbrowser.open(self.release_url)
