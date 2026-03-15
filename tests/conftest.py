@@ -88,7 +88,11 @@ def mock_audio_feedback():
 @pytest.fixture(autouse=True)
 def mock_win11toast():
     """Globally prevent win11toast from displaying actual Windows notifications during tests."""
-    with patch("win11toast.toast") as mock:
+    with (
+        patch("win11toast.toast") as mock,
+        patch("engine.ui.toast", new=mock),
+        patch("engine.ui_utils.toast", new=mock),
+    ):
         yield mock
 
 
@@ -96,6 +100,13 @@ def mock_win11toast():
 def mock_messagebox():
     """Globally mock Windows MessageBox to prevent blocking tests. Returns 'Yes' (6) by default."""
     with patch("ctypes.windll.user32.MessageBoxW", return_value=6) as mock:
+        yield mock
+
+
+@pytest.fixture(autouse=True)
+def mock_stats_saver():
+    """Prevents StatsManager from starting background saver threads during tests."""
+    with patch("engine.stats.StatsManager.start_background_saver") as mock:
         yield mock
 
 
