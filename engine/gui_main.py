@@ -258,9 +258,20 @@ async def main_gui(cli_args):
 
     def on_install_update():
         def apply():
-            logger.info("Manual install triggered from UI.")
-            # Run in background to avoid blocking the UI thread before exit
-            threading.Thread(target=coordinator.update_manager.install_now, daemon=True).start()
+            logger.info("Manual install triggered from UI. Shutting down app first...")
+            # 1. Trigger graceful shutdown
+            if coordinator.loop:
+                coordinator.loop.call_soon_threadsafe(
+                    lambda: asyncio.create_task(trigger_shutdown("Update Installation"))
+                )
+
+            # 2. Launch installer in background thread
+            def launch_after_delay():
+                # Give the app a moment to close its files/locks
+                time.sleep(2.0)
+                coordinator.update_manager.install_now()
+
+            threading.Thread(target=launch_after_delay, daemon=True).start()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
