@@ -66,6 +66,7 @@ class TrayApp:
         on_toggle_realtime_punctuation: Callable[[bool], None] | None = None,
         on_reload_config: Callable[[], None] | None = None,
         on_check_updates: Callable[[], None] | None = None,
+        on_install_update: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -90,6 +91,7 @@ class TrayApp:
         self.on_toggle_realtime_punctuation = on_toggle_realtime_punctuation
         self.on_reload_config = on_reload_config
         self.on_check_updates = on_check_updates
+        self.on_install_update = on_install_update
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         # Update info
