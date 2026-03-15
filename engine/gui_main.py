@@ -4,6 +4,7 @@ import asyncio
 import signal
 import sys
 import threading
+import time
 
 from engine.config import ConfigError, load_config
 from engine.constants import (
@@ -258,20 +259,12 @@ async def main_gui(cli_args):
 
     def on_install_update():
         def apply():
-            logger.info("Manual install triggered from UI. Shutting down app first...")
-            # 1. Trigger graceful shutdown
-            if coordinator.loop:
-                coordinator.loop.call_soon_threadsafe(
-                    lambda: asyncio.create_task(trigger_shutdown("Update Installation"))
-                )
+            if not coordinator.update_manager or not coordinator.update_manager.installer_path:
+                logger.warning("Install triggered but installer path is missing.")
+                return
 
-            # 2. Launch installer in background thread
-            def launch_after_delay():
-                # Give the app a moment to close its files/locks
-                time.sleep(2.0)
-                coordinator.update_manager.install_now()
-
-            threading.Thread(target=launch_after_delay, daemon=True).start()
+            logger.info("Manual install triggered from UI. Launching installer...")
+            coordinator.update_manager.install_now()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)

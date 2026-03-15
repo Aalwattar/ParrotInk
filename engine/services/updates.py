@@ -122,7 +122,12 @@ class BITSClient:
             f'-DisplayName "{self.JOB_NAME}" -Asynchronous -Priority Normal'
         )
         try:
-            subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
+            subprocess.run(
+                ["powershell", "-Command", ps_command],
+                check=True,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
             return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to start BITS transfer: {e.stderr.decode()}")
@@ -146,6 +151,7 @@ class BITSClient:
                 check=True,
                 capture_output=True,
                 text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
             output = result.stdout.strip()
             if not output:
@@ -198,7 +204,12 @@ class BITSClient:
         logger.info("Completing BITS transfer...")
         ps_command = f'Get-BitsTransfer -Name "{self.JOB_NAME}" | Complete-BitsTransfer'
         try:
-            subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
+            subprocess.run(
+                ["powershell", "-Command", ps_command],
+                check=True,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
             return True
         except Exception as e:
             logger.error(f"Failed to complete BITS transfer: {e}")
@@ -208,7 +219,11 @@ class BITSClient:
         """Cancels any existing update job."""
         ps_command = f'Get-BitsTransfer -Name "{self.JOB_NAME}" | Remove-BitsTransfer'
         try:
-            subprocess.run(["powershell", "-Command", ps_command], capture_output=True)
+            subprocess.run(
+                ["powershell", "-Command", ps_command],
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
         except Exception:
             pass
 
@@ -329,6 +344,28 @@ class UpdateManager:
                 self.download_percent,
             )
 
+    def _verify_installer(self) -> bool:
+        """Fetch checksum and verify the current installer_path. Returns True if valid."""
+        if not self.latest_release or not self.installer_path or not self.installer_path.exists():
+            return False
+
+        checksum_url = self.latest_release.get("checksum_url")
+        if not checksum_url:
+            # If no checksum is provided by the provider, we consider it "valid" if it exists
+            return True
+
+        try:
+            # Download checksum file
+            res = httpx.get(checksum_url, timeout=10.0, follow_redirects=True)
+            res.raise_for_status()
+            # SHA256 file usually contains: <hash> <filename>
+            expected_hash = res.text.split()[0]
+
+            return self.verifier.verify(self.installer_path, expected_hash)
+        except Exception as e:
+            logger.error(f"Verification check failed: {e}")
+            return False
+
     def _finalize_download(self):
         """Completes the BITS transfer and verifies checksum."""
         if not self.latest_release or not self.installer_path:
@@ -337,27 +374,11 @@ class UpdateManager:
         if not self.bits.complete_download():
             return
 
-        # Verification step
-        checksum_url = self.latest_release.get("checksum_url")
-        if checksum_url:
-            try:
-                # Download checksum file
-                res = httpx.get(checksum_url, timeout=10.0, follow_redirects=True)
-                res.raise_for_status()
-                # SHA256 file usually contains: <hash> <filename>
-                expected_hash = res.text.split()[0]
-
-                if self.verifier.verify(self.installer_path, expected_hash):
-                    self.state = UpdateState.READY_TO_INSTALL
-                else:
-                    self.state = UpdateState.ERROR
-                    logger.error("Update verification failed.")
-            except Exception as e:
-                logger.error(f"Failed to fetch/verify checksum: {e}")
-                self.state = UpdateState.ERROR
-        else:
-            # No checksum available, proceed with caution (or skip)
+        if self._verify_installer():
             self.state = UpdateState.READY_TO_INSTALL
+        else:
+            self.state = UpdateState.ERROR
+            logger.error("Update verification failed.")
 
         self.on_update_available(
             self.latest_release["tag_name"],
@@ -401,18 +422,23 @@ class UpdateManager:
                     temp_dir = Path(tempfile.gettempdir())
                     self.installer_path = temp_dir / f"ParrotInk-Setup-{remote_tag}.exe"
 
-                    # Ensure we don't have a stale job or old file
-                    self.bits.cancel_download()
-                    if self.installer_path.exists():
-                        try:
-                            self.installer_path.unlink()
-                        except Exception:
-                            pass
-
-                    if self.bits.start_download(installer_url, str(self.installer_path)):
-                        self.state = UpdateState.DOWNLOADING
+                    # Check if existing file is already valid to avoid redownloading
+                    if self.installer_path.exists() and self._verify_installer():
+                        logger.info(f"Existing valid installer found: {self.installer_path}")
+                        self.state = UpdateState.READY_TO_INSTALL
                     else:
-                        self.state = UpdateState.UPDATE_AVAILABLE
+                        # Ensure we don't have a stale job or old file
+                        self.bits.cancel_download()
+                        if self.installer_path.exists():
+                            try:
+                                self.installer_path.unlink()
+                            except Exception:
+                                pass
+
+                        if self.bits.start_download(installer_url, str(self.installer_path)):
+                            self.state = UpdateState.DOWNLOADING
+                        else:
+                            self.state = UpdateState.UPDATE_AVAILABLE
                 else:
                     self.state = UpdateState.UPDATE_AVAILABLE
 
@@ -434,10 +460,5 @@ class UpdateManager:
         try:
             # os.startfile is non-blocking and handles the "runas" verb if needed
             os.startfile(self.installer_path)
-            # Signal the app to exit. In a real scenario, we might call a callback.
-            # But the installer has taskkill logic anyway.
-            import sys
-
-            sys.exit(0)
         except Exception as e:
             logger.error(f"Failed to launch installer: {e}")
