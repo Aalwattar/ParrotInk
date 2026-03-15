@@ -11,19 +11,38 @@
     {
       "title": "## 🛠️ Maintenance & Refactoring",
       "labels": ["chore", "refactor", "build", "ci"]
-    }
-  ],
-  "template": "${{CHANGELOG}}",
-  "pr_template": "- ${{TITLE}} (#${{NUMBER}})\n\n${{BODY}}",
-  "empty_template": "No major changes in this release.",
-  "label_extractor": [
-    {
-      "pattern": "(feature|feat|enhancement)",
-      "target": "feature"
     },
     {
-      "pattern": "(bug|fix)",
-      "target": "bug"
+      "title": "## 📦 Other Changes",
+      "labels": ["uncategorized"]
     }
-  ]
+  ],
+  "ignore_labels": [
+    "skip-changelog"
+  ],
+  "template": "${{CHANGELOG}}",
+  "pr_template": "### ${{TITLE}} (#${{NUMBER}})\n\n${{BODY}}",
+  "empty_template": "No pull requests were found since the last release.",
+  "label_extractor": [
+    {
+      "pattern": "^(feat|feature|enhancement).*",
+      "target": "feature",
+      "on": "title"
+    },
+    {
+      "pattern": "^(fix|bug).*",
+      "target": "bug",
+      "on": "title"
+    },
+    {
+      "pattern": "^(chore|refactor|build|ci).*",
+      "target": "chore",
+      "on": "title"
+    }
+  ],
+  "template_uncategorized": "### ${{TITLE}} (#${{NUMBER}})\n\n${{BODY}}",
+  "category_uncategorized": "uncategorized",
+  "tag_resolver": {
+    "method": "semver"
+  }
 }
