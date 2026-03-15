@@ -43,6 +43,7 @@ I wanted true real-time streaming with professional-grade accuracy, and I wanted
 - **Zero-Latency Feel:** Real-time streaming ensures your text appears as you speak, **keeping you in the zone.**
 - **Global Language Support:** Works with almost any language (English, Spanish, French, Chinese, Japanese, etc.) via world-class AI models, **so you can work in your native tongue.**
 - **Native RTL Support:** Full support for **Arabic** and other Right-to-Left languages with correct character shaping and HUD alignment.
+- **Automatic Background Updates:** Downloads new versions silently in the background using Windows BITS, with one-click installation.
 - **Smart Injection:** Automatically stops recording if you start typing manually, **preventing frustrating text collisions.**
 - **Secure by Design:** API keys are stored safely in the Windows Credential Manager, **protecting your sensitive credentials.**
 
