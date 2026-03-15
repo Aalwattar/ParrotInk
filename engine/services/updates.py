@@ -135,7 +135,7 @@ class BITSClient:
             dict: {state: str, percent: int, is_complete: bool}
         """
         ps_command = (
-            f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | '
+            f'Get-BitsTransfer -Name "{self.JOB_NAME}" | '
             "Select-Object JobState, BytesTransferred, TotalBytesToTransfer | "
             "ForEach-Object { 'JobState=' + $_.JobState + ';BytesTransferred=' + "
             "$_.BytesTransferred + ';TotalBytesToTransfer=' + $_.TotalBytesToTransfer }"
@@ -151,21 +151,44 @@ class BITSClient:
             if not output:
                 return {"state": "NotFound", "percent": 0, "is_complete": False}
 
+            # If there are multiple jobs, just take the first one
+            first_job = output.splitlines()[0].strip()
+
             # Parse simple semicolon-delimited output
-            data = dict(item.split("=") for item in output.split(";") if "=" in item)
+            data = {}
+            for item in first_job.split(";"):
+                if "=" in item:
+                    k, v = item.split("=", 1)
+                    data[k] = v
+
             state = data.get("JobState", "Unknown")
-            transferred = int(data.get("BytesTransferred", 0))
-            total = int(data.get("TotalBytesToTransfer", 0))
+            transferred_str = data.get("BytesTransferred", "0").strip()
+            total_str = data.get("TotalBytesToTransfer", "0").strip()
+
+            transferred = int(transferred_str) if transferred_str else 0
+            total = int(total_str) if total_str else 0
 
             percent = 0
             if total > 0:
                 percent = int((transferred / total) * 100)
+            elif state == "Transferred":
+                percent = 100
+            elif transferred > 0:
+                # GitHub release redirects sometimes hide Content-Length from BITS.
+                # We estimate against ~60MB to provide meaningful UX instead of 0%.
+                percent = min(99, int((transferred / (60 * 1024 * 1024)) * 100))
 
             return {
                 "state": state,
                 "percent": percent,
                 "is_complete": state == "Transferred",
             }
+        except subprocess.CalledProcessError as e:
+            err_msg = e.stderr.decode() if e.stderr else str(e)
+            if "Cannot find a BITS transfer" in err_msg or "Cannot find a BITS job" in err_msg:
+                return {"state": "NotFound", "percent": 0, "is_complete": False}
+            logger.debug(f"Error querying BITS status (CalledProcessError): {err_msg}")
+            return {"state": "Error", "percent": 0, "is_complete": False}
         except Exception as e:
             logger.debug(f"Error querying BITS status: {e}")
             return {"state": "Error", "percent": 0, "is_complete": False}
@@ -173,7 +196,7 @@ class BITSClient:
     def complete_download(self) -> bool:
         """Finalizes the transfer and moves the file to the destination."""
         logger.info("Completing BITS transfer...")
-        ps_command = f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | Complete-BitsTransfer'
+        ps_command = f'Get-BitsTransfer -Name "{self.JOB_NAME}" | Complete-BitsTransfer'
         try:
             subprocess.run(["powershell", "-Command", ps_command], check=True, capture_output=True)
             return True
@@ -183,7 +206,7 @@ class BITSClient:
 
     def cancel_download(self):
         """Cancels any existing update job."""
-        ps_command = f'Get-BitsTransfer -DisplayName "{self.JOB_NAME}" | Remove-BitsTransfer'
+        ps_command = f'Get-BitsTransfer -Name "{self.JOB_NAME}" | Remove-BitsTransfer'
         try:
             subprocess.run(["powershell", "-Command", ps_command], capture_output=True)
         except Exception:
@@ -319,7 +342,7 @@ class UpdateManager:
         if checksum_url:
             try:
                 # Download checksum file
-                res = httpx.get(checksum_url, timeout=10.0)
+                res = httpx.get(checksum_url, timeout=10.0, follow_redirects=True)
                 res.raise_for_status()
                 # SHA256 file usually contains: <hash> <filename>
                 expected_hash = res.text.split()[0]

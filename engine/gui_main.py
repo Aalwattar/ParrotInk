@@ -256,15 +256,21 @@ async def main_gui(cli_args):
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
 
+    def on_install_update():
+        def apply():
+            logger.info("Manual install triggered from UI.")
+            # Run in background to avoid blocking the UI thread before exit
+            threading.Thread(target=coordinator.update_manager.install_now, daemon=True).start()
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
     from engine.ui import TrayApp
 
     app = TrayApp(
-        config=config,
-        bridge=ui_bridge,
+        config,
+        ui_bridge,
         on_quit_callback=on_quit,
-        on_provider_change=on_provider_change,
-        on_set_key=on_set_key,
-        on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,
         on_before_hotkey_change=on_before_hotkey_change,
         on_toggle_hud=on_toggle_hud,
@@ -276,6 +282,7 @@ async def main_gui(cli_args):
         on_toggle_realtime_punctuation=on_toggle_realtime_punctuation,
         on_reload_config=on_reload_config,
         on_check_updates=on_check_updates,
+        on_install_update=on_install_update,
         initial_provider=config.transcription.provider,
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),

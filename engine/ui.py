@@ -390,15 +390,11 @@ class TrayApp:
 
     def _on_update_clicked(self, icon: pystray.Icon, item: pystray.MenuItem):
         """Handles clicks on the version/update menu item."""
-        if self.update_state == UpdateState.READY_TO_INSTALL:
+        state_name = getattr(self.update_state, "name", "")
+        if state_name == "READY_TO_INSTALL":
             # User confirmed installation via menu click
-            if self.on_check_updates:
-                # We reuse the callback to trigger installation if ready
-                # But a cleaner way is to call the coordinator directly via a dedicated callback
-                # For now, we'll assume the manager handles it if we signal it.
-                # Actually, let's just trigger it here if we have access to the manager.
-                # Since TrayApp doesn't have the manager, we'll use the callback.
-                self.on_check_updates()
+            if self.on_install_update:
+                self.on_install_update()
         elif self.release_url:
             logger.info(f"Opening update URL: {self.release_url}")
             webbrowser.open(self.release_url)
