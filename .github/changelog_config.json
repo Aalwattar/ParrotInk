@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features & UI Updates",
+      "labels": ["feature", "feat", "enhancement"]
+    },
+    {
+      "title": "## 🐛 Bug Fixes & Stability",
+      "labels": ["bug", "fix"]
+    },
+    {
+      "title": "## 🛠️ Maintenance & Refactoring",
+      "labels": ["chore", "refactor", "build", "ci"]
+    }
+  ],
+  "template": "${{CHANGELOG}}",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}})\n\n${{BODY}}",
+  "empty_template": "No major changes in this release.",
+  "label_extractor": [
+    {
+      "pattern": "(feature|feat|enhancement)",
+      "target": "feature"
+    },
+    {
+      "pattern": "(bug|fix)",
+      "target": "bug"
+    }
+  ]
+}
