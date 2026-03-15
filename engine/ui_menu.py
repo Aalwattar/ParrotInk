@@ -40,10 +40,28 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     is_version_default = False
 
     if app.latest_version:
-        version_label = f"✨ UPDATE AVAILABLE: {app.latest_version}"
-        on_version_click = app._on_update_clicked
-        is_version_enabled = True
-        is_version_default = True
+        state_name = getattr(app.update_state, "name", "")
+        if state_name == "DOWNLOADING":
+            pct = app.download_percent
+            if pct > 0:
+                version_label = f"⏳ DOWNLOADING UPDATE: {pct}%"
+            else:
+                version_label = "⏳ DOWNLOADING UPDATE..."
+            is_version_enabled = False  # Keep non-clickable during download
+        elif state_name == "READY_TO_INSTALL":
+            version_label = f"🚀 INSTALL UPDATE: {app.latest_version} (READY)"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+            is_version_default = True
+        elif state_name == "ERROR":
+            version_label = "❌ UPDATE ERROR (Check Logs)"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+        else:
+            version_label = f"✨ UPDATE AVAILABLE: {app.latest_version}"
+            on_version_click = app._on_update_clicked
+            is_version_enabled = True
+            is_version_default = True
 
     menu_items.append(
         pystray.MenuItem(

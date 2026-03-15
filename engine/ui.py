@@ -16,9 +16,11 @@ except Exception:
 import pystray
 import ttkbootstrap as tb
 from PIL import Image, ImageDraw
+from win11toast import toast
 
 from .app_types import AppState, ProviderType
 from .logging import get_logger
+from .services.updates import UpdateState
 from .stats import StatsManager
 from .ui_menu import build_tray_menu
 from .ui_utils import get_resource_path
@@ -64,6 +66,7 @@ class TrayApp:
         on_toggle_realtime_punctuation: Callable[[bool], None] | None = None,
         on_reload_config: Callable[[], None] | None = None,
         on_check_updates: Callable[[], None] | None = None,
+        on_install_update: Callable[[], None] | None = None,
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
@@ -88,11 +91,14 @@ class TrayApp:
         self.on_toggle_realtime_punctuation = on_toggle_realtime_punctuation
         self.on_reload_config = on_reload_config
         self.on_check_updates = on_check_updates
+        self.on_install_update = on_install_update
         self.availability = availability or {"openai": True, "assemblyai": True}
 
         # Update info
         self.latest_version: Optional[str] = None
         self.release_url: Optional[str] = None
+        self.update_state = UpdateState.IDLE
+        self.download_percent = 0
 
         # Senior Architecture: Thread-safe UI state
         self.ui_root = None
@@ -385,8 +391,50 @@ class TrayApp:
             self.ui_root.after(0, launch)
 
     def _on_update_clicked(self, icon: pystray.Icon, item: pystray.MenuItem):
-        """Opens the GitHub releases page in the default browser."""
-        if self.release_url:
+        """Handles clicks on the version/update menu item."""
+        state_name = getattr(self.update_state, "name", "")
+        if state_name == "READY_TO_INSTALL":
+            if getattr(self, "_update_popup_active", False):
+                return
+            self._update_popup_active = True
+
+            def show_confirmation():
+                try:
+                    import ctypes
+
+                    msg = (
+                        "UPDATE READY\n\n"
+                        "ParrotInk needs to close to apply the update. "
+                        "The application will restart automatically once finished.\n\n"
+                        "Proceed with installation now?"
+                    )
+                    title = "ParrotInk Update"
+                    # MB_YESNO (4) | MB_ICONINFORMATION (64) | MB_SETFOREGROUND (65536)
+                    # | MB_TOPMOST (262144) = 327748
+                    # Yes = 6, No = 7
+                    logger.info("Showing update confirmation dialog.")
+                    # Senior Architecture: We use 0 as HWND but the dialog is now
+                    # triggered from the main UI thread via .after() for stability.
+                    result = ctypes.windll.user32.MessageBoxW(0, msg, title, 327748)
+                    logger.info(f"Update confirmation result: {result}")
+
+                    if result == 6:  # Yes clicked
+                        logger.info("User confirmed update installation. Triggering callback.")
+                        if self.on_install_update:
+                            self.on_install_update()
+                        else:
+                            logger.warning("on_install_update callback is missing!")
+                finally:
+                    self._update_popup_active = False
+
+            # Senior Architecture: Route the modal dialog through the Tcl/Tk thread
+            # to ensure proper message processing and window ownership.
+            if self.ui_root:
+                self.ui_root.after(0, show_confirmation)
+            else:
+                # Fallback if UI thread isn't ready
+                threading.Thread(target=show_confirmation, daemon=True).start()
+        elif self.release_url:
             logger.info(f"Opening update URL: {self.release_url}")
             webbrowser.open(self.release_url)
 
@@ -498,9 +546,26 @@ class TrayApp:
                     data["duration"], data["words"], data["provider"], data["error"]
                 )
             elif msg_type == UIEvent.UPDATE_VERSION_NOTIFICATION:
-                version_tag, release_url = data
+                version_tag, release_url, update_state, percent = data
                 self.latest_version = version_tag
                 self.release_url = release_url
+
+                # If we just reached READY_TO_INSTALL, show a toast
+                if (
+                    getattr(update_state, "name", "") == "READY_TO_INSTALL"
+                    and getattr(self.update_state, "name", "") != "READY_TO_INSTALL"
+                ):
+                    try:
+                        toast(
+                            title="ParrotInk Update Ready",
+                            body=f"Version {version_tag} is ready to install.",
+                            app_id="ParrotInk",
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to show update toast: {e}")
+
+                self.update_state = update_state
+                self.download_percent = percent
                 self._refresh_menu()
             elif msg_type == UIEvent.UPDATE_AUDIO_ERROR:
                 self.audio_error_type = data

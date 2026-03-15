@@ -1,7 +1,7 @@
 ; Inno Setup Script for ParrotInk
 
 #define MyAppName "ParrotInk"
-#define MyAppVersion "0.2.28"
+#define MyAppVersion "0.2.29"
 #define MyAppPublisher "Aalwattar"
 #define MyAppURL "https://github.com/Aalwattar/ParrotInk"
 #define MyAppExeName "ParrotInk.exe"
@@ -17,6 +17,7 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\{#MyAppName}
 PrivilegesRequired=lowest
+AppMutex=Global\ParrotInk_Mutex_2026
 OutputDir=..\..\dist
 OutputBaseFilename={#MyAppName}-Setup
 SetupIconFile=..\..\assets\icons\icon.ico
@@ -25,6 +26,7 @@ SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=force
+CloseApplicationsFilter={#MyAppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -34,7 +36,6 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -48,14 +49,20 @@ Type: filesandordirs; Name: "{app}\assets"
 Type: files; Name: "{app}\{#MyAppExeName}"
 
 [Code]
-procedure CurStepChanged(CurStep: TSetupStep);
+function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
 begin
-  if CurStep = ssInstall then
-  begin
-    Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im {#MyAppExeName} /t', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  end;
+  Result := True;
+  // Graceful shutdown attempt (WM_CLOSE)
+  Exec(ExpandConstant('{cmd}'), '/c taskkill /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+
+  // Brief pause to allow for cleanup
+  Sleep(500);
+
+  // Forceful shutdown (failsafe)
+  // Note: We do NOT use /t here to avoid tree-kill issues with the installer process itself
+  Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
@@ -64,6 +71,6 @@ var
 begin
   if CurUninstallStep = usUninstall then
   begin
-    Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im {#MyAppExeName} /t', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Exec(ExpandConstant('{cmd}'), '/c taskkill /f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   end;
 end;

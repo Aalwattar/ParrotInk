@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from engine.services.updates import GitHubClient, UpdateManager
+from engine.services.updates import GitHubClient, UpdateManager, UpdateState
 
 
 @pytest.fixture
@@ -55,7 +55,9 @@ def test_version_comparison_logic():
             manager = UpdateManager(callback, stop_event)
             manager.check_now()
 
-            callback.assert_called_once_with("v0.2.0", "http://test")
+            callback.assert_called_once_with(
+                "v0.2.0", "http://test", UpdateState.UPDATE_AVAILABLE, 0
+            )
 
 
 def test_version_comparison_older_remote():

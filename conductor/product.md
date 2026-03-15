@@ -71,6 +71,7 @@ The user wants to build a real-time voice-to-text application for Windows. It sh
 
     ### 2.9. Distribution
     - **Standard Installer (Recommended):** The primary distribution method is a professional Inno Setup installer (`ParrotInk-Setup.exe`). It installs to `%LOCALAPPDATA%\ParrotInk`, handles clean auto-updates (stopping running instances), and manages system shortcuts.
+    - **Seamless Background Updates:** The application features a Windows-native update manager that leverages the Background Intelligent Transfer Service (BITS) to download new versions silently in the background. It verifies updates via SHA256 checksums and provides interactive installation prompts.
     - **Portable Executable:** A standalone `ParrotInk.exe` remains available for advanced or temporary use, with the caveat that moving the file after setup may break "Run at Startup" functionality.
     - **Portable Paths:** When running as an EXE, the application correctly resolves configuration and log files to the user's `%APPDATA%\ParrotInk` directory, ensuring it works even when launched from read-only locations.
     - **Single Instance Protection:** The application uses a Win32 Mutex to ensure only one instance is running at a time, preventing hotkey and microphone conflicts. If a second instance is launched, it displays a helpful notification and exits gracefully.
