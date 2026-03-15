@@ -146,14 +146,12 @@ jobs:
       - name: Prepare Release Body
         id: release_body
         shell: pwsh
+        env:
+          INPUT_SUMMARY: ${{ github.event.inputs.summary }}
+          CHANGELOG_OUTPUT: ${{ steps.build_changelog.outputs.changelog }}
         run: |
-          $summary = @"
-          ${{ github.event.inputs.summary }}
-          "@
-
-          $changelog = @"
-          ${{ steps.build_changelog.outputs.changelog }}
-          "@
+          $summary = $env:INPUT_SUMMARY
+          $changelog = $env:CHANGELOG_OUTPUT
 
           $finalBody = $summary
           if ($summary -and $changelog) {
