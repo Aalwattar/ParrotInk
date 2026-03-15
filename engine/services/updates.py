@@ -184,7 +184,7 @@ class BITSClient:
                 "is_complete": state == "Transferred",
             }
         except subprocess.CalledProcessError as e:
-            err_msg = e.stderr.decode() if e.stderr else str(e)
+            err_msg = e.stderr if e.stderr else str(e)
             if "Cannot find a BITS transfer" in err_msg or "Cannot find a BITS job" in err_msg:
                 return {"state": "NotFound", "percent": 0, "is_complete": False}
             logger.debug(f"Error querying BITS status (CalledProcessError): {err_msg}")

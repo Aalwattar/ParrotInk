@@ -395,8 +395,22 @@ class TrayApp:
         state_name = getattr(self.update_state, "name", "")
         if state_name == "READY_TO_INSTALL":
             # User confirmed installation via menu click
-            if self.on_install_update:
-                self.on_install_update()
+            import ctypes
+
+            msg = (
+                "UPDATE READY\n\n"
+                "ParrotInk needs to close to apply the update. "
+                "The application will restart automatically once finished.\n\n"
+                "Proceed with installation now?"
+            )
+            title = "ParrotInk Update"
+            # MB_YESNO (4) | MB_ICONINFORMATION (64) | MB_SETFOREGROUND (65536) = 65604
+            # Yes = 6, No = 7
+            result = ctypes.windll.user32.MessageBoxW(0, msg, title, 65604)
+
+            if result == 6:  # Yes clicked
+                if self.on_install_update:
+                    self.on_install_update()
         elif self.release_url:
             logger.info(f"Opening update URL: {self.release_url}")
             webbrowser.open(self.release_url)
