@@ -57,6 +57,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
+      pull-requests: read
 
     steps:
       - name: Checkout master
@@ -134,31 +135,17 @@ jobs:
             ForEach-Object { "$($_.Hash) ParrotInk-Setup.exe" } |
             Out-File -Encoding ascii dist\ParrotInk-Setup.exe.sha256
 
-      - name: Generate Changelog
-        id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
-        with:
-          configuration: ".github/changelog_config.json"
-          toTag: ${{ steps.meta.outputs.sha }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Prepare Release Body
         id: release_body
         shell: pwsh
         env:
           INPUT_SUMMARY: ${{ github.event.inputs.summary }}
-          CHANGELOG_OUTPUT: ${{ steps.build_changelog.outputs.changelog }}
         run: |
           $summary = $env:INPUT_SUMMARY
-          $changelog = $env:CHANGELOG_OUTPUT
 
-          $finalBody = $summary
-          if ($summary -and $changelog) {
-              $finalBody = "$summary`n`n---`n`n$changelog"
-          } elseif ($changelog) {
-              $finalBody = $changelog
-          }
+          # We only need to prepare the summary here.
+          # GitHub's native generator will append the changelog to this prefix.
+          $finalBody = if ($summary) { $summary } else { "" }
 
           # Crucial: Use Environment File with a Unique Delimiter to handle multi-line content
           $delimiter = [System.Guid]::NewGuid().ToString()
@@ -172,7 +159,7 @@ jobs:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ steps.meta.outputs.sha }}
           body: ${{ env.RELEASE_BODY }}
-          generate_release_notes: false
+          generate_release_notes: true
           files: |
             dist/ParrotInk.exe
             dist/ParrotInk.exe.sha256
