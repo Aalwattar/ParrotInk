@@ -4,7 +4,6 @@ import asyncio
 import signal
 import sys
 import threading
-import time
 
 from engine.config import ConfigError, load_config
 from engine.constants import (
@@ -265,13 +264,10 @@ async def main_gui(cli_args):
 
             logger.info("Manual install triggered from UI. Launching installer...")
             if coordinator.update_manager.install_now():
-                # Senior Architecture: Professional Handoff
-                # 1. Brief pause to allow the installer process to initialize
-                # (Proxy for WaitForInputIdle)
-                time.sleep(0.5)
-
-                # 2. Trigger the normal graceful shutdown path
-                logger.info("Handoff successful. Initiating graceful shutdown for update...")
+                # Senior Architecture: Deterministic Handoff
+                # The installer now receives our PID and will wait for us to exit
+                # before attempting to overwrite files. No sleep needed here.
+                logger.info("Handoff initiated. Requesting graceful shutdown for update...")
                 if coordinator.loop:
                     coordinator.loop.call_soon_threadsafe(
                         lambda: asyncio.create_task(trigger_shutdown("Update Handoff"))
