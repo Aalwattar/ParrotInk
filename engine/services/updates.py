@@ -454,24 +454,34 @@ class UpdateManager:
     def install_now(self) -> bool:
         """Launches the installer and returns True on success.
 
-        Uses CREATE_BREAKAWAY_FROM_JOB to ensure the installer survives if the
-        parent application is running inside a restrictive job object.
+        Uses ShellExecuteW to ensure the installer survives if the
+        parent application is running inside a restrictive job object
+        (like PyInstaller's bootloader job).
         """
         if self.state != UpdateState.READY_TO_INSTALL or not self.installer_path:
             return False
 
         installer_path = str(self.installer_path)
-        logger.info(f"Launching decoupled installer: {installer_path}")
+        current_pid = os.getpid()
+        logger.info(
+            f"Launching decoupled installer via ShellExecute: {installer_path} (PID: {current_pid})"
+        )
         try:
-            # Senior Architecture: Use Breakaway flag to decouple from parent job objects.
-            # This is the industry-standard way to ensure a child setup process
-            # survives parent termination in all Windows environments.
-            create_breakaway_from_job = 0x01000000
-            subprocess.Popen(
-                [installer_path],
-                creationflags=create_breakaway_from_job | subprocess.DETACHED_PROCESS,
-                shell=False,
+            import ctypes
+
+            # SW_SHOWNORMAL = 1
+            # ShellExecute delegates process creation to Explorer.exe, completely
+            # bypassing any Job Object restrictions placed on our current process.
+            # This prevents the installer from being "killed halfway" when the app exits.
+            result = ctypes.windll.shell32.ShellExecuteW(
+                None, "open", installer_path, f"/SILENT /pid={current_pid}", None, 1
             )
+
+            # ShellExecuteW returns a value > 32 on success
+            if result <= 32:
+                logger.error(f"ShellExecuteW failed with error code: {result}")
+                return False
+
             return True
         except Exception as e:
             logger.error(f"Failed to launch decoupled installer: {e}")
