@@ -315,21 +315,17 @@ class HudOverlay:
         finally:
             self._hwnd = None
             self._ready_event.clear()
-            logger.info("HUD Run loop exited.")
+            logger.warning("HUD Run loop exited.")
 
     def show(self):
         if self._hwnd:
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
             self.visible = True
-            # Force redraw
-            self.text_queue.put(("VISIBILITY", True))
 
     def hide(self):
         if self._hwnd:
             win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE)
             self.visible = False
-            # Force redraw
-            self.text_queue.put(("VISIBILITY", False))
 
     def stop(self):
         if self._hwnd:

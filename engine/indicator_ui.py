@@ -100,13 +100,13 @@ class IndicatorWindow:
                 )
                 # Verify that impl actually initialized (to handle early returns in HudOverlay)
                 if not hasattr(self.impl, "update_status"):
-                    logger.info("HudOverlay failed to initialize correctly. Falling back.")
+                    logger.warning("HudOverlay failed to initialize correctly. Falling back.")
                     self.impl = GdiFallbackWindow(config=config)
             except (ImportError, RuntimeError, AttributeError) as e:
-                logger.info(f"HudOverlay instantiation failed: {e}")
+                logger.warning(f"HudOverlay instantiation failed: {e}")
                 self.impl = GdiFallbackWindow(config=config)
             except Exception as e:
-                logger.info(f"Unexpected HUD initialization error: {e}")
+                logger.warning(f"Unexpected HUD initialization error: {e}")
                 self.impl = GdiFallbackWindow(config=config)
         else:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")
