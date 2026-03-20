@@ -54,7 +54,9 @@ I wanted true real-time streaming with professional-grade accuracy, and I wanted
 ### Real-time English & RTL (Arabic) Support
 ParrotInk natively handles mixed-language environments and Right-to-Left (RTL) text.
 
-https://github.com/Aalwattar/ParrotInk/raw/master/assets/parriotink2.mp4
+
+https://github.com/user-attachments/assets/f31a88ee-243b-42e8-9e18-32b55ad6ecfa
+
 
 *(Note: Demonstration showing the real-time streaming, Skia-powered HUD with Acrylic blur, and RTL alignment.)*
 
