@@ -66,6 +66,7 @@ class HudOverlay:
         self.visible = False
         self._hwnd = None
         self._ready_event = threading.Event()
+        self._refresh_rate_ms = DEFAULT_REFRESH_RATE_MS
 
         # UI Specs
         self.win_width = WIN_WIDTH
@@ -213,11 +214,12 @@ class HudOverlay:
                 logger.error("Screen metrics returned 0. Display might not be ready.")
 
             y_offset = DEFAULT_Y_OFFSET
-            refresh_rate = DEFAULT_REFRESH_RATE_MS
             if self.config:
                 y_offset = getattr(self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET)
-                refresh_rate = getattr(
-                    self.config.ui.floating_indicator, "refresh_rate_ms", DEFAULT_REFRESH_RATE_MS
+                self._refresh_rate_ms = getattr(
+                    self.config.ui.floating_indicator,
+                    "refresh_rate_ms",
+                    DEFAULT_REFRESH_RATE_MS,
                 )
 
             x_pos = (screen_w - self.win_width) // 2
@@ -306,7 +308,7 @@ class HudOverlay:
 
             self._canvas = self._surface.getCanvas()
 
-            user32.SetTimer(self._hwnd, 1, refresh_rate, None)
+            user32.SetTimer(self._hwnd, 1, self._refresh_rate_ms, None)
             self._ready_event.set()
 
             win32gui.PumpMessages()
@@ -321,6 +323,11 @@ class HudOverlay:
         if self._hwnd:
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
             self.visible = True
+            # Force a redraw so the layered window bitmap is refreshed.
+            # After sleep/lock/unlock the bitmap goes stale and the Win32
+            # timer can die, leaving ShowWindow visible but transparent.
+            self.text_queue.put(("REDRAW", True))
+            user32.SetTimer(self._hwnd, 1, self._refresh_rate_ms, None)
 
     def hide(self):
         if self._hwnd:
