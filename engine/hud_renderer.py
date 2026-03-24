@@ -67,6 +67,8 @@ class HudOverlay:
         self._hwnd = None
         self._ready_event = threading.Event()
         self._refresh_rate_ms = DEFAULT_REFRESH_RATE_MS
+        self._timer_tick_count = 0
+        self._last_tick_log = 0.0
 
         # UI Specs
         self.win_width = WIN_WIDTH
@@ -91,7 +93,7 @@ class HudOverlay:
         zero_pt = wintypes.POINT(0, 0)
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, 255, AC_SRC_ALPHA)
 
-        user32.UpdateLayeredWindow(
+        result = user32.UpdateLayeredWindow(
             self._hwnd,
             hdc_screen,
             None,
@@ -102,10 +104,20 @@ class HudOverlay:
             ctypes.byref(blend),
             ULW_ALPHA,
         )
+        if not result:
+            err = ctypes.GetLastError()
+            logger.warning(f"UpdateLayeredWindow failed: GetLastError={err}")
+
         user32.ReleaseDC(0, hdc_screen)
 
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
         if msg == win32con.WM_TIMER:
+            self._timer_tick_count += 1
+            now = time.time()
+            if now - self._last_tick_log >= 60.0:  # Log once per minute
+                logger.debug(f"HUD timer alive: tick #{self._timer_tick_count}")
+                self._last_tick_log = now
+
             changed = False
 
             # Process Queue - Drain COMPLETELY
@@ -321,6 +333,7 @@ class HudOverlay:
 
     def show(self):
         if self._hwnd:
+            logger.debug(f"HudOverlay.show() called. hwnd={self._hwnd}, visible={self.visible}")
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
             self.visible = True
             # Force a redraw so the layered window bitmap is refreshed.
