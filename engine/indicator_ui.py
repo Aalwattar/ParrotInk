@@ -253,6 +253,12 @@ class IndicatorWindow:
         if duration is None:
             duration = DEFAULT_LINGER_SECONDS
 
+        # Increment the session ID before capturing it. This guarantees each
+        # linger timer gets a unique, monotonically increasing ID. Any pending
+        # linger timer now holds a stale ID, so only this (the most recently
+        # scheduled) linger can ever call hide(). Fixes the race where
+        # click-away and CONNECTING both spawn linger timers with the same ID.
+        self._session_id += 1
         session_at_start = self._session_id
 
         def _hide_after():
