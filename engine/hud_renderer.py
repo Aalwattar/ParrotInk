@@ -115,7 +115,7 @@ class HudOverlay:
             self._timer_tick_count += 1
             now = time.time()
             if now - self._last_tick_log >= 60.0:  # Log once per minute
-                logger.debug(f"HUD timer alive: tick #{self._timer_tick_count}")
+                logger.info(f"HUD timer alive: tick #{self._timer_tick_count}")
                 self._last_tick_log = now
 
             changed = False
@@ -333,8 +333,12 @@ class HudOverlay:
 
     def show(self):
         if self._hwnd:
-            logger.debug(f"HudOverlay.show() called. hwnd={self._hwnd}, visible={self.visible}")
             win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
+            is_visible = bool(user32.IsWindowVisible(self._hwnd))
+            logger.info(
+                f"HudOverlay.show(): hwnd={self._hwnd}, visible={self.visible} "
+                f"-> IsWindowVisible={is_visible}"
+            )
             self.visible = True
             # Force a redraw so the layered window bitmap is refreshed.
             # After sleep/lock/unlock the bitmap goes stale and the Win32
@@ -344,6 +348,7 @@ class HudOverlay:
 
     def hide(self):
         if self._hwnd:
+            logger.info(f"HudOverlay.hide(): hwnd={self._hwnd}, visible={self.visible}")
             win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE)
             self.visible = False
 
