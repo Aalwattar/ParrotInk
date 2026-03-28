@@ -5,6 +5,8 @@ import time
 from ctypes import wintypes
 from typing import Any, Optional
 
+import win32con
+
 from engine.constants import IS_GITHUB_ACTIONS
 from engine.logging import get_logger
 
@@ -31,6 +33,16 @@ WIN_HEIGHT = 52
 DEFAULT_Y_OFFSET = 60
 DEFAULT_REFRESH_RATE_MS = 50
 HUD_HEALTH_TIMEOUT_MS = 500
+HWND_TOPMOST = -1
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+SWP_NOACTIVATE = 0x0010
+SWP_SHOWWINDOW = 0x0040
+
+# Custom Win32 Messages for inter-thread HUD control
+WM_APP_SHOW = win32con.WM_APP + 1
+WM_APP_HIDE = win32con.WM_APP + 2
+WM_APP_UPDATE = win32con.WM_APP + 3
 
 
 try:
@@ -38,7 +50,6 @@ try:
         raise ImportError("HUD disabled in GitHub Actions CI")
 
     import skia
-    import win32con
     import win32gui
     from win32api import GetModuleHandle
 
@@ -69,6 +80,7 @@ class HudOverlay:
         self._refresh_rate_ms = DEFAULT_REFRESH_RATE_MS
         self._timer_tick_count = 0
         self._last_tick_log = 0.0
+        self._y_offset = DEFAULT_Y_OFFSET
 
         # UI Specs
         self.win_width = WIN_WIDTH
@@ -110,81 +122,124 @@ class HudOverlay:
 
         user32.ReleaseDC(0, hdc_screen)
 
+    def _drain_queue_and_draw(self):
+        """Drains the text queue and triggers a redraw if anything changed."""
+        changed = False
+        latest_text = None
+        latest_partial = None
+        latest_status = None
+        latest_voice = None
+        latest_provider = None
+        latest_settings = None
+
+        while True:
+            try:
+                item = self.text_queue.get_nowait()
+                changed = True
+                if isinstance(item, tuple):
+                    kind, payload = item
+                    if kind == "TEXT":
+                        latest_text = payload
+                        latest_partial = ""
+                    elif kind == "PARTIAL":
+                        latest_partial = payload
+                    elif kind == "STATUS":
+                        latest_status = payload
+                    elif kind == "VOICE":
+                        latest_voice = payload
+                    elif kind == "PROVIDER":
+                        latest_provider = payload
+                    elif kind == "SETTINGS":
+                        latest_settings = payload
+                    elif kind == "REDRAW":
+                        pass  # Triggered by 'changed = True' above
+                else:
+                    latest_text = item
+                    latest_partial = ""
+            except queue.Empty:
+                break
+
+        if latest_text is not None:
+            self.last_text = latest_text
+        if latest_partial is not None:
+            self.last_partial_text = latest_partial
+        if latest_status is not None:
+            self.last_status = latest_status
+        if latest_voice is not None:
+            self.voice_active = latest_voice
+        if latest_provider is not None:
+            self.last_provider = latest_provider
+        if latest_settings is not None:
+            if "click_through" in latest_settings:
+                if hasattr(self, "apply_click_through"):
+                    self.apply_click_through(latest_settings["click_through"])
+
+        if changed:
+            self._draw_and_commit()
+
+    def _draw_and_commit(self):
+        """Renders the current state to the Skia canvas and updates the layered window."""
+        if not hasattr(self, "_canvas"):
+            return
+
+        self.style.draw(
+            self._canvas,
+            self.win_width,
+            self.win_height,
+            self.last_text if self.last_text is not None else "",
+            self.is_recording,
+            getattr(self, "last_status", None),
+            getattr(self, "voice_active", False),
+            getattr(self, "last_provider", None),
+            partial_text=getattr(self, "last_partial_text", ""),
+        )
+        self._update_window()
+
     def _wnd_proc(self, hwnd, msg, wparam, lparam):
+        if msg == WM_APP_SHOW:
+            # Recalculate position for current display metrics (fixes multi-monitor drift)
+            screen_w = user32.GetSystemMetrics(0)
+            screen_h = user32.GetSystemMetrics(1)
+            x_pos = (screen_w - self.win_width) // 2
+            y_pos = screen_h - self.win_height - self._y_offset
+
+            # Reposition, bring to top, and show without taking focus
+            # This also forces DWM to re-composite the layered window
+            user32.SetWindowPos(
+                hwnd, HWND_TOPMOST, x_pos, y_pos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+            )
+
+            # Ensure we start with a fresh render (fixes "ghost" transparency after sleep)
+            self._draw_and_commit()
+
+            # Start the heartbeat timer only while visible
+            user32.SetTimer(hwnd, 1, self._refresh_rate_ms, None)
+
+            # Update internal state on the window thread to ensure sync
+            self.visible = True
+            return 0
+
+        if msg == WM_APP_HIDE:
+            win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
+            user32.KillTimer(hwnd, 1)
+            self.visible = False
+            return 0
+
+        if msg == WM_APP_UPDATE:
+            self._drain_queue_and_draw()
+            return 0
+
         if msg == win32con.WM_TIMER:
             self._timer_tick_count += 1
+            # Reduced logging: only log heartbeat once every 5 minutes to avoid noise
             now = time.time()
-            if now - self._last_tick_log >= 60.0:  # Log once per minute
-                logger.info(f"HUD timer alive: tick #{self._timer_tick_count}")
+            if now - self._last_tick_log >= 300.0:
+                logger.debug(f"HUD heartbeat alive: tick #{self._timer_tick_count}")
                 self._last_tick_log = now
 
-            changed = False
-
-            # Process Queue - Drain COMPLETELY
-            qsize = self.text_queue.qsize()
-            if qsize > 0:
-                latest_text = None
-                latest_partial = None
-                latest_status = None
-                latest_voice = None
-                latest_provider = None
-                latest_settings = None
-
-                while True:
-                    try:
-                        item = self.text_queue.get_nowait()
-                        changed = True
-                        if isinstance(item, tuple):
-                            kind, payload = item
-                            if kind == "TEXT":
-                                latest_text = payload
-                                # Important: when new final text arrives,
-                                # the previous partial is now part of it.
-                                latest_partial = ""
-                            elif kind == "PARTIAL":
-                                latest_partial = payload
-                            elif kind == "STATUS":
-                                latest_status = payload
-                            elif kind == "VOICE":
-                                latest_voice = payload
-                            elif kind == "PROVIDER":
-                                latest_provider = payload
-                            elif kind == "SETTINGS":
-                                latest_settings = payload
-                        else:
-                            latest_text = item
-                            latest_partial = ""
-                    except queue.Empty:
-                        break
-
-                if latest_text is not None:
-                    self.last_text = latest_text
-                if latest_partial is not None:
-                    self.last_partial_text = latest_partial
-                if latest_status is not None:
-                    self.last_status = latest_status
-                if latest_voice is not None:
-                    self.voice_active = latest_voice
-                if latest_provider is not None:
-                    self.last_provider = latest_provider
-                if latest_settings is not None:
-                    if "click_through" in latest_settings:
-                        self.apply_click_through(latest_settings["click_through"])
-
-            if changed and hasattr(self, "_canvas"):
-                self.style.draw(
-                    self._canvas,
-                    self.win_width,
-                    self.win_height,
-                    self.last_text if self.last_text is not None else "",
-                    self.is_recording,
-                    getattr(self, "last_status", None),
-                    getattr(self, "voice_active", False),
-                    getattr(self, "last_provider", None),
-                    partial_text=getattr(self, "last_partial_text", ""),
-                )
-                self._update_window()
+            self._drain_queue_and_draw()
             return 0
+
         if msg == win32con.WM_DESTROY:
             win32gui.PostQuitMessage(0)
             return 0
@@ -225,9 +280,11 @@ class HudOverlay:
             if screen_w == 0 or screen_h == 0:
                 logger.error("Screen metrics returned 0. Display might not be ready.")
 
-            y_offset = DEFAULT_Y_OFFSET
+            # Initialize position vars from config
             if self.config:
-                y_offset = getattr(self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET)
+                self._y_offset = getattr(
+                    self.config.ui.floating_indicator, "y_offset", DEFAULT_Y_OFFSET
+                )
                 self._refresh_rate_ms = getattr(
                     self.config.ui.floating_indicator,
                     "refresh_rate_ms",
@@ -235,7 +292,7 @@ class HudOverlay:
                 )
 
             x_pos = (screen_w - self.win_width) // 2
-            y_pos = screen_h - self.win_height - y_offset
+            y_pos = screen_h - self.win_height - self._y_offset
 
             # Extended styles
             ex_style = win32con.WS_EX_LAYERED | win32con.WS_EX_TOPMOST | win32con.WS_EX_TOOLWINDOW
@@ -320,7 +377,6 @@ class HudOverlay:
 
             self._canvas = self._surface.getCanvas()
 
-            user32.SetTimer(self._hwnd, 1, self._refresh_rate_ms, None)
             self._ready_event.set()
 
             win32gui.PumpMessages()
@@ -332,25 +388,20 @@ class HudOverlay:
             logger.warning("HUD Run loop exited.")
 
     def show(self):
+        """
+        Signals the HUD thread to show and reposition the window.
+        Safe to call from any thread.
+        """
         if self._hwnd:
-            win32gui.ShowWindow(self._hwnd, win32con.SW_SHOWNOACTIVATE)
-            is_visible = bool(user32.IsWindowVisible(self._hwnd))
-            logger.info(
-                f"HudOverlay.show(): hwnd={self._hwnd}, visible={self.visible} "
-                f"-> IsWindowVisible={is_visible}"
-            )
-            self.visible = True
-            # Force a redraw so the layered window bitmap is refreshed.
-            # After sleep/lock/unlock the bitmap goes stale and the Win32
-            # timer can die, leaving ShowWindow visible but transparent.
-            self.text_queue.put(("REDRAW", True))
-            user32.SetTimer(self._hwnd, 1, self._refresh_rate_ms, None)
+            user32.PostMessage(self._hwnd, WM_APP_SHOW, 0, 0)
 
     def hide(self):
+        """
+        Signals the HUD thread to hide the window and stop its timer.
+        Safe to call from any thread.
+        """
         if self._hwnd:
-            logger.info(f"HudOverlay.hide(): hwnd={self._hwnd}, visible={self.visible}")
-            win32gui.ShowWindow(self._hwnd, win32con.SW_HIDE)
-            self.visible = False
+            user32.PostMessage(self._hwnd, WM_APP_HIDE, 0, 0)
 
     def stop(self):
         if self._hwnd:
@@ -363,31 +414,45 @@ class HudOverlay:
             self.last_text = ""
             self.text_queue.put(("TEXT", ""))
             self.text_queue.put(("STATUS", "listening"))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_status_icon(self, status: str):
         """Supported status: 'finalized', 'listening', 'connecting'"""
         if HUD_AVAILABLE:
             self.text_queue.put(("STATUS", status))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_provider(self, provider: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("PROVIDER", provider))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_settings(self, settings: dict):
         if HUD_AVAILABLE:
             self.text_queue.put(("SETTINGS", settings))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_text(self, text: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("TEXT", text))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_voice_active(self, active: bool):
         if HUD_AVAILABLE:
             self.text_queue.put(("VOICE", active))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_partial_text(self, text: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("PARTIAL", text))
+            if self._hwnd:
+                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def apply_click_through(self, enabled: bool):
         """Dynamically toggles click-through style."""
