@@ -203,13 +203,19 @@ class HudOverlay:
             x_pos = (screen_w - self.win_width) // 2
             y_pos = screen_h - self.win_height - self._y_offset
 
-            # Reposition, bring to top, and show without taking focus
-            # This also forces DWM to re-composite the layered window
-            user32.SetWindowPos(
-                hwnd, HWND_TOPMOST, x_pos, y_pos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+            logger.info(
+                f"WM_APP_SHOW: repositioning to ({x_pos}, {y_pos}) on {screen_w}x{screen_h}"
             )
 
-            # Ensure we start with a fresh render (fixes "ghost" transparency after sleep)
+            # Reposition, bring to top, and show without taking focus
+            result = user32.SetWindowPos(
+                hwnd, HWND_TOPMOST, x_pos, y_pos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+            )
+            if not result:
+                err = ctypes.GetLastError()
+                logger.warning(f"SetWindowPos failed in WM_APP_SHOW: GetLastError={err}")
+
+            # Ensure we start with a fresh render (fixes ghost transparency after sleep)
             self._draw_and_commit()
 
             # Start the heartbeat timer only while visible
@@ -223,6 +229,7 @@ class HudOverlay:
             win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
             user32.KillTimer(hwnd, 1)
             self.visible = False
+            logger.info("WM_APP_HIDE: window hidden, timer killed")
             return 0
 
         if msg == WM_APP_UPDATE:
@@ -393,7 +400,10 @@ class HudOverlay:
         Safe to call from any thread.
         """
         if self._hwnd:
-            user32.PostMessage(self._hwnd, WM_APP_SHOW, 0, 0)
+            logger.info(f"HudOverlay.show(): posting WM_APP_SHOW to hwnd={self._hwnd}")
+            user32.PostMessageW(self._hwnd, WM_APP_SHOW, 0, 0)
+        else:
+            logger.warning("HudOverlay.show(): _hwnd is None, cannot post show message")
 
     def hide(self):
         """
@@ -401,7 +411,8 @@ class HudOverlay:
         Safe to call from any thread.
         """
         if self._hwnd:
-            user32.PostMessage(self._hwnd, WM_APP_HIDE, 0, 0)
+            logger.info(f"HudOverlay.hide(): posting WM_APP_HIDE to hwnd={self._hwnd}")
+            user32.PostMessageW(self._hwnd, WM_APP_HIDE, 0, 0)
 
     def stop(self):
         if self._hwnd:
@@ -415,44 +426,44 @@ class HudOverlay:
             self.text_queue.put(("TEXT", ""))
             self.text_queue.put(("STATUS", "listening"))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_status_icon(self, status: str):
         """Supported status: 'finalized', 'listening', 'connecting'"""
         if HUD_AVAILABLE:
             self.text_queue.put(("STATUS", status))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_provider(self, provider: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("PROVIDER", provider))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_settings(self, settings: dict):
         if HUD_AVAILABLE:
             self.text_queue.put(("SETTINGS", settings))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_text(self, text: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("TEXT", text))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_voice_active(self, active: bool):
         if HUD_AVAILABLE:
             self.text_queue.put(("VOICE", active))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def update_partial_text(self, text: str):
         if HUD_AVAILABLE:
             self.text_queue.put(("PARTIAL", text))
             if self._hwnd:
-                user32.PostMessage(self._hwnd, WM_APP_UPDATE, 0, 0)
+                user32.PostMessageW(self._hwnd, WM_APP_UPDATE, 0, 0)
 
     def apply_click_through(self, enabled: bool):
         """Dynamically toggles click-through style."""
