@@ -7,7 +7,7 @@ Apply a set of critical security and stability improvements identified by a cons
 
 ### 1.1 Unified Input Monitoring (C1)
 - **Goal:** Consolidate multiple keyboard listeners into a single managed hook.
-- **Scope:** 
+- **Scope:**
     - Merge `gui_main.py` hotkey listener and `interaction.py` "stop on any key" listener.
     - Create a central `InputMonitor` (likely in `engine/interaction.py` or a new utility) that routes events thread-safely to the `AppCoordinator`.
 

@@ -20,7 +20,7 @@ This track focuses on modernizing the visual identity of ParrotInk and exposing 
 - **Clarity:** Ensure high contrast and clear rendering (using anti-aliasing features of the rendering library).
 
 ### 2.3 Feature Exposure (Tray Menu)
-- **"Hold to Talk":** Add a new checkable menu item under "Settings". 
+- **"Hold to Talk":** Add a new checkable menu item under "Settings".
     - **Label:** "Hold to Talk".
     - **Functionality:** Toggles the `hotkeys.hold_mode` configuration boolean.
 - **Menu Header:** Add a non-clickable (disabled) menu item at the very top of the tray menu.

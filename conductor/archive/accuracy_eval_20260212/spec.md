@@ -11,7 +11,7 @@ Compare the transcription accuracy and latency of the current `master` branch ag
 
 ### 1.2 Target Versions
 - **Current Version:** The code at the current `master` HEAD.
-- **Legacy Version (v0.1):** 
+- **Legacy Version (v0.1):**
     - Create a temporary branch `temp/eval-v0.1` from tag `v0.1`.
     - Port the `eval` functionality (`engine/eval_main.py`, `engine/audio/replay.py`, and CLI dispatcher) to this branch.
     - **CRITICAL:** Ensure the core transcription and audio capture logic of `v0.1` is not modified.

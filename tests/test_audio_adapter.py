@@ -6,7 +6,6 @@ from engine.audio.adapter import AudioAdapter, ProviderAudioSpec
 
 
 def test_audio_adapter_pcm16_bytes():
-
     spec = ProviderAudioSpec(
         sample_rate_hz=16000, channels=1, bit_depth=16, wire_encoding="pcm16_bytes"
     )
@@ -35,7 +34,6 @@ def test_audio_adapter_pcm16_bytes():
 
 
 def test_audio_adapter_pcm16_base64():
-
     spec = ProviderAudioSpec(
         sample_rate_hz=16000, channels=1, bit_depth=16, wire_encoding="pcm16_base64"
     )

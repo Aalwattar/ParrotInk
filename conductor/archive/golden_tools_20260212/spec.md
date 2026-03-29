@@ -8,7 +8,7 @@ Create independent, standalone Python tools to generate "Golden Standard" transc
 ### 1.1 Tool: `openai_golden.py`
 - **Model:** `gpt-4o-transcribe` (High-quality Batch API).
 - **Authentication:** Retrieve `openai_api_key` from Windows Credential Manager.
-- **Features:** 
+- **Features:**
     - Support for high-quality file-based transcription using the latest GPT-4o based model.
     - Automatic audio chunking for files exceeding the 25MB OpenAI limit.
     - **JSON Output (Metadata Mode):**

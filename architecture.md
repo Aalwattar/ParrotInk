@@ -15,17 +15,17 @@ graph TD
     User[User Hardware] -->|Audio| SD[AudioStreamer (Thread)]
     User -->|Keys| Hooks[keyboard (Thread)]
     User -->|Mouse| MHooks[pynput (Thread)]
-    
+
     SD -->|Queue| Pipe[AudioPipeline (Async)]
     Hooks -->|ThreadSafe Call| Coord[AppCoordinator (Asyncio)]
-    
+
     Coord -->|WebSocket| Cloud[OpenAI / AssemblyAI]
     Cloud -->|Events| Coord
-    
+
     Coord -->|State| Tray[Tray Icon (Thread)]
     Coord -->|State| Indicator[IndicatorUI (Thread)]
     Coord -->|Sound| Spkr[Speaker (Thread)]
-    
+
     Coord -->|Injection| App[Target Window]
 ```
 
@@ -114,16 +114,16 @@ sequenceDiagram
     Main->>Cloud: ensure_connected()
     Cloud-->>Main: Connected
     Main->>Pipe: start()
-    
+
     loop Audio Pipeline
         Pipe->>Cloud: Processed & Resampled Audio
     end
-    
+
     loop Transcription Events
         Cloud->>Main: Partial Transcript
         Main->>App: smart_inject()
     end
-    
+
     User->>Monitor: Release Hotkey (Hold Mode)
     Monitor->>Main: trigger stop_listening()
     Main->>Pipe: stop()

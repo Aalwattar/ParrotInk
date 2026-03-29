@@ -15,7 +15,7 @@ This track implements a modern, secure handling system for API keys. It moves aw
 
 ### 2.2 System Tray Credential Management
 - **Menu Structure:** `Credentials` > `Set OpenAI Key...`, `Set AssemblyAI Key...`.
-- **Absolute Privacy:** 
+- **Absolute Privacy:**
     - Keys are **never** displayed in the tray menu.
     - The input dialog for setting a key must use a password-style mask (e.g., `*`) for the entry field.
 - **Immediate Update:** Saving a key updates the application's active session without requiring a restart.
