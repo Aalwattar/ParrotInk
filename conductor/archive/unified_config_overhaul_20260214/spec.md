@@ -8,7 +8,7 @@ This track eliminates the "messy" state of the current configuration and provide
 ## 2. Functional Requirements
 
 ### 2.1. Refined Configuration Schema
-- **User Profiles:** 
+- **User Profiles:**
   - `latency_profile`: `fast`, `balanced`, `accurate` (Internal mapping to VAD/Turn-detection).
   - `mic_profile`: `headset`, `laptop`, `none` (Maps to OpenAI Noise Reduction).
 - **Consolidation:**
@@ -32,7 +32,7 @@ This track eliminates the "messy" state of the current configuration and provide
 ### 2.4. Interactive Hotkey UI
 - **Tray Menu:** Add a "Change Hotkey" option.
 - **Recording Dialog:** A Win32 modal prompt that captures the next key combination.
-- **Validation:** 
+- **Validation:**
   - Reject system-reserved keys (Win+L, Alt+F4, etc.).
   - If invalid, keep the dialog open and provide feedback.
 - **Auto-Sync:** On valid capture, use the "In-Flight Update" mechanism to persist and apply.

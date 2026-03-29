@@ -21,7 +21,7 @@
 - **Verification:** Ensure `suppress=True` still works (critical for user experience).
 
 ### 2.2 Clean Shutdown Orchestration
-- **Action:** 
+- **Action:**
     - Change `ui_thread` to `daemon=False`.
     - Update `main_gui` to explicitly `stop()` the `TrayApp` and `join()` the `ui_thread`.
     - Ensure `SanitizingFormatter` handles `None` records gracefully if called during finalization.

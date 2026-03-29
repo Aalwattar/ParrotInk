@@ -100,13 +100,13 @@ class IndicatorWindow:
                 )
                 # Verify that impl actually initialized (to handle early returns in HudOverlay)
                 if not hasattr(self.impl, "update_status"):
-                    logger.info("HudOverlay failed to initialize correctly. Falling back.")
+                    logger.warning("HudOverlay failed to initialize correctly. Falling back.")
                     self.impl = GdiFallbackWindow(config=config)
             except (ImportError, RuntimeError, AttributeError) as e:
-                logger.info(f"HudOverlay instantiation failed: {e}")
+                logger.warning(f"HudOverlay instantiation failed: {e}")
                 self.impl = GdiFallbackWindow(config=config)
             except Exception as e:
-                logger.info(f"Unexpected HUD initialization error: {e}")
+                logger.warning(f"Unexpected HUD initialization error: {e}")
                 self.impl = GdiFallbackWindow(config=config)
         else:
             logger.debug("HUD_AVAILABLE is False, using GdiFallbackWindow.")
@@ -253,6 +253,12 @@ class IndicatorWindow:
         if duration is None:
             duration = DEFAULT_LINGER_SECONDS
 
+        # Increment the session ID before capturing it. This guarantees each
+        # linger timer gets a unique, monotonically increasing ID. Any pending
+        # linger timer now holds a stale ID, so only this (the most recently
+        # scheduled) linger can ever call hide(). Fixes the race where
+        # click-away and CONNECTING both spawn linger timers with the same ID.
+        self._session_id += 1
         session_at_start = self._session_id
 
         def _hide_after():

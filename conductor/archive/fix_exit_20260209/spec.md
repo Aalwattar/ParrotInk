@@ -12,7 +12,7 @@ The current implementation of `Ctrl+C` handling in `main.py` is unresponsive and
 - **Traceback Elimination:** Resolve the `SystemExit` error by signaling `icon.stop()` and allowing threads to join, rather than forcing `sys.exit()`.
 
 ## 3. Technical Requirements
-- **Threading Model:** 
+- **Threading Model:**
   - `pystray` icon loop MUST run in a dedicated background thread.
   - The main thread MUST wait on a `shutdown_event` (with a timeout/loop) to remain responsive to `SIGINT`.
 - **Signal Handler:** Must be minimal, only updating state (timestamps/events) and printing. It MUST NOT call `sys.exit()`.

@@ -631,9 +631,6 @@ class TrayApp:
         if self.bridge:
             threading.Thread(target=self._poll_bridge, daemon=True).start()
 
-        if self.indicator:
-            threading.Thread(target=self.indicator.start, daemon=True).start()
-
         logger.info("UI System fully initialized. Entering wait state.")
         # Block this thread until stop() is called.
         # Since gui_main now runs this in a non-daemon thread, this keeps the process alive

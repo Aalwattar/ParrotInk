@@ -120,6 +120,23 @@ user32.SetForegroundWindow.restype = wintypes.BOOL
 user32.SetFocus.argtypes = [wintypes.HWND]
 user32.SetFocus.restype = wintypes.HWND
 
+# SetWindowPos: requires HWND-typed hWndInsertAfter (pointer-sized) for 64-bit safety
+user32.SetWindowPos.argtypes = [
+    wintypes.HWND,  # hWnd
+    wintypes.HWND,  # hWndInsertAfter (e.g. HWND_TOPMOST = -1)
+    ctypes.c_int,  # X
+    ctypes.c_int,  # Y
+    ctypes.c_int,  # cx
+    ctypes.c_int,  # cy
+    ctypes.c_uint,  # uFlags
+]
+user32.SetWindowPos.restype = wintypes.BOOL
+
+# PostMessage: HWND + message + WPARAM + LPARAM (pointer-sized for 64-bit)
+user32.PostMessageW.argtypes = [wintypes.HWND, ctypes.c_uint, WPARAM, LPARAM]
+user32.PostMessageW.restype = wintypes.BOOL
+
+
 # GDI+
 gdiplus.GdipCreatePath.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_void_p)]
 gdiplus.GdipAddPathArc.argtypes = [

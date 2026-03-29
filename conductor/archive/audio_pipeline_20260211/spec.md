@@ -17,7 +17,7 @@ Refactor the audio capture pipeline to replace the current thread-polling mechan
 Enforce "cheap" universal invariants immediately at the capture boundary to prevent stereo or invalid data from leaking into the async pipeline.
 - **Downmixing:** If the input device provides stereo `(N, 2)`, automatically downmix to mono by averaging channels before reshaping.
 - **Reshaping:** Automatically flatten `(N, 1)` to `(N,)`.
-- **Validation:** 
+- **Validation:**
     - Reject non-numeric data or data with `ndim > 2` (raise `CaptureFormatError`).
     - Sanitize `NaN` or `Inf` values in float input by replacing them with `0`.
 - **Note:** Conversion to `int16` and resampling are deferred to the Provider Adapter (Track 2).

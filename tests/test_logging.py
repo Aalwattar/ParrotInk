@@ -43,7 +43,6 @@ def test_sanitizing_formatter_truncates_audio():
 
 
 def test_logging_configuration_sanitization(caplog):
-
     from engine.config import Config
     from engine.logging import configure_logging, get_logger
 
