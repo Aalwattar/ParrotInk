@@ -35,7 +35,6 @@ DEFAULT_REFRESH_RATE_MS = 50
 HUD_HEALTH_TIMEOUT_MS = 500
 HWND_TOPMOST = -1
 SWP_NOSIZE = 0x0001
-SWP_NOMOVE = 0x0002
 SWP_NOACTIVATE = 0x0010
 SWP_SHOWWINDOW = 0x0040
 
@@ -151,8 +150,6 @@ class HudOverlay:
                         latest_provider = payload
                     elif kind == "SETTINGS":
                         latest_settings = payload
-                    elif kind == "REDRAW":
-                        pass  # Triggered by 'changed = True' above
                 else:
                     latest_text = item
                     latest_partial = ""
@@ -171,8 +168,7 @@ class HudOverlay:
             self.last_provider = latest_provider
         if latest_settings is not None:
             if "click_through" in latest_settings:
-                if hasattr(self, "apply_click_through"):
-                    self.apply_click_through(latest_settings["click_through"])
+                self.apply_click_through(latest_settings["click_through"])
 
         if changed:
             self._draw_and_commit()
