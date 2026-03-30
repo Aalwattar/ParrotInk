@@ -1,7 +1,7 @@
 ; Inno Setup Script for ParrotInk
 
 #define MyAppName "ParrotInk"
-#define MyAppVersion "0.2.31"
+#define MyAppVersion "0.2.32"
 #define MyAppPublisher "Aalwattar"
 #define MyAppURL "https://github.com/Aalwattar/ParrotInk"
 #define MyAppExeName "ParrotInk.exe"
@@ -21,6 +21,7 @@ PrivilegesRequired=lowest
 OutputDir=..\..\dist
 OutputBaseFilename={#MyAppName}-Setup
 SetupIconFile=..\..\assets\icons\icon.ico
+SetupLogging=yes
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -46,7 +47,8 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ; Normal install: User sees the checkbox to launch the app
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 ; Silent install (updates): Force launch automatically because the wizard pages are hidden
-Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: WizardSilent
+; The Check function introduces a small delay to prevent Windows Defender extraction crashes
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: ShouldDelayLaunchAndSilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\assets"
@@ -56,6 +58,19 @@ Type: files; Name: "{app}\{#MyAppExeName}"
 const
   SYNCHRONIZE = $00100000;
   INFINITE = $FFFFFFFF;
+
+function ShouldDelayLaunchAndSilent: Boolean;
+begin
+  if WizardSilent() then
+  begin
+    Log('Delaying post-install launch for 3000ms to allow AV scanning...');
+    Sleep(3000);
+    Result := True;
+  end else
+  begin
+    Result := False;
+  end;
+end;
 
 function OpenProcess(dwAccess: DWORD; bInherit: Boolean; dwPID: DWORD): THandle;
   external 'OpenProcess@kernel32.dll stdcall';
