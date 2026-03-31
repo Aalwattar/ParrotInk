@@ -47,8 +47,7 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ; Normal install: User sees the checkbox to launch the app
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 ; Silent install (updates): Force launch automatically because the wizard pages are hidden
-; The Check function introduces a small delay to prevent Windows Defender extraction crashes
-Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: ShouldDelayLaunchAndSilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: WizardSilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\assets"
@@ -58,19 +57,6 @@ Type: files; Name: "{app}\{#MyAppExeName}"
 const
   SYNCHRONIZE = $00100000;
   INFINITE = $FFFFFFFF;
-
-function ShouldDelayLaunchAndSilent: Boolean;
-begin
-  if WizardSilent() then
-  begin
-    Log('Delaying post-install launch for 3000ms to allow AV scanning...');
-    Sleep(3000);
-    Result := True;
-  end else
-  begin
-    Result := False;
-  end;
-end;
 
 function OpenProcess(dwAccess: DWORD; bInherit: Boolean; dwPID: DWORD): THandle;
   external 'OpenProcess@kernel32.dll stdcall';
@@ -125,7 +111,19 @@ begin
     // No PID passed (manual install) — just try to kill by name as a safety measure
     Log('No PID passed. Performing name-based cleanup.');
     Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(1500);
+    Sleep(4000); // Increased buffer to 4000ms to avoid DLL crash during legacy (no-PID) upgrades
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    if WizardSilent() then
+    begin
+      Log('Delaying post-install launch for 3000ms to allow AV scanning before [Run] phase...');
+      Sleep(3000);
+    end;
   end;
 end;
 
