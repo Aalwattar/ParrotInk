@@ -1,0 +1,175 @@
+Lint, Type Check & Test	Run Tests	﻿2026-03-30T11:45:55.0492922Z ##[group]Run uv run --locked pytest -q
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0493476Z [36;1muv run --locked pytest -q[0m
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0607709Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0608264Z env:
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0608657Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.12.10\x64
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0609451Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.12.10\x64/lib/pkgconfig
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0610216Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0610918Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0611597Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.12.10\x64
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0612200Z   UV_TOOL_BIN_DIR: D:\a\_temp\uv-tool-bin-dir
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0612645Z   UV_TOOL_DIR: D:\a\_temp\uv-tool-dir
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0613090Z   UV_PYTHON_INSTALL_DIR: D:\a\_temp\uv-python-dir
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0613553Z   UV_CACHE_DIR: D:\a\_temp\setup-uv-cache
+Lint, Type Check & Test	Run Tests	2026-03-30T11:45:55.0613991Z ##[endgroup]
+Lint, Type Check & Test	Run Tests	2026-03-30T11:46:15.9309034Z ........................................................................ [ 32%]
+Lint, Type Check & Test	Run Tests	2026-03-30T11:46:19.5981466Z ............ss...........................................s.............. [ 64%]
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0802522Z ..........................................................+++++++++++++++++++++++++++++++++++ Timeout +++++++++++++++++++++++++++++++++++
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0803513Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (4200) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0815578Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0816519Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0817241Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0817777Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0818193Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0818756Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0819246Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0819694Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0819991Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (1800) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0820627Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0821136Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0821634Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0822141Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0822507Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0822906Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0823295Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0823657Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0823899Z ~~~~~~~~~~~~~~~~~~~~ Stack of Thread-118 (_monitor) (4604) ~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0824398Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0824890Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0825612Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0826029Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0826364Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0826761Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0827200Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\logging\handlers.py", line 1593, in _monitor
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0827624Z     record = self.dequeue(True)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0828018Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\logging\handlers.py", line 1542, in dequeue
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0830493Z     return self.queue.get(block)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0830904Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\queue.py", line 171, in get
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0831288Z     self.not_empty.wait()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0831657Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 355, in wait
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0832040Z     waiter.acquire()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0832299Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (4916) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0832819Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0833223Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0833633Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0834045Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0834366Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0834769Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0835156Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0835523Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0835769Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (9828) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0836264Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0836843Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0837265Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0837672Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0838005Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0838396Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0838777Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0839140Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0839383Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (3536) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0839879Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0840276Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0840670Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0841081Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0841389Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0841786Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0842161Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0842512Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0842738Z ~~~~~~~~~~~~~~~~~~~~~~~~ Stack of UpdateChecker (3744) ~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0843219Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1032, in _bootstrap
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0843628Z     self._bootstrap_inner()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0844021Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1075, in _bootstrap_inner
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0844464Z     self.run()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0844784Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\threading.py", line 1012, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0845589Z     self._target(*self._args, **self._kwargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0845987Z   File "D:\a\ParrotInk\ParrotInk\engine\services\updates.py", line 316, in _run_loop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0846338Z     time.sleep(1)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0846557Z ~~~~~~~~~~~~~~~~~~~~~~~~~ Stack of MainThread (7112) ~~~~~~~~~~~~~~~~~~~~~~~~~~
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0846924Z   File "<frozen runpy>", line 198, in _run_module_as_main
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0847230Z   File "<frozen runpy>", line 88, in _run_code
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0847630Z   File "D:\a\ParrotInk\ParrotInk\.venv\Scripts\pytest.exe\__main__.py", line 10, in <module>
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0848621Z     sys.exit(console_main())
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0849088Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\config\__init__.py", line 223, in console_main
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0849530Z     code = main()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0849912Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\config\__init__.py", line 199, in main
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0850438Z     ret: ExitCode | int = config.hook.pytest_cmdline_main(config=config)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0850954Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0851489Z     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0852045Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0852544Z     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0853067Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0853486Z     res = hook_impl.function(*args)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0853928Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\main.py", line 365, in pytest_cmdline_main
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0854373Z     return wrap_session(config, _main)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0854785Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\main.py", line 318, in wrap_session
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0855341Z     session.exitstatus = doit(config, session) or 0
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0855772Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\main.py", line 372, in _main
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0856197Z     config.hook.pytest_runtestloop(session=session)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0856635Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0857147Z     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0857698Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0858196Z     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0858701Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0859124Z     res = hook_impl.function(*args)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0859563Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\main.py", line 396, in pytest_runtestloop
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0860098Z     item.config.hook.pytest_runtest_protocol(item=item, nextitem=nextitem)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0860618Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0861148Z     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0861684Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0862203Z     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0862719Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0863137Z     res = hook_impl.function(*args)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0863601Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 118, in pytest_runtest_protocol
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0864086Z     runtestprotocol(item, nextitem=nextitem)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0864546Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 137, in runtestprotocol
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0865028Z     reports.append(call_and_report(item, "call", log))
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0865895Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 244, in call_and_report
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0866340Z     call = CallInfo.from_call(
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0866873Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 353, in from_call
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0867278Z     result: TResult | None = func()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0867674Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 245, in <lambda>
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0868099Z     lambda: runtest_hook(item=item, **kwds),
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0868506Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0869028Z     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0869565Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0870067Z     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0870576Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0870987Z     res = hook_impl.function(*args)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0871434Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\runner.py", line 179, in pytest_runtest_call
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0871874Z     item.runtest()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0872218Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\python.py", line 1720, in runtest
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0872663Z     self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0873102Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_hooks.py", line 512, in __call__
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0874210Z     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0874780Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_manager.py", line 120, in _hookexec
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0875283Z     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0875800Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\pluggy\_callers.py", line 121, in _multicall
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0876223Z     res = hook_impl.function(*args)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0876659Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\_pytest\python.py", line 166, in pytest_pyfunc_call
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0877110Z     result = testfunction(**testargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0877523Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\unittest\mock.py", line 1396, in patched
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0877934Z     return func(*newargs, **newkeywargs)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0878359Z   File "D:\a\ParrotInk\ParrotInk\tests\test_ui_updates.py", line 63, in test_tray_app_triggers_toast
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0878765Z     app._poll_bridge()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0879050Z   File "D:\a\ParrotInk\ParrotInk\engine\ui.py", line 559, in _poll_bridge
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0879353Z     toast(
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0879659Z   File "D:\a\ParrotInk\ParrotInk\.venv\Lib\site-packages\win11toast.py", line 406, in toast
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0880055Z     return asyncio.run(toast_coroutine)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0880462Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\runners.py", line 195, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0880852Z     return runner.run(main)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0881216Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\runners.py", line 118, in run
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0881625Z     return self._loop.run_until_complete(task)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0882107Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\base_events.py", line 678, in run_until_complete
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0882560Z     self.run_forever()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0882948Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\windows_events.py", line 322, in run_forever
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0883382Z     super().run_forever()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0883773Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\base_events.py", line 645, in run_forever
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0884232Z     self._run_once()
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0884606Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\base_events.py", line 1961, in _run_once
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0885157Z     event_list = self._selector.select(timeout)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0886015Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\windows_events.py", line 445, in select
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0886445Z     self._poll(timeout)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0886823Z   File "C:\hostedtoolcache\windows\Python\3.12.10\x64\Lib\asyncio\windows_events.py", line 774, in _poll
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0887334Z     status = _overlapped.GetQueuedCompletionStatus(self._iocp, ms)
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.0887701Z +++++++++++++++++++++++++++++++++++ Timeout +++++++++++++++++++++++++++++++++++
+Lint, Type Check & Test	Run Tests	2026-03-30T11:47:06.2128486Z ##[error]Process completed with exit code 1.

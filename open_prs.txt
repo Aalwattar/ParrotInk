@@ -1,0 +1,2 @@
+13	Fix/installer dll crash	fix/installer-dll-crash	OPEN	2026-03-30T11:27:20Z
+11	chore(deps): bump skia-python from 138.0 to 144.0.post1	dependabot/uv/skia-python-144.0.post1	OPEN	2026-03-29T18:41:04Z

@@ -1,0 +1,5 @@
+completed	failure	chore(deps): bump cryptography from 46.0.5 to 46.0.6 (#10)	Continuous Integration	master	push	23743021745	2m44s	2026-03-30T11:44:26Z
+completed	cancelled	fix(installer): address Intermittent DLL crash during in-app update (…	Continuous Integration	master	push	23742997007	52s	2026-03-30T11:43:45Z
+completed	success	fix(installer): address Intermittent DLL crash during in-app update	Continuous Integration	fix/installer-dll-race-condition	pull_request	23742991573	1m15s	2026-03-30T11:43:36Z
+completed	success	Release (Windows exe)	Release (Windows exe)	master	workflow_dispatch	23717118781	3m36s	2026-03-29T19:25:09Z
+completed	success	 refactor(hud): event-driven PostMessage architecture for stability (…	Continuous Integration	master	push	23717008610	3m24s	2026-03-29T19:19:38Z

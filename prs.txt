@@ -1,0 +1,5 @@
+14	fix(installer): address Intermittent DLL crash during in-app update	fix/installer-dll-race-condition	MERGED	2026-03-30T11:43:31Z
+12	refactor(hud): event-driven PostMessage architecture for stability (v0.2.31)	fix/hud-disappearance	MERGED	2026-03-29T19:18:21Z
+10	chore(deps): bump cryptography from 46.0.5 to 46.0.6	dependabot/uv/cryptography-46.0.6	MERGED	2026-03-29T18:40:59Z
+9	fix(updates): resolve PyInstaller DLL race condition and silent installer termination	fix/installer-dll-race-condition	MERGED	2026-03-17T23:35:35Z
+8	feat(updates): robust windows-native update manager with BITS and graceful handoff	feat/windows-native-updater	MERGED	2026-03-15T22:59:24Z

@@ -1,0 +1,142 @@
+parrotink v0.2.32
+├── assemblyai v0.50.0 (latest: v0.59.0)
+│   ├── httpx v0.28.1
+│   │   ├── anyio v4.12.1 (latest: v4.13.0)
+│   │   │   └── idna v3.11
+│   │   ├── certifi v2026.2.25
+│   │   ├── httpcore v1.0.9
+│   │   │   ├── certifi v2026.2.25
+│   │   │   └── h11 v0.16.0
+│   │   └── idna v3.11
+│   ├── pydantic v2.12.5
+│   │   ├── annotated-types v0.7.0
+│   │   ├── pydantic-core v2.41.5 (latest: v2.44.0)
+│   │   │   └── typing-extensions v4.15.0
+│   │   ├── typing-extensions v4.15.0
+│   │   └── typing-inspection v0.4.2
+│   │       └── typing-extensions v4.15.0
+│   ├── typing-extensions v4.15.0
+│   └── websockets v16.0
+├── darkdetect v0.8.0
+├── httpx v0.28.1 (*)
+├── keyboard v0.13.5
+├── keyring v25.7.0
+│   ├── jaraco-classes v3.4.0
+│   │   └── more-itertools v10.8.0
+│   ├── jaraco-context v6.1.0 (latest: v6.1.2)
+│   ├── jaraco-functools v4.4.0
+│   │   └── more-itertools v10.8.0
+│   └── pywin32-ctypes v0.2.3
+├── numpy v2.4.2 (latest: v2.4.4)
+├── olefile v0.47
+├── openai v2.17.0 (latest: v2.30.0)
+│   ├── anyio v4.12.1 (*)
+│   ├── distro v1.9.0
+│   ├── httpx v0.28.1 (*)
+│   ├── jiter v0.13.0
+│   ├── pydantic v2.12.5 (*)
+│   ├── sniffio v1.3.1
+│   ├── tqdm v4.67.3
+│   │   └── colorama v0.4.6
+│   └── typing-extensions v4.15.0
+├── packaging v26.0
+├── platformdirs v4.9.2 (latest: v4.9.4)
+├── pydantic-settings v2.13.1
+│   ├── pydantic v2.12.5 (*)
+│   ├── python-dotenv v1.2.2
+│   └── typing-inspection v0.4.2 (*)
+├── pynput v1.8.1
+│   └── six v1.17.0
+├── pystray v0.19.5
+│   ├── pillow v12.1.1
+│   └── six v1.17.0
+├── pywin32 v311
+├── skia-python v138.0 (latest: v144.0.post2)
+│   ├── numpy v2.4.2
+│   └── pybind11 v3.0.2
+├── sounddevice v0.5.5
+│   └── cffi v2.0.0
+│       └── pycparser v3.0
+├── soxr v1.0.0
+│   └── numpy v2.4.2
+├── tomli-w v1.2.0
+├── tomlkit v0.14.0
+├── ttkbootstrap v1.20.1 (latest: v1.20.2)
+│   └── pillow v12.1.1
+├── websockets v16.0
+├── win11toast v0.36.3
+│   ├── winrt-windows-data-xml-dom v3.2.1
+│   │   └── winrt-runtime v3.2.1
+│   │       └── typing-extensions v4.15.0
+│   ├── winrt-windows-foundation v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-foundation-collections v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-globalization v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-graphics-imaging v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-media-core v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-media-ocr v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-media-playback v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-media-speechsynthesis v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-storage v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   ├── winrt-windows-storage-streams v3.2.1
+│   │   └── winrt-runtime v3.2.1 (*)
+│   └── winrt-windows-ui-notifications v3.2.1
+│       └── winrt-runtime v3.2.1 (*)
+├── mypy v1.19.1 (group: dev)
+│   ├── librt v0.8.1
+│   ├── mypy-extensions v1.1.0
+│   ├── pathspec v1.0.4
+│   └── typing-extensions v4.15.0
+├── pre-commit v4.5.1 (group: dev)
+│   ├── cfgv v3.5.0
+│   ├── identify v2.6.17 (latest: v2.6.18)
+│   ├── nodeenv v1.10.0
+│   ├── pyyaml v6.0.3
+│   └── virtualenv v21.1.0 (latest: v21.2.0)
+│       ├── distlib v0.4.0
+│       ├── filelock v3.25.0 (latest: v3.25.2)
+│       ├── platformdirs v4.9.2
+│       └── python-discovery v1.1.0 (latest: v1.2.1)
+│           ├── filelock v3.25.0
+│           └── platformdirs v4.9.2
+├── pyinstaller v6.19.0 (group: dev)
+│   ├── altgraph v0.17.5
+│   ├── packaging v26.0
+│   ├── pefile v2024.8.26
+│   ├── pyinstaller-hooks-contrib v2026.1 (latest: v2026.3)
+│   │   ├── packaging v26.0
+│   │   └── setuptools v82.0.0 (latest: v82.0.1)
+│   ├── pywin32-ctypes v0.2.3
+│   └── setuptools v82.0.0
+├── pytest v9.0.2 (group: dev)
+│   ├── colorama v0.4.6
+│   ├── iniconfig v2.3.0
+│   ├── packaging v26.0
+│   ├── pluggy v1.6.0
+│   └── pygments v2.19.2 (latest: v2.20.0)
+├── pytest-asyncio v1.3.0 (group: dev)
+│   └── pytest v9.0.2 (*)
+├── pytest-cov v7.0.0 (group: dev) (latest: v7.1.0)
+│   ├── coverage[toml] v7.13.4 (latest: v7.13.5)
+│   ├── pluggy v1.6.0
+│   └── pytest v9.0.2 (*)
+├── pytest-mock v3.15.1 (group: dev)
+│   └── pytest v9.0.2 (*)
+├── pytest-timeout v2.4.0 (group: dev)
+│   └── pytest v9.0.2 (*)
+├── ruff v0.15.1 (group: dev) (latest: v0.15.8)
+├── types-keyboard v0.13.2.20250801 (group: dev)
+├── types-pynput v1.8.1.20250809 (group: dev)
+├── types-pywin32 v311.0.0.20251008 (group: dev) (latest: v311.0.0.20260323)
+├── types-requests v2.32.4.20260107 (group: dev) (latest: v2.33.0.20260327)
+│   └── urllib3 v2.6.3
+└── types-setuptools v82.0.0.20260210 (group: dev)
+(*) Package tree already displayed
