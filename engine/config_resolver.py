@@ -150,9 +150,6 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         min_silence_ms=aai_min_silence,
         max_silence_ms=aai_max_silence,
         inactivity_timeout=resolved_timeout,
-        word_boost=None
-        if aai_core.prompt
-        else (aai_adv.keyterms_prompt if aai_adv.keyterms_prompt else None),
         format_text=aai_adv.format_text,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,

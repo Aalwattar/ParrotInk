@@ -34,7 +34,6 @@ async def test_assemblyai_v3_turn_events(base_config):
         min_silence_ms=400,
         max_silence_ms=1000,
         inactivity_timeout=None,
-        word_boost=None,
         format_text=True,
         stop_timeout=7.0,
         is_test=True,
@@ -46,26 +45,20 @@ async def test_assemblyai_v3_turn_events(base_config):
     session_start = {"message_type": "SessionBegins", "session_id": "test_id"}
     await provider._handle_event(session_start)
 
-    # 2. Simulate Partial Transcript
+    # 2. Simulate Partial Transcript (Turn)
     partial = {
-        "message_type": "PartialTranscript",
-        "text": "hello",
-        "audio_start": 0,
-        "audio_end": 500,
-        "confidence": 0.9,
+        "message_type": "Turn",
+        "transcript": "hello",
+        "end_of_turn": False,
     }
     await provider._handle_event(partial)
     on_partial.assert_called_with("hello")
 
     # 3. Simulate Final Transcript (Turn End)
     final = {
-        "message_type": "FinalTranscript",
-        "text": "hello world",
-        "audio_start": 0,
-        "audio_end": 1000,
-        "confidence": 0.95,
-        "punctuated": True,
-        "text_formatted": True,
+        "message_type": "Turn",
+        "transcript": "hello world",
+        "end_of_turn": True,
     }
     await provider._handle_event(final)
     on_final.assert_called_with("hello world")
@@ -92,7 +85,6 @@ async def test_assemblyai_provider_send_audio(base_config):
             min_silence_ms=400,
             max_silence_ms=1000,
             inactivity_timeout=None,
-            word_boost=None,
             format_text=True,
             stop_timeout=7.0,
             is_test=True,
