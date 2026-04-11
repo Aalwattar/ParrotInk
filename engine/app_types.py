@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 
 class AppState(Enum):
@@ -51,7 +51,6 @@ class EffectiveAssemblyAIConfig:
     min_silence_ms: int
     max_silence_ms: int
     inactivity_timeout: Optional[int]
-    word_boost: Optional[List[str]]
     format_text: bool
     stop_timeout: float
     is_test: bool

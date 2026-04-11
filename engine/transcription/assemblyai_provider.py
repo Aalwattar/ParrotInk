@@ -162,14 +162,6 @@ class AssemblyAIProvider(BaseProvider):
                         self.on_partial(text)
                         self.last_transcript = text
 
-            elif msg_type == "FinalTranscript":
-                # Legacy V2 support
-                logger.debug("AssemblyAI Final (Legacy)", extra={"text": text})
-                self.on_final(text)
-            elif msg_type == "PartialTranscript":
-                # Legacy V2 support
-                self.on_partial(text)
-
         elif "error" in event:
             logger.error(f"AssemblyAI API Error: {event.get('error')}")
         elif msg_type == "SessionBegins":
