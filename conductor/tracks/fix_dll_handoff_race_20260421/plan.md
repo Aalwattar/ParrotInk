@@ -27,3 +27,6 @@
 - [x] 8b1a95c Verify that the application restarts without "DLL not found" errors.
 - [x] 8b1a95c Verify that the application is not running as Administrator after the update.
 - [x] 8b1a95c Inspect the installer log (`%TEMP%\Setup Log...`) to confirm `OpenProcess` behavior.
+
+## Phase: Review Fixes
+- [x] 04cca29 Task: Apply review suggestions
