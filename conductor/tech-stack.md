@@ -27,6 +27,7 @@
 - **tomlkit:** Used for style-preserving TOML management to maintain user comments and formatting when saving configuration programmatically.
 - **pyinstaller:** (Build Tool) Used to package the Python application into a standalone Windows executable.
 - **Inno Setup (ISCC):** (Build Tool) Used to create a professional Windows installer (`ParrotInk-Setup.exe`) that manages installation, uninstallation, and process-aware updates.
+- **Deterministic Process Handoff:** (Pattern) Implementation of a robust upgrade cycle using `ctypes.windll.kernel32.SetDllDirectoryW(None)` to reset the DLL search path and `ctypes.windll.shell32.ShellExecuteW` for detached, UAC-aware installer launching. This prevents inherited environment poisoning from frozen PyInstaller processes.
 - **Windows BITS (Background Intelligent Transfer Service):** (Integrated OS Service) Leveraged via PowerShell to perform robust, low-impact, and persistent background downloads of application updates.
 - **win11toast:** Provides a simple, Pythonic interface for displaying native Windows 10/11 toast notifications upon application startup.
 - **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
