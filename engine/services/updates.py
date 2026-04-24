@@ -450,12 +450,14 @@ class UpdateManager:
             logger.warning(f"Failed to parse version strings: {e}")
             self.state = UpdateState.IDLE
 
-    def sanitize_for_external_process(self) -> dict[str, str]:
+    def sanitize_for_external_process(self) -> None:
         """Resets PyInstaller-specific environment state to prevent child process contamination.
 
         This is critical for Windows frozen apps because they modify the DLL search path.
         If a child (like the installer) or grandchild inherits this search path,
         it may fail to load its own DLLs if they conflict with the old version.
+
+        NOTE: Modifies os.environ in place so ShellExecuteW inherits the changes.
         """
         if sys.platform == "win32":
             # Senior Architecture: Reset the library search path.
@@ -463,25 +465,21 @@ class UpdateManager:
             # Passing None restores the default Windows search order.
             ctypes.windll.kernel32.SetDllDirectoryW(None)
 
-        env = os.environ.copy()
-
         # Scrub PATH of any entries pointing into our temporary extraction directory
         mei = getattr(sys, "_MEIPASS", None)
         if mei:
             mei_norm = os.path.normcase(os.path.abspath(mei))
-            env["PATH"] = os.pathsep.join(
+            os.environ["PATH"] = os.pathsep.join(
                 p
-                for p in env.get("PATH", "").split(os.pathsep)
+                for p in os.environ.get("PATH", "").split(os.pathsep)
                 if p and not os.path.normcase(os.path.abspath(p)).startswith(mei_norm)
             )
 
         # Remove the extraction variable itself
-        env.pop("_MEIPASS", None)
+        os.environ.pop("_MEIPASS", None)
 
         # Instruct child PyInstaller processes to reset their own environment
-        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
-
-        return env
+        os.environ["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
 
     def install_now(self) -> bool:
         """Launches the installer and returns True on success.

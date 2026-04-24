@@ -92,9 +92,13 @@ begin
       begin
         // WAIT_OBJECT_0 is 0. Anything else (timeout/error) means process is still alive.
         Log('Wait timed out or failed. Process may still be closing or locked by OS/AV.');
-        // We do NOT use taskkill /f here as it prevents PyInstaller from cleaning its _MEI temp folders.
-        // Instead, we wait a bit more for the OS to release handles.
+        // Senior Architecture: Attempt one last graceful wait before a hard kill.
         Sleep(2000);
+
+        // Last resort: If still alive, we must kill to avoid "File in use" errors.
+        Log('Process still detected. Performing last-resort force kill.');
+        Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        Sleep(1000);
       end else
       begin
         Log('Process exited gracefully.');

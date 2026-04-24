@@ -24,6 +24,7 @@ def test_sanitize_for_external_process_windows():
     # Setup fake _MEIPASS
     fake_mei = "C:\\Temp\\_MEI1234"
 
+    # We need to use a real-ish os.environ for this test since we are modifying it in place
     with (
         patch("sys._MEIPASS", fake_mei, create=True),
         patch.dict(
@@ -32,21 +33,21 @@ def test_sanitize_for_external_process_windows():
         ),
         patch("ctypes.windll.kernel32.SetDllDirectoryW") as mock_set_dll,
     ):
-        clean_env = manager.sanitize_for_external_process()
+        manager.sanitize_for_external_process()
 
         # Verify DLL search path was reset
         mock_set_dll.assert_called_once_with(None)
 
         # Verify _MEIPASS removed from env
-        assert "_MEIPASS" not in clean_env
+        assert "_MEIPASS" not in os.environ
 
         # Verify PATH scrubbed
-        new_path = clean_env.get("PATH", "")
+        new_path = os.environ.get("PATH", "")
         assert fake_mei not in new_path
         assert "C:\\Windows" in new_path
 
         # Verify restart flag set
-        assert clean_env.get("PYINSTALLER_RESET_ENVIRONMENT") == "1"
+        assert os.environ.get("PYINSTALLER_RESET_ENVIRONMENT") == "1"
 
 
 def test_sanitize_for_external_process_no_mei():
@@ -61,12 +62,14 @@ def test_sanitize_for_external_process_no_mei():
         # Ensure _MEIPASS is NOT present
         if hasattr(sys, "_MEIPASS"):
             del sys._MEIPASS
+        if "_MEIPASS" in os.environ:
+            del os.environ["_MEIPASS"]
 
-        clean_env = manager.sanitize_for_external_process()
+        manager.sanitize_for_external_process()
 
         mock_set_dll.assert_called_once_with(None)
-        assert clean_env.get("PATH") == "C:\\Windows"
-        assert clean_env.get("PYINSTALLER_RESET_ENVIRONMENT") == "1"
+        assert os.environ.get("PATH") == "C:\\Windows"
+        assert os.environ.get("PYINSTALLER_RESET_ENVIRONMENT") == "1"
 
 
 def test_install_now_shell_execute():
