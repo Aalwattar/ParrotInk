@@ -45,9 +45,10 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 ; Normal install: User sees the checkbox to launch the app
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Senior Architecture: runasoriginaluser ensures the app doesn't inherit Setup's Admin privileges.
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 ; Silent install (updates): Force launch automatically because the wizard pages are hidden
-Filename: "{app}\{#MyAppExeName}"; Flags: nowait; Check: WizardSilent
+Filename: "{app}\{#MyAppExeName}"; Flags: nowait runasoriginaluser; Check: WizardSilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\assets"
@@ -90,9 +91,10 @@ begin
       if WaitResult <> 0 then
       begin
         // WAIT_OBJECT_0 is 0. Anything else (timeout/error) means process is still alive.
-        Log('Wait timed out or failed. Falling back to force-kill.');
-        Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-        Sleep(2000); // Longer buffer post-force-kill for AV/OS cleanup
+        Log('Wait timed out or failed. Process may still be closing or locked by OS/AV.');
+        // We do NOT use taskkill /f here as it prevents PyInstaller from cleaning its _MEI temp folders.
+        // Instead, we wait a bit more for the OS to release handles.
+        Sleep(2000);
       end else
       begin
         Log('Process exited gracefully.');
@@ -100,18 +102,17 @@ begin
       end;
     end else
     begin
-      // OpenProcess failed (Access Denied or PID already gone)
-      Log('OpenProcess failed. Using fallback kill logic.');
-      Sleep(1000);
-      Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-      Sleep(1000);
+      // OpenProcess failed (PID already gone)
+      Log('OpenProcess failed. PID is likely already dead. Proceeding.');
+      Sleep(1000); // Small buffer for final OS cleanup
     end;
   end else
   begin
-    // No PID passed (manual install) — just try to kill by name as a safety measure
-    Log('No PID passed. Performing name-based cleanup.');
-    Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-    Sleep(4000); // Increased buffer to 4000ms to avoid DLL crash during legacy (no-PID) upgrades
+    // No PID passed (manual install) — check if any instances are running
+    Log('No PID passed. Performing name-based cleanup attempt.');
+    // Only graceful kill by name (no /f) for manual installs to allow clean MEI teardown
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/im {#MyAppExeName}', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(2000);
   end;
 end;
 

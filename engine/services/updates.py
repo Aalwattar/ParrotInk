@@ -1,7 +1,9 @@
+import ctypes
 import datetime
 import hashlib
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -448,13 +450,46 @@ class UpdateManager:
             logger.warning(f"Failed to parse version strings: {e}")
             self.state = UpdateState.IDLE
 
+    def sanitize_for_external_process(self) -> dict[str, str]:
+        """Resets PyInstaller-specific environment state to prevent child process contamination.
+
+        This is critical for Windows frozen apps because they modify the DLL search path.
+        If a child (like the installer) or grandchild inherits this search path,
+        it may fail to load its own DLLs if they conflict with the old version.
+        """
+        if sys.platform == "win32":
+            # Senior Architecture: Reset the library search path.
+            # PyInstaller bootloader calls SetDllDirectoryW(MEIPASS).
+            # Passing None restores the default Windows search order.
+            ctypes.windll.kernel32.SetDllDirectoryW(None)
+
+        env = os.environ.copy()
+
+        # Scrub PATH of any entries pointing into our temporary extraction directory
+        mei = getattr(sys, "_MEIPASS", None)
+        if mei:
+            mei_norm = os.path.normcase(os.path.abspath(mei))
+            env["PATH"] = os.pathsep.join(
+                p
+                for p in env.get("PATH", "").split(os.pathsep)
+                if p and not os.path.normcase(os.path.abspath(p)).startswith(mei_norm)
+            )
+
+        # Remove the extraction variable itself
+        env.pop("_MEIPASS", None)
+
+        # Instruct child PyInstaller processes to reset their own environment
+        env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+
+        return env
+
     def install_now(self) -> bool:
         """Launches the installer and returns True on success.
 
-        Uses CREATE_BREAKAWAY_FROM_JOB to ensure the installer survives if the
-        parent application is running inside a restrictive job object.
-        Passes the current PID so the installer can deterministically wait
-        for this application instance to fully close before overwriting files.
+        Uses ShellExecuteW to ensure the installer survives the parent application
+        closure and can trigger UAC elevation if required. Deterministically
+        scrubs the inherited PyInstaller environment to prevent DLL search path
+        poisoning in the new version.
         """
         if self.state != UpdateState.READY_TO_INSTALL or not self.installer_path:
             return False
@@ -462,16 +497,39 @@ class UpdateManager:
         installer_path = str(self.installer_path)
         current_pid = os.getpid()
         logger.info(f"Launching decoupled installer: {installer_path} (PID: {current_pid})")
+
         try:
-            # Senior Architecture: Use Breakaway flag to decouple from parent job objects.
-            # This is the industry-standard way to ensure a child setup process
-            # survives parent termination in all Windows environments.
-            create_breakaway_from_job = 0x01000000
-            subprocess.Popen(
-                [installer_path, "/SILENT", f"/pid={current_pid}"],
-                creationflags=create_breakaway_from_job | subprocess.DETACHED_PROCESS,
-                shell=False,
-            )
+            # Senior Architecture: Prevent "DLL Search Path Poisoning"
+            # We must reset the DLL search path and scrub _MEIPASS from the environment
+            # so the installer and the resulting new app don't try to load DLLs
+            # from the old version's temporary directory.
+            self.sanitize_for_external_process()
+
+            if sys.platform == "win32":
+                # SW_SHOWNORMAL = 1
+                # ShellExecuteW delegates to Explorer.exe, decoupling the process
+                # and allowing for UAC elevation prompts.
+                # Parameters: /SILENT (Inno Setup) /pid=xxxx (Custom)
+                ret = ctypes.windll.shell32.ShellExecuteW(
+                    None,
+                    "open",
+                    installer_path,
+                    f"/SILENT /pid={current_pid}",
+                    None,
+                    1,
+                )
+                # Returns value > 32 on success
+                if ret <= 32:
+                    logger.error(f"ShellExecuteW failed with code: {ret}")
+                    return False
+            else:
+                # Fallback for non-Windows (unlikely in this context)
+                subprocess.Popen(
+                    [installer_path, "/SILENT", f"/pid={current_pid}"],
+                    creationflags=subprocess.DETACHED_PROCESS,
+                    shell=False,
+                )
+
             return True
         except Exception as e:
             logger.error(f"Failed to launch decoupled installer: {e}")
