@@ -12,7 +12,7 @@
 - [x] 8b1a95c Update `UpdateManager.install_now()` to use `ctypes.windll.shell32.ShellExecuteW`.
 - [x] 8b1a95c Verify that the installer launches correctly with the sanitized environment.
 
-## Step 2: Deterministic Installer Cleanup (P2)
+## Step 2: Deterministic Installer Cleanup (P2) [checkpoint: a229020]
 - [x] 8b1a95c Update `packaging/inno/parrotink.iss`.
     - [x] 8b1a95c Refactor `InitializeSetup` to handle `OpenProcess` failure as "already exited" success.
     - [x] 8b1a95c Remove `taskkill /f` fallback logic.
