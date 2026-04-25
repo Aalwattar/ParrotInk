@@ -27,5 +27,9 @@ Link: [startup_toast_20260217](./tracks/startup_toast_20260217/)
 Link: [stats_page_20260217](./tracks/stats_page_20260217/)
 
 ---
+## [x] Track: Fix DLL Handoff Race and Environment Poisoning
+Link: [fix_dll_handoff_race_20260421](./tracks/fix_dll_handoff_race_20260421/)
+
+---
 
 ---

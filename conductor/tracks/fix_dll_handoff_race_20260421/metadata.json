@@ -1,0 +1,9 @@
+{
+  "id": "fix_dll_handoff_race_20260421",
+  "title": "Fix DLL Handoff Race and Environment Poisoning",
+  "status": "active",
+  "priority": "high",
+  "tags": ["bugfix", "installer", "pyinstaller", "windows"],
+  "created_at": "2026-04-21T10:00:00Z",
+  "updated_at": "2026-04-21T10:00:00Z"
+}
