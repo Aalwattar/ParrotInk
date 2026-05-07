@@ -115,6 +115,9 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     if aai_adv.format_text:
         params["format_turns"] = "true"
 
+    if aai_adv.enable_diarization:
+        params["speaker_labels"] = "true"
+
     params["vad_threshold"] = str(aai_core.vad_threshold)
 
     if aai_core.inactivity_timeout_seconds > 0:
@@ -151,6 +154,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         max_silence_ms=aai_max_silence,
         inactivity_timeout=resolved_timeout,
         format_text=aai_adv.format_text,
+        enable_diarization=aai_adv.enable_diarization,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
     )
