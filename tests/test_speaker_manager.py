@@ -9,7 +9,7 @@ def test_speaker_manager_formats_compact():
 
     result = manager.format_with_speaker(words, transcript)
     assert result == "[S1] Hello world"
-    assert manager.current_speaker == 1
+    assert manager.current_speaker == "S1"
 
 
 def test_speaker_manager_tracks_speaker_change():
@@ -21,14 +21,49 @@ def test_speaker_manager_tracks_speaker_change():
     transcript1 = "Hello"
     result1 = manager.format_with_speaker(words1, transcript1)
     assert result1 == "[S1] Hello"
-    assert manager.current_speaker == 1
+    assert manager.current_speaker == "S1"
 
     # Second segment: Speaker 2
     words2 = [{"text": "Hi", "speaker": 2}]
     transcript2 = "Hi"
     result2 = manager.format_with_speaker(words2, transcript2)
-    assert result2 == "[S2] Hi"
-    assert manager.current_speaker == 2
+    assert result2 == "\n[S2] Hi"
+    assert manager.current_speaker == "S2"
+
+
+def test_speaker_manager_mid_segment_change():
+    """Verifies speaker change within a single word list."""
+    manager = SpeakerManager()
+    words = [
+        {"text": "Hello", "speaker": "A"},
+        {"text": "How", "speaker": "B"},
+    ]
+    result = manager.format_with_speaker(words, "Hello How")
+    assert result == "[S1] Hello\n[S2] How"
+    assert manager.current_speaker == "S2"
+
+
+def test_speaker_manager_mapping_and_unknown():
+    """Verifies A/B/C mapping and UNKNOWN suppression."""
+    manager = SpeakerManager()
+
+    # UNKNOWN should be ignored
+    words1 = [{"text": "Hello", "speaker": "UNKNOWN"}]
+    result1 = manager.format_with_speaker(words1, "Hello")
+    assert result1 == "Hello"
+    assert manager.current_speaker is None
+
+    # Mapping A to S1
+    words2 = [{"text": "Hi", "speaker": "A"}]
+    result2 = manager.format_with_speaker(words2, "Hi")
+    assert result2 == "[S1] Hi"
+    assert manager.current_speaker == "S1"
+
+    # Mapping B to S2 with newline
+    words3 = [{"text": "Hey", "speaker": "B"}]
+    result3 = manager.format_with_speaker(words3, "Hey")
+    assert result3 == "\n[S2] Hey"
+    assert manager.current_speaker == "S2"
 
 
 def test_speaker_manager_no_words():
