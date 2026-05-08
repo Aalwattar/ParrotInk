@@ -160,6 +160,8 @@ class AssemblyAIProvider(BaseProvider):
                 if event.get("end_of_turn"):
                     # Senior Privacy Implementation: Use structured metadata for automatic redaction
                     logger.debug("AssemblyAI Final (Turn)", extra={"text": text})
+                    if self.speaker_manager and words:
+                        self.speaker_manager.commit_speaker(words)
                     self.on_final(text)
                     self.last_transcript = ""  # Reset for next turn
                 else:

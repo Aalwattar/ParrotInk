@@ -1,0 +1,35 @@
+<h2>Modular Architecture Strategy</h2>
+<p class="subtitle">How we'll implement this without touching stable core logic.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current Flow (Stable)</div>
+    <div class="mockup-body" style="padding: 10px; font-family: monospace; font-size: 0.9em;">
+      <div style="border: 1px solid #444; padding: 5px; margin-bottom: 10px;">AssemblyAI WS</div>
+      <div style="text-align: center; margin-bottom: 10px;">↓ transcript text</div>
+      <div style="border: 1px solid #444; padding: 5px; margin-bottom: 10px; background: #222;">BaseProvider / Engine</div>
+      <div style="text-align: center; margin-bottom: 10px;">↓ broadcast</div>
+      <div style="border: 1px solid #444; padding: 5px;">HUD (Raw Text)</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Proposed Modular Flow</div>
+    <div class="mockup-body" style="padding: 10px; font-family: monospace; font-size: 0.9em;">
+      <div style="border: 1px solid #4facfe; padding: 5px; margin-bottom: 10px;">AssemblyAI WS (v3)</div>
+      <div style="text-align: center; margin-bottom: 10px;">↓ text + <b>word-level labels</b></div>
+      <div style="border: 2px dashed #f0ad4e; padding: 5px; margin-bottom: 10px; background: #2a2010;">SpeakerManager (New)</div>
+      <div style="text-align: center; margin-bottom: 10px;">↓ formatted text with [SX]</div>
+      <div style="border: 1px solid #4facfe; padding: 5px;">HUD (No HUD changes needed!)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Technical Advantages</h3>
+  <ul>
+    <li><b>Isolation:</b> The SpeakerManager lives in its own file. If it fails, the rest of the app doesn't know.</li>
+    <li><b>Configurable:</b> If <code>enable_diarization = false</code>, we don't even add the parameter to the URL, and the SpeakerManager is never instantiated.</li>
+    <li><b>No HUD Bloat:</b> By formatting the string <i>before</i> it hits the HUD, we don't have to change any complex UI rendering code.</li>
+  </ul>
+</div>

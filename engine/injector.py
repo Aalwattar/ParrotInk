@@ -29,7 +29,9 @@ def inject_text(text: str):
 
     inputs = []
     for char in text:
-        if char == "\n":
+        is_newline = char in ("\n", "\r")
+
+        if is_newline:
             # Virtual Key Return instead of Unicode \n for better compatibility
             ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, 0)
             ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, 0)
