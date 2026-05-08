@@ -11,6 +11,7 @@ from engine.constants import STATUS_READY
 from engine.logging import get_logger
 
 from .base import BaseProvider
+from .speaker_manager import SpeakerManager
 
 logger = get_logger("AssemblyAI")
 
@@ -40,6 +41,7 @@ class AssemblyAIProvider(BaseProvider):
         self._receive_task: Optional[asyncio.Task] = None
         self._is_running = False
         self.last_transcript = ""
+        self.speaker_manager = SpeakerManager() if effective_config.enable_diarization else None
 
     @property
     def is_running(self) -> bool:
@@ -146,6 +148,10 @@ class AssemblyAIProvider(BaseProvider):
         text = event.get("transcript") or event.get("text")
 
         if text is not None:
+            words = event.get("words", [])
+            if self.speaker_manager and words:
+                text = self.speaker_manager.format_with_speaker(words, text)
+
             if msg_type == "Turn":
                 # In V3, transcripts within a Turn are cumulative for that specific turn.
                 # However, our engine handles multiple 'final' segments across a session.

@@ -33,6 +33,7 @@ ULONG_PTR = ctypes.c_ulonglong if IS_64_BIT else ctypes.c_ulong
 
 # Virtual Key Codes (Baseline)
 VK_BACK = 0x08
+VK_RETURN = 0x0D
 VK_LCONTROL = 0xA2
 VK_RCONTROL = 0xA3
 VK_LSHIFT = 0xA0

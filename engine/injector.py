@@ -11,6 +11,7 @@ from .platform_win.keys import (
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
     VK_BACK,
+    VK_RETURN,
 )
 
 logger = get_logger("Injector")
@@ -28,17 +29,22 @@ def inject_text(text: str):
 
     inputs = []
     for char in text:
-        codepoint = ord(char)
+        if char == "\n":
+            # Virtual Key Return instead of Unicode \n for better compatibility
+            ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, 0)
+            ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, 0)
+        else:
+            codepoint = ord(char)
+            # Key down
+            ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
+            # Key up
+            ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
 
-        # Key down
-        ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        # Key up
-        ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
         inp_up.union.ki = ki_up
