@@ -30,7 +30,8 @@ def test_speaker_manager_tracks_speaker_change():
     words2 = [{"text": "Hi", "speaker": 2}]
     transcript2 = "Hi"
     result2 = manager.format_with_speaker(words2, transcript2)
-    assert result2 == "\n[S2] Hi"
+    # Uses Windows CRLF
+    assert result2 == "\r\n[S2] Hi"
     manager.commit_speaker(words2)
     assert manager.active_speaker == "S2"
 
@@ -43,7 +44,8 @@ def test_speaker_manager_mid_segment_change():
         {"text": "How", "speaker": "B"},
     ]
     result = manager.format_with_speaker(words, "Hello How")
-    assert result == "[S1] Hello\n[S2] How"
+    # Uses Windows CRLF
+    assert result == "[S1] Hello\r\n[S2] How"
     manager.commit_speaker(words)
     assert manager.active_speaker == "S2"
 
@@ -69,7 +71,8 @@ def test_speaker_manager_mapping_and_unknown():
     # Mapping B to S2 with newline
     words3 = [{"text": "Hey", "speaker": "B"}]
     result3 = manager.format_with_speaker(words3, "Hey")
-    assert result3 == "\n[S2] Hey"
+    # Uses Windows CRLF
+    assert result3 == "\r\n[S2] Hey"
     manager.commit_speaker(words3)
     assert manager.active_speaker == "S2"
 

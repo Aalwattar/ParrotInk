@@ -60,6 +60,9 @@ class AssemblyAIProvider(BaseProvider):
         """Connect to AssemblyAI and start receiving events."""
         from engine.security import SecurityManager
 
+        if self.speaker_manager:
+            self.speaker_manager.reset_session()
+
         self._ready_event.clear()
         is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
