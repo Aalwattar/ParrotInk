@@ -11,7 +11,6 @@ from .platform_win.keys import (
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
     VK_BACK,
-    VK_RETURN,
 )
 
 logger = get_logger("Injector")
@@ -29,42 +28,25 @@ def inject_text(text: str):
 
     inputs = []
     for char in text:
-        if char == "\n":
-            # Windows standard: CR then LF
-            for vk in (VK_RETURN, 0x0A):  # 0x0A is VK_LINEFEED
-                ki_down = KEYBDINPUT(vk, 0, 0, 0, 0)
-                ki_up = KEYBDINPUT(vk, 0, KEYEVENTF_KEYUP, 0, 0)
-
-                inp_down = INPUT()
-                inp_down.type = INPUT_KEYBOARD
-                inp_down.union.ki = ki_down
-                inputs.append(inp_down)
-
-                inp_up = INPUT()
-                inp_up.type = INPUT_KEYBOARD
-                inp_up.union.ki = ki_up
-                inputs.append(inp_up)
-            continue
-
-        if char == "\r":
-            # Skip standalone CR to avoid double-newlines if CRLF is already in string
-            continue
-
         codepoint = ord(char)
+
+        # Senior Architecture: Use native Unicode injection for all characters including \r and \n.
+        # This is the most compatible way to handle Windows line breaks in high-level applications.
+
         # Key down
         ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
-        # Key up
-        ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
-
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
+        # Key up
+        ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
         inp_up.union.ki = ki_up
         inputs.append(inp_up)
+
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
 
