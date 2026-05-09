@@ -5,9 +5,11 @@ class SpeakerManager:
     """Manages speaker labels for streaming transcription."""
 
     def __init__(self):
-        # active_speaker tracks the speaker across multiple turns (hotkey presses)
+        # tracks the last speaker to decide if we need a label change.
         self.active_speaker: Optional[str] = None
-        # session_speaker tracks the speaker within the CURRENT active turn
+        # tracks if we have EVER sent any text in this session
+        self.has_sent_any_text: bool = False
+        # tracks the speaker of the CURRENT turn
         self.session_speaker: Optional[str] = None
 
     def _clean_label(self, raw_speaker: Any) -> Optional[str]:
@@ -37,15 +39,18 @@ class SpeakerManager:
 
     def format_with_speaker(self, words: List[Dict[str, Any]], transcript: str) -> str:
         """
-        Formats the transcript with speaker labels and newlines.
-        Only adds a label if the speaker changes or it's the start of a turn.
+        Formats the transcript with speaker labels and Windows CRLF.
+        Rules:
+        1. Every TURN (hotkey press) starts with a newline if it's not the very first text.
+        2. Every speaker CHANGE (S1 -> S2) gets a label.
+        3. The FIRST speaker of a session gets a label once identified.
         """
         if not words:
             return transcript
 
         result_parts = []
-        # tracker for the current segment building loop
-        # For the START of the turn, we use session_speaker (which is None)
+
+        # Local tracker for this specific segment formatting loop
         current_running_speaker = self.session_speaker
 
         for i, word_data in enumerate(words):
@@ -53,25 +58,26 @@ class SpeakerManager:
             cleaned_label = self._clean_label(raw_speaker)
             word_text = word_data.get("text", "")
 
-            # Trigger label if:
-            # 1. It's the first word of the turn (current_running_speaker is None)
-            # 2. The speaker changed mid-turn (cleaned_label != current_running_speaker)
-            is_start_of_session = i == 0 and current_running_speaker is None
-            is_speaker_change = cleaned_label and cleaned_label != current_running_speaker
+            # Rule: We need a label if:
+            # - This is the very first identified word of the turn
+            # - OR the speaker changed mid-segment
+            is_turn_start = i == 0 and current_running_speaker is None
+            is_mid_segment_change = cleaned_label and cleaned_label != current_running_speaker
 
-            if cleaned_label and (is_start_of_session or is_speaker_change):
+            if cleaned_label and (is_turn_start or is_mid_segment_change):
                 # Add newline if:
-                # - It's a mid-turn change (i > 0)
-                # - OR it's a new turn (i == 0) and we've talked before (active_speaker is not None)
-                if self.active_speaker is not None or i > 0:
+                # - It's not the absolute first text of the entire session
+                if self.has_sent_any_text:
                     result_parts.append("\r\n")
 
                 result_parts.append(f"[{cleaned_label}] ")
                 current_running_speaker = cleaned_label
+                self.session_speaker = cleaned_label
+                self.has_sent_any_text = True
 
             result_parts.append(word_text)
 
-            # Standard space handling
+            # Rule: Handle spaces between words
             if i < len(words) - 1:
                 next_cleaned = self._clean_label(words[i + 1].get("speaker"))
                 if next_cleaned is None or next_cleaned == current_running_speaker:
@@ -80,7 +86,7 @@ class SpeakerManager:
         return "".join(result_parts)
 
     def commit_speaker(self, words: List[Dict[str, Any]]):
-        """Commits the final speaker of a segment to permanent state."""
+        """Commits the final speaker of a segment."""
         if not words:
             return
         last_word = words[-1]
@@ -88,5 +94,6 @@ class SpeakerManager:
         cleaned = self._clean_label(raw_speaker)
         if cleaned:
             self.active_speaker = cleaned
-            # Update session speaker so partials in the NEXT turn don't re-label
             self.session_speaker = cleaned
+            # Ensure future turns know they are not the first text
+            self.has_sent_any_text = True
