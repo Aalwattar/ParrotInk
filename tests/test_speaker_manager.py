@@ -9,9 +9,8 @@ def test_speaker_manager_formats_compact():
 
     result = manager.format_with_speaker(words, transcript)
     assert result == "[S1] Hello world"
-    # Note: active_speaker is only updated after commit_speaker
     manager.commit_speaker(words)
-    assert manager.active_speaker == "S1"
+    assert manager.current_speaker_on_screen == "S1"
 
 
 def test_speaker_manager_tracks_speaker_change():
@@ -24,7 +23,7 @@ def test_speaker_manager_tracks_speaker_change():
     result1 = manager.format_with_speaker(words1, transcript1)
     assert result1 == "[S1] Hello"
     manager.commit_speaker(words1)
-    assert manager.active_speaker == "S1"
+    assert manager.current_speaker_on_screen == "S1"
 
     # Second segment: Speaker 2
     words2 = [{"text": "Hi", "speaker": 2}]
@@ -33,7 +32,7 @@ def test_speaker_manager_tracks_speaker_change():
     # Uses Windows CRLF
     assert result2 == "\r\n[S2] Hi"
     manager.commit_speaker(words2)
-    assert manager.active_speaker == "S2"
+    assert manager.current_speaker_on_screen == "S2"
 
 
 def test_speaker_manager_mid_segment_change():
@@ -47,7 +46,7 @@ def test_speaker_manager_mid_segment_change():
     # Uses Windows CRLF
     assert result == "[S1] Hello\r\n[S2] How"
     manager.commit_speaker(words)
-    assert manager.active_speaker == "S2"
+    assert manager.current_speaker_on_screen == "S2"
 
 
 def test_speaker_manager_mapping_and_unknown():
@@ -59,14 +58,14 @@ def test_speaker_manager_mapping_and_unknown():
     result1 = manager.format_with_speaker(words1, "Hello")
     assert result1 == "Hello"
     manager.commit_speaker(words1)
-    assert manager.active_speaker is None
+    assert manager.current_speaker_on_screen is None
 
     # Mapping A to S1
     words2 = [{"text": "Hi", "speaker": "A"}]
     result2 = manager.format_with_speaker(words2, "Hi")
     assert result2 == "[S1] Hi"
     manager.commit_speaker(words2)
-    assert manager.active_speaker == "S1"
+    assert manager.current_speaker_on_screen == "S1"
 
     # Mapping B to S2 with newline
     words3 = [{"text": "Hey", "speaker": "B"}]
@@ -74,7 +73,7 @@ def test_speaker_manager_mapping_and_unknown():
     # Uses Windows CRLF
     assert result3 == "\r\n[S2] Hey"
     manager.commit_speaker(words3)
-    assert manager.active_speaker == "S2"
+    assert manager.current_speaker_on_screen == "S2"
 
 
 def test_speaker_manager_no_words():
@@ -82,7 +81,7 @@ def test_speaker_manager_no_words():
     manager = SpeakerManager()
     result = manager.format_with_speaker([], "Hello")
     assert result == "Hello"
-    assert manager.active_speaker is None
+    assert manager.current_speaker_on_screen is None
 
 
 def test_speaker_manager_no_speaker_in_words():
@@ -92,4 +91,4 @@ def test_speaker_manager_no_speaker_in_words():
     result = manager.format_with_speaker(words, "Hello")
     assert result == "Hello"
     manager.commit_speaker(words)
-    assert manager.active_speaker is None
+    assert manager.current_speaker_on_screen is None

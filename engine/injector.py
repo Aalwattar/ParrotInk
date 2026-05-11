@@ -20,7 +20,10 @@ USER32 = ctypes.WinDLL("user32", use_last_error=True)
 
 
 def inject_text(text: str):
-    """Inject text efficiently using Windows SendInput API."""
+    """
+    Inject text using Windows SendInput API with Unicode support.
+    Handles \r and \n correctly for Windows CRLF newline standards.
+    """
     if not text:
         return
 
@@ -30,17 +33,14 @@ def inject_text(text: str):
     for char in text:
         codepoint = ord(char)
 
-        # Senior Architecture: Use native Unicode injection for all characters including \r and \n.
-        # This is the most compatible way to handle Windows line breaks in high-level applications.
-
-        # Key down
+        # KEYEVENTF_UNICODE allows Windows to handle \r and \n naturally
+        # as Carriage Return (0x0D) and Line Feed (0x0A) keyboard events.
         ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        # Key up
         ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
@@ -49,34 +49,28 @@ def inject_text(text: str):
 
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
-
     res = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
 
     if res == 0:
-        err = ctypes.get_last_error()
-        logger.error(f"SendInput failed with error code {err}")
+        logger.error(f"SendInput failed with error code {ctypes.get_last_error()}")
 
-    end_time = time.perf_counter()
-    duration_ms = (end_time - start_time) * 1000
+    duration_ms = (time.perf_counter() - start_time) * 1000
     logger.debug(f"Injection of '{text[:10]}...' took {duration_ms:.2f}ms")
 
 
 def inject_backspaces(count: int):
-    """Inject N backspaces efficiently using Windows SendInput API."""
+    """Inject N physical backspaces."""
     if count <= 0:
         return
 
-    start_time = time.perf_counter()
     inputs = []
     for _ in range(count):
-        # Backspace Down
         ki_down = KEYBDINPUT(VK_BACK, 0, 0, 0, 0)
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        # Backspace Up
         ki_up = KEYBDINPUT(VK_BACK, 0, KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
@@ -85,40 +79,39 @@ def inject_backspaces(count: int):
 
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
-
-    res = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
-    if res == 0:
-        err = ctypes.get_last_error()
-        logger.error(f"SendInput (backspaces) failed with error code {err}")
-
-    end_time = time.perf_counter()
-    duration_ms = (end_time - start_time) * 1000
-    logger.debug(f"Backspaces injection completed in {duration_ms:.2f}ms")
+    USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
 
 
 class SmartInjector:
     """
-    Handles stateful text injection, calculating deltas and backspaces
-    to transform previous text into new text.
+    Stateful injection that calculates deltas.
+    RESETS on Newlines to ensure multi-line script stability.
     """
 
     def __init__(self):
         self.last_text = ""
 
     def reset(self):
-        """Reset the injection state (usually at the start/end of a turn)."""
         self.last_text = ""
 
     def inject(self, text: str, is_final: bool = False):
-        """
-        Calculates the difference between last_text and new text,
-        then performs the necessary backspaces and typing.
-        """
-        # De-duplicate
         if text == self.last_text and not is_final:
             return
 
-        # Find common prefix length
+        # ARCHITECTURE RULE: If the incoming text contains a newline,
+        # it's a structural change. Reset the buffer to avoid backspacing across lines.
+        if "\n" in text or "\r" in text:
+            # Type everything new, then reset so we don't 'diff' against multi-line text.
+            inject_text(text)
+            if is_final:
+                if not text.endswith(" "):
+                    inject_text(" ")
+                self.last_text = ""
+            else:
+                self.last_text = text
+            return
+
+        # Standard Single-Line Diffing
         common_len = 0
         for i in range(min(len(self.last_text), len(text))):
             if self.last_text[i] == text[i]:
@@ -126,21 +119,15 @@ class SmartInjector:
             else:
                 break
 
-        # Calculate backspaces needed
         backspaces = len(self.last_text) - common_len
         new_text = text[common_len:]
 
-        # Perform Backspaces
         if backspaces > 0:
-            # Safety cap
-            backspaces = min(backspaces, BACKSPACE_SAFETY_CAP)
-            inject_backspaces(backspaces)
+            inject_backspaces(min(backspaces, BACKSPACE_SAFETY_CAP))
 
-        # Perform Typing
         if new_text:
             inject_text(new_text)
 
-        # If it's final, we usually add a space and reset for the next phrase
         if is_final:
             if not text.endswith(" "):
                 inject_text(" ")
