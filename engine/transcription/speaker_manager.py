@@ -2,90 +2,140 @@ from typing import Any, Dict, List, Optional
 
 
 class SpeakerManager:
-    """Manages speaker labels for streaming transcription."""
+    """
+    Manages speaker labels for streaming transcription using Turn-Based Isolation.
+    """
 
     def __init__(self):
-        # tracks the last speaker to decide if we need a label change.
+        # We only track who is currently talking on the screen.
         self.current_speaker_on_screen: Optional[str] = None
-        # Tracks if ANY text (labeled or not) has been sent to the screen.
+        # tracks if the very first character of the session has been sent.
         self.has_sent_any_text: bool = False
-        # tracks the speaker of the CURRENT turn
-        self.session_speaker: Optional[str] = None
-
-    def _clean_label(self, raw_speaker: Any) -> Optional[str]:
-        if raw_speaker is None:
-            return None
-        s = str(raw_speaker).upper()
-        if s == "UNKNOWN":
-            return None
-        if s.isdigit():
-            return f"S{s}"
-        if s.startswith("S") and s[1:].isdigit():
-            return s
-        if len(s) == 1 and "A" <= s <= "Z":
-            num = ord(s) - ord("A") + 1
-            return f"S{num}"
-        return s
 
     def reset_session(self):
-        """No longer used. We persist speaker state across turns."""
-        pass
+        """Called when a new transcription session starts (e.g. app start)."""
+        self.current_speaker_on_screen = None
+        self.has_sent_any_text = False
 
-    def format_with_speaker(self, words: List[Dict[str, Any]], transcript: str) -> str:
+    def _clean_label(self, raw_speaker: Any) -> Optional[str]:
+        """Sanitizes speaker labels to S1, S2, etc."""
+        if raw_speaker is None:
+            return None
+
+        s = str(raw_speaker).upper()
+
+        if s == "UNKNOWN":
+            return None
+
+        if s.isdigit():
+            return f"S{s}"
+
+        if s.startswith("S") and s[1:].isdigit():
+            return s
+
+        if len(s) == 1 and "A" <= s <= "Z":
+            return f"S{ord(s) - ord('A') + 1}"
+
+        return s
+
+    def _resolve_speaker(self, word: Dict[str, Any], turn_speaker: Any) -> Optional[str]:
+        """Resolves speaker from word-level data or turn-level fallback."""
+        word_speaker = self._clean_label(word.get("speaker"))
+        if word_speaker:
+            return word_speaker
+
+        turn_label = self._clean_label(turn_speaker)
+        if turn_label:
+            return turn_label
+
+        return self.current_speaker_on_screen
+
+    def format_final_turn(
+        self, transcript: str, words: List[Dict[str, Any]], turn_speaker: Any = None
+    ) -> str:
         """
-        Groups words by speaker and prepends labels/newlines.
+        Formats a final transcription turn with speaker labels and newlines.
+        This method is deterministic and intended for append-only final injection.
         """
+        transcript = (transcript or "").strip()
+        if not transcript:
+            return ""
+
         if not words:
-            return transcript
+            # Fallback for when word-level diarization is missing or delayed
+            return self._format_segment(
+                speaker=self._clean_label(turn_speaker),
+                text=transcript,
+                is_start_of_turn=True,
+            )
 
-        result_parts = []
+        output = []
+        current_speaker = None
+        current_words = []
+        is_first_segment = True
 
-        # We start by checking the very first word's speaker
-        first_word_speaker = self._clean_label(words[0].get("speaker"))
+        def flush():
+            nonlocal current_words, current_speaker, is_first_segment
+            if not current_words:
+                return
 
-        # If the first word's speaker is DIFFERENT than who is on screen,
-        # we MUST insert a newline and the label.
-        if first_word_speaker and first_word_speaker != self.current_speaker_on_screen:
-            if self.has_sent_any_text:
-                result_parts.append("\n")  # Injector will convert this to VK_RETURN
-            result_parts.append(f"[{first_word_speaker}] ")
-            self.current_speaker_on_screen = first_word_speaker
-            self.session_speaker = first_word_speaker
+            text = " ".join(current_words).strip()
+            if text:
+                output.append(
+                    self._format_segment(current_speaker, text, is_start_of_turn=is_first_segment)
+                )
+                is_first_segment = False
 
-        # Process the rest of the words
-        current_running_speaker = self.session_speaker
+            current_words = []
 
-        for i, word_data in enumerate(words):
-            raw_speaker = word_data.get("speaker")
-            cleaned_label = self._clean_label(raw_speaker)
-            word_text = word_data.get("text", "")
+        for word in words:
+            word_text = (word.get("text") or "").strip()
+            if not word_text:
+                continue
 
-            # If speaker changes mid-segment
-            if cleaned_label and cleaned_label != current_running_speaker:
-                result_parts.append("\n")
-                result_parts.append(f"[{cleaned_label}] ")
-                current_running_speaker = cleaned_label
-                self.current_speaker_on_screen = cleaned_label
+            speaker = self._resolve_speaker(word, turn_speaker)
 
-            result_parts.append(word_text)
+            if current_speaker is None:
+                current_speaker = speaker
 
-            # CRITICAL: We mark that text was sent, even if there was no label.
-            self.has_sent_any_text = True
+            # If speaker changes mid-turn
+            if speaker and current_speaker and speaker != current_speaker:
+                flush()
+                current_speaker = speaker
 
-            # Add spaces between words
-            if i < len(words) - 1:
-                next_cleaned = self._clean_label(words[i + 1].get("speaker"))
-                if next_cleaned is None or next_cleaned == current_running_speaker:
-                    result_parts.append(" ")
+            current_words.append(word_text)
 
-        return "".join(result_parts)
+        flush()
+        return "".join(output)
 
-    def commit_speaker(self, words: List[Dict[str, Any]]):
-        if not words:
-            return
-        last_word = words[-1]
-        raw_speaker = last_word.get("speaker")
-        cleaned = self._clean_label(raw_speaker)
-        if cleaned:
-            self.current_speaker_on_screen = cleaned
-            self.has_sent_any_text = True
+    def _format_segment(
+        self, speaker: Optional[str], text: str, is_start_of_turn: bool = False
+    ) -> str:
+        """Helper to format a single speaker block."""
+        if not text:
+            return ""
+
+        parts = []
+
+        # ARCHITECTURAL RULE: Every new turn starts on a new line if text exists.
+        # This prevents turns from being squashed together and ensures the 'Script' look.
+        needs_newline = False
+        if self.has_sent_any_text:
+            if is_start_of_turn:
+                needs_newline = True
+            elif speaker and speaker != self.current_speaker_on_screen:
+                needs_newline = True
+
+        if needs_newline:
+            parts.append("\n")
+
+        # Add label if it's a new speaker OR the start of a new turn block.
+        # We always label a new turn to maintain the visual script structure.
+        if speaker and (is_start_of_turn or speaker != self.current_speaker_on_screen):
+            parts.append(f"[{speaker}] ")
+            self.current_speaker_on_screen = speaker
+
+        parts.append(text)
+        self.has_sent_any_text = True
+
+        return "".join(parts)

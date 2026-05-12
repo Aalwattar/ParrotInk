@@ -10,6 +10,7 @@ from engine.constants import STATUS_CONNECTING, STATUS_FAILED, STATUS_READY, STA
 from engine.logging import get_logger
 from engine.transcription.base import BaseProvider
 from engine.transcription.factory import TranscriptionFactory
+from engine.transcription.speaker_manager import SpeakerManager
 
 logger = get_logger("Connection")
 
@@ -36,6 +37,15 @@ class ConnectionManager:
 
         self.provider: Optional[BaseProvider] = None
         self.audio_adapter: Optional[AudioAdapter] = None
+
+        # PERSISTENT SPEAKER STATE: Lives here so it survives provider rotations.
+        self._speaker_manager: Optional[SpeakerManager] = None
+
+    @property
+    def speaker_manager(self) -> SpeakerManager:
+        if self._speaker_manager is None:
+            self._speaker_manager = SpeakerManager()
+        return self._speaker_manager
 
         self._session_start_time = 0.0
         self._rotation_pending = False
@@ -122,6 +132,7 @@ class ConnectionManager:
                         on_partial=self.on_partial,
                         on_final=self.on_final,
                         on_status=self.on_status,
+                        speaker_manager=self.speaker_manager,
                     )
                     self.provider = provider
                     self.audio_adapter = AudioAdapter(

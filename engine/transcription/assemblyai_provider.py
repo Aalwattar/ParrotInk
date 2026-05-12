@@ -26,6 +26,7 @@ class AssemblyAIProvider(BaseProvider):
         on_final: Callable[[str], None],
         effective_config: EffectiveAssemblyAIConfig,
         on_status: Optional[Callable[[str], None]] = None,
+        speaker_manager: Optional[SpeakerManager] = None,
     ):
         super().__init__(
             api_key,
@@ -41,7 +42,7 @@ class AssemblyAIProvider(BaseProvider):
         self._receive_task: Optional[asyncio.Task] = None
         self._is_running = False
         self.last_transcript = ""
-        self.speaker_manager = SpeakerManager() if effective_config.enable_diarization else None
+        self.speaker_manager = speaker_manager if effective_config.enable_diarization else None
 
     @property
     def is_running(self) -> bool:
@@ -59,9 +60,6 @@ class AssemblyAIProvider(BaseProvider):
     async def start(self):
         """Connect to AssemblyAI and start receiving events."""
         from engine.security import SecurityManager
-
-        if self.speaker_manager:
-            self.speaker_manager.reset_session()
 
         self._ready_event.clear()
         is_trusted = SecurityManager.is_url_trusted(self.url)
@@ -152,23 +150,37 @@ class AssemblyAIProvider(BaseProvider):
 
         if text is not None:
             words = event.get("words", [])
-            if self.speaker_manager and words:
-                text = self.speaker_manager.format_with_speaker(words, text)
+            is_final = bool(event.get("end_of_turn"))
+            turn_speaker = event.get("speaker_label")
 
-            if msg_type == "Turn":
-                # In V3, transcripts within a Turn are cumulative for that specific turn.
-                # However, our engine handles multiple 'final' segments across a session.
-                # The 'transcript' here is the FULL text of the current turn so far.
-
-                if event.get("end_of_turn"):
-                    # Senior Privacy Implementation: Use structured metadata for automatic redaction
-                    logger.debug("AssemblyAI Final (Turn)", extra={"text": text})
-                    if self.speaker_manager and words:
-                        self.speaker_manager.commit_speaker(words)
-                    self.on_final(text)
-                    self.last_transcript = ""  # Reset for next turn
+            if self.speaker_manager:
+                if is_final:
+                    formatted = self.speaker_manager.format_final_turn(
+                        transcript=text,
+                        words=words,
+                        turn_speaker=turn_speaker,
+                    )
+                    if formatted:
+                        # Senior Privacy Implementation: Use structured metadata
+                        # for automatic redaction
+                        logger.debug("AssemblyAI Final (Turn)", extra={"text": formatted})
+                        self.on_final(formatted)
+                        self.last_transcript = ""  # Reset for next turn
                 else:
-                    # It's a partial update
+                    # HUD only. We send raw, unformatted text for partials.
+                    # The SmartInjector will safely diff this single-line text.
+                    if text.strip():
+                        self.on_partial(text)
+                        self.last_transcript = text
+                return
+
+            # Default Mode (Diarization Disabled)
+            if msg_type == "Turn":
+                if is_final:
+                    logger.debug("AssemblyAI Final (Turn)", extra={"text": text})
+                    self.on_final(text)
+                    self.last_transcript = ""
+                else:
                     if text.strip():
                         self.on_partial(text)
                         self.last_transcript = text

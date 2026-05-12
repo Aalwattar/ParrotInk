@@ -23,10 +23,13 @@ USER32 = ctypes.WinDLL("user32", use_last_error=True)
 def inject_text(text: str):
     """
     Inject text using Windows SendInput API.
-    Converts \n into a physical VK_RETURN (Enter key) press.
+    Converts all newline variations into physical VK_RETURN (Enter key) presses.
     """
     if not text:
         return
+
+    # Normalize newlines to \n for consistent processing
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     start_time = time.perf_counter()
 
@@ -36,8 +39,6 @@ def inject_text(text: str):
             # PHYSICAL ENTER: Use VK_RETURN for maximum compatibility.
             ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, 0)
             ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, 0)
-        elif char == "\r":
-            continue
         else:
             # Standard Unicode injection
             codepoint = ord(char)
@@ -60,14 +61,23 @@ def inject_text(text: str):
 
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
-    USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+
+    # Windows API: SendInput returns the number of events successfully inserted.
+    sent = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+
+    if sent != n_inputs:
+        err = ctypes.get_last_error()
+        logger.warning(
+            "SendInput sent fewer events than expected",
+            extra={"expected": n_inputs, "sent": sent, "error": err},
+        )
 
     duration_ms = (time.perf_counter() - start_time) * 1000
     logger.debug(f"Injection of '{text[:10]}...' took {duration_ms:.2f}ms")
 
 
 def inject_backspaces(count: int):
-    """Inject N physical backspaces."""
+    """Inject N physical backspaces with verification."""
     if count <= 0:
         return
 
@@ -87,7 +97,14 @@ def inject_backspaces(count: int):
 
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
-    USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+    sent = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+
+    if sent != n_inputs:
+        err = ctypes.get_last_error()
+        logger.warning(
+            "SendInput failed to inject all backspaces",
+            extra={"expected": n_inputs, "sent": sent, "error": err},
+        )
 
 
 class SmartInjector:
@@ -107,9 +124,15 @@ class SmartInjector:
             return
 
         # If we see a newline, it's a structural turn change.
-        # We inject everything new and reset the diff buffer.
         if "\n" in text or "\r" in text:
+            # CRITICAL: We must still backspace any partial text currently on the line!
+            # Since newlines are only added at the START of a segment,
+            # last_text should only contain single-line partial text.
+            if self.last_text:
+                inject_backspaces(len(self.last_text))
+
             inject_text(text)
+
             if is_final:
                 if not text.endswith(" "):
                     inject_text(" ")

@@ -9,65 +9,71 @@ from engine.transcription.speaker_manager import SpeakerManager
 
 
 def debug_session():
-    print("=== Diarization Debug Log ===")
+    print("=== Diarization Turn-Based Debug Log ===")
     manager = SpeakerManager()
     injector = SmartInjector()
 
     # Mock the physical injection to just print to console
     import engine.injector
 
-    engine.injector.inject_text = lambda t: print(f"  [TYPING]  '{repr(t)}'")
+    engine.injector.inject_text = lambda t: print(f"  [TYPING]  '{t}'")
     engine.injector.inject_backspaces = lambda c: print(f"  [BACKSPC] {c}")
 
-    def process_update(words, transcript, is_final=False):
+    def process_update(words, transcript, is_final=False, turn_speaker=None):
         print(f"\n--- Update (Final={is_final}) ---")
-        formatted = manager.format_with_speaker(words, transcript)
-        print(f"  [RESULT]  '{repr(formatted)}'")
-        injector.inject(formatted, is_final=is_final)
         if is_final:
-            manager.commit_speaker(words)
+            # Format the final turn with labels and newlines
+            text = manager.format_final_turn(transcript, words, turn_speaker)
+        else:
+            # HUD/Partial: Send raw, unformatted text
+            text = transcript
 
-    # SCENARIO 1: Speaker 1 starts talking
-    process_update([{"text": "Hello", "speaker": "A"}], "Hello")
+        print(f"  [TEXT]    '{repr(text)}'")
+        injector.inject(text, is_final=is_final)
 
-    # SCENARIO 2: Speaker 1 continues (Partial)
+    # SCENARIO: S1 starts, then S2 starts, then S1 returns mid-turn.
+
+    # 1. S1 starts talking (Partial)
+    process_update([], "Hello", is_final=False)
+
+    # 2. S1 continues (Partial)
+    process_update([], "Hello world", is_final=False)
+
+    # 3. S1 finalized (Turn 1)
+    # Architecture: format_final_turn sees has_sent_any_text is false, no leading \n
     process_update(
-        [{"text": "Hello", "speaker": "A"}, {"text": "this", "speaker": "A"}], "Hello this"
-    )
-
-    # SCENARIO 3: Speaker 2 starts (Partial - The "And you can see" scenario)
-    # Speaker 1 finalized, Speaker 2 starts
-    process_update(
-        [{"text": "Hello", "speaker": "A"}, {"text": "this", "speaker": "A"}],
-        "Hello this",
+        [{"text": "Hello", "speaker": "A"}, {"text": "world", "speaker": "A"}],
+        "Hello world",
         is_final=True,
     )
 
-    # Speaker 2 begins
-    process_update([{"text": "And", "speaker": "B"}], "And")
+    # 4. S2 starts (Partial)
+    # Injector last_text is "", so it types "How"
+    process_update([], "How", is_final=False)
 
-    # Speaker 2 continues
-    process_update([{"text": "And", "speaker": "B"}, {"text": "you", "speaker": "B"}], "And you")
-
-    # SCENARIO 4: The "Inconsistent" transition
-    # What if the speaker is UNKNOWN briefly?
+    # 5. S2 finalized (Turn 2)
+    # Architecture: format_final_turn sees speaker S2 != S1, has_sent_any_text is true, prepends \n
+    # result: "\n[S2] How are you?"
+    # Injector: diffs "How" against "\n[S2] How are you?". Backspaces 3, types "\n[S2] How are you?"
     process_update(
         [
-            {"text": "And", "speaker": "B"},
+            {"text": "How", "speaker": "B"},
+            {"text": "are", "speaker": "B"},
             {"text": "you", "speaker": "B"},
-            {"text": "can", "speaker": "UNKNOWN"},
         ],
-        "And you can",
+        "How are you",
+        is_final=True,
     )
 
-    # Now it identifies "can" as Speaker 1 (Tone change)
+    # 6. S1 starts (Partial)
+    process_update([], "I", is_final=False)
+
+    # 7. S1 returns mid-turn (Final)
+    # Final turn data: [{"text": "I", "speaker": "A"}, {"text": "agree", "speaker": "A"}]
+    # result: "\n[S1] I agree"
+    # Injector: diffs "I" against "\n[S1] I agree". Backspaces 1, types "\n[S1] I agree"
     process_update(
-        [
-            {"text": "And", "speaker": "B"},
-            {"text": "you", "speaker": "B"},
-            {"text": "can", "speaker": "A"},
-        ],
-        "And you can",
+        [{"text": "I", "speaker": "A"}, {"text": "agree", "speaker": "A"}], "I agree", is_final=True
     )
 
 
