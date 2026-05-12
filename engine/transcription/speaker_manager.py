@@ -71,7 +71,7 @@ class SpeakerManager:
 
         output = []
         current_speaker = None
-        current_words = []
+        current_words: List[str] = []
         is_first_segment = True
 
         def flush():

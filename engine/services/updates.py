@@ -13,10 +13,9 @@ from typing import Callable, Optional
 
 import httpx
 
+from engine.logging import get_logger
+from engine.ui_utils import get_app_version
 from packaging import version
-
-from ..logging import get_logger
-from ..ui_utils import get_app_version
 
 logger = get_logger("Updates")
 

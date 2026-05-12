@@ -41,12 +41,6 @@ class ConnectionManager:
         # PERSISTENT SPEAKER STATE: Lives here so it survives provider rotations.
         self._speaker_manager: Optional[SpeakerManager] = None
 
-    @property
-    def speaker_manager(self) -> SpeakerManager:
-        if self._speaker_manager is None:
-            self._speaker_manager = SpeakerManager()
-        return self._speaker_manager
-
         self._session_start_time = 0.0
         self._rotation_pending = False
         self._backoff_delay = self.config.audio.initial_backoff_seconds
@@ -58,6 +52,12 @@ class ConnectionManager:
         self._state_lock = asyncio.Lock()
         self._connect_task: Optional[asyncio.Task] = None
         self._generation = 0
+
+    @property
+    def speaker_manager(self) -> SpeakerManager:
+        if self._speaker_manager is None:
+            self._speaker_manager = SpeakerManager()
+        return self._speaker_manager
 
     @property
     def config(self) -> Config:
