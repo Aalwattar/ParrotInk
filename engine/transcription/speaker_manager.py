@@ -5,10 +5,12 @@ class SpeakerManager:
     """Manages speaker labels for streaming transcription."""
 
     def __init__(self):
-        # We only track who is currently talking on the screen.
+        # tracks the last speaker to decide if we need a label change.
         self.current_speaker_on_screen: Optional[str] = None
-        # tracks if the very first character of the session has been sent.
-        self.is_first_injection: bool = True
+        # Tracks if ANY text (labeled or not) has been sent to the screen.
+        self.has_sent_any_text: bool = False
+        # tracks the speaker of the CURRENT turn
+        self.session_speaker: Optional[str] = None
 
     def _clean_label(self, raw_speaker: Any) -> Optional[str]:
         if raw_speaker is None:
@@ -44,14 +46,14 @@ class SpeakerManager:
         # If the first word's speaker is DIFFERENT than who is on screen,
         # we MUST insert a newline and the label.
         if first_word_speaker and first_word_speaker != self.current_speaker_on_screen:
-            if not self.is_first_injection:
-                result_parts.append("\r\n")
+            if self.has_sent_any_text:
+                result_parts.append("\n")  # Injector will convert this to VK_RETURN
             result_parts.append(f"[{first_word_speaker}] ")
             self.current_speaker_on_screen = first_word_speaker
-            self.is_first_injection = False
+            self.session_speaker = first_word_speaker
 
-        # Process the rest of the words for mid-turn speaker changes (rare)
-        current_running_speaker = self.current_speaker_on_screen
+        # Process the rest of the words
+        current_running_speaker = self.session_speaker
 
         for i, word_data in enumerate(words):
             raw_speaker = word_data.get("speaker")
@@ -60,12 +62,15 @@ class SpeakerManager:
 
             # If speaker changes mid-segment
             if cleaned_label and cleaned_label != current_running_speaker:
-                result_parts.append("\r\n")
+                result_parts.append("\n")
                 result_parts.append(f"[{cleaned_label}] ")
                 current_running_speaker = cleaned_label
                 self.current_speaker_on_screen = cleaned_label
 
             result_parts.append(word_text)
+
+            # CRITICAL: We mark that text was sent, even if there was no label.
+            self.has_sent_any_text = True
 
             # Add spaces between words
             if i < len(words) - 1:
@@ -76,7 +81,6 @@ class SpeakerManager:
         return "".join(result_parts)
 
     def commit_speaker(self, words: List[Dict[str, Any]]):
-        """Commits the final speaker of a segment."""
         if not words:
             return
         last_word = words[-1]
@@ -84,4 +88,4 @@ class SpeakerManager:
         cleaned = self._clean_label(raw_speaker)
         if cleaned:
             self.current_speaker_on_screen = cleaned
-            self.is_first_injection = False
+            self.has_sent_any_text = True

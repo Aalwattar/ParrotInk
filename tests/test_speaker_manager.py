@@ -29,8 +29,8 @@ def test_speaker_manager_tracks_speaker_change():
     words2 = [{"text": "Hi", "speaker": 2}]
     transcript2 = "Hi"
     result2 = manager.format_with_speaker(words2, transcript2)
-    # Uses Windows CRLF
-    assert result2 == "\r\n[S2] Hi"
+    # Uses \n which Injector converts to VK_RETURN
+    assert result2 == "\n[S2] Hi"
     manager.commit_speaker(words2)
     assert manager.current_speaker_on_screen == "S2"
 
@@ -43,8 +43,8 @@ def test_speaker_manager_mid_segment_change():
         {"text": "How", "speaker": "B"},
     ]
     result = manager.format_with_speaker(words, "Hello How")
-    # Uses Windows CRLF
-    assert result == "[S1] Hello\r\n[S2] How"
+    # Uses \n which Injector converts to VK_RETURN
+    assert result == "[S1] Hello\n[S2] How"
     manager.commit_speaker(words)
     assert manager.current_speaker_on_screen == "S2"
 
@@ -63,15 +63,16 @@ def test_speaker_manager_mapping_and_unknown():
     # Mapping A to S1
     words2 = [{"text": "Hi", "speaker": "A"}]
     result2 = manager.format_with_speaker(words2, "Hi")
-    assert result2 == "[S1] Hi"
+    # If any text was sent (even unknown), the next label gets a newline
+    # Since words1 sent "Hello", result2 should have a newline.
+    assert result2 == "\n[S1] Hi"
     manager.commit_speaker(words2)
     assert manager.current_speaker_on_screen == "S1"
 
     # Mapping B to S2 with newline
     words3 = [{"text": "Hey", "speaker": "B"}]
     result3 = manager.format_with_speaker(words3, "Hey")
-    # Uses Windows CRLF
-    assert result3 == "\r\n[S2] Hey"
+    assert result3 == "\n[S2] Hey"
     manager.commit_speaker(words3)
     assert manager.current_speaker_on_screen == "S2"
 
