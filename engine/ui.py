@@ -555,14 +555,19 @@ class TrayApp:
                     getattr(update_state, "name", "") == "READY_TO_INSTALL"
                     and getattr(self.update_state, "name", "") != "READY_TO_INSTALL"
                 ):
-                    try:
-                        toast(
-                            title="ParrotInk Update Ready",
-                            body=f"Version {version_tag} is ready to install.",
-                            app_id="ParrotInk",
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to show update toast: {e}")
+                    # Senior Architecture: Skip physical notifications in Headless/CI environments
+                    # to prevent blocking timeouts.
+                    if not os.getenv("GITHUB_ACTIONS") and not os.getenv("PYTEST_CURRENT_TEST"):
+                        try:
+                            toast(
+                                title="ParrotInk Update Ready",
+                                body=f"Version {version_tag} is ready to install.",
+                                app_id="ParrotInk",
+                            )
+                        except Exception as e:
+                            logger.warning(f"Failed to show update toast: {e}")
+                    else:
+                        logger.debug("Skipping update toast in CI/Test environment.")
 
                 self.update_state = update_state
                 self.download_percent = percent
