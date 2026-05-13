@@ -300,8 +300,8 @@ class IndicatorWindow:
             self.impl.update_voice_active(active)
 
     def _render_preview(self):
-        committed = self._committed_text
-        partial = self._current_partial_text
+        committed = self._committed_text.replace("\n", " ")
+        partial = self._current_partial_text.replace("\n", " ")
 
         max_chars = DEFAULT_MAX_CHARS
         if self.config:

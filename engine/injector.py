@@ -11,6 +11,7 @@ from .platform_win.keys import (
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
     VK_BACK,
+    VK_RETURN,
 )
 
 logger = get_logger("Injector")
@@ -20,60 +21,74 @@ USER32 = ctypes.WinDLL("user32", use_last_error=True)
 
 
 def inject_text(text: str):
-    """Inject text efficiently using Windows SendInput API."""
+    """
+    Inject text using Windows SendInput API.
+    Converts all newline variations into physical VK_RETURN (Enter key) presses.
+    """
     if not text:
         return
+
+    # Normalize newlines to \n for consistent processing
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     start_time = time.perf_counter()
 
     inputs = []
     for char in text:
-        codepoint = ord(char)
+        if char == "\n":
+            # PHYSICAL ENTER: Use VK_RETURN for maximum compatibility.
+            ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, 0)
+            ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, 0)
+        else:
+            # Standard Unicode injection
+            codepoint = ord(char)
+            ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
+            ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
 
-        # Key down
-        ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
+        # Build structures
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        # Key up
-        ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
         inp_up.union.ki = ki_up
         inputs.append(inp_up)
 
+    if not inputs:
+        return
+
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
 
-    res = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+    # Windows API: SendInput returns the number of events successfully inserted.
+    sent = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
 
-    if res == 0:
+    if sent != n_inputs:
         err = ctypes.get_last_error()
-        logger.error(f"SendInput failed with error code {err}")
+        logger.warning(
+            "SendInput sent fewer events than expected",
+            extra={"expected": n_inputs, "sent": sent, "error": err},
+        )
 
-    end_time = time.perf_counter()
-    duration_ms = (end_time - start_time) * 1000
+    duration_ms = (time.perf_counter() - start_time) * 1000
     logger.debug(f"Injection of '{text[:10]}...' took {duration_ms:.2f}ms")
 
 
 def inject_backspaces(count: int):
-    """Inject N backspaces efficiently using Windows SendInput API."""
+    """Inject N physical backspaces with verification."""
     if count <= 0:
         return
 
-    start_time = time.perf_counter()
     inputs = []
     for _ in range(count):
-        # Backspace Down
         ki_down = KEYBDINPUT(VK_BACK, 0, 0, 0, 0)
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        # Backspace Up
         ki_up = KEYBDINPUT(VK_BACK, 0, KEYEVENTF_KEYUP, 0, 0)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
@@ -82,40 +97,51 @@ def inject_backspaces(count: int):
 
     n_inputs = len(inputs)
     input_array = (INPUT * n_inputs)(*inputs)
+    sent = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
 
-    res = USER32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
-    if res == 0:
+    if sent != n_inputs:
         err = ctypes.get_last_error()
-        logger.error(f"SendInput (backspaces) failed with error code {err}")
-
-    end_time = time.perf_counter()
-    duration_ms = (end_time - start_time) * 1000
-    logger.debug(f"Backspaces injection completed in {duration_ms:.2f}ms")
+        logger.warning(
+            "SendInput failed to inject all backspaces",
+            extra={"expected": n_inputs, "sent": sent, "error": err},
+        )
 
 
 class SmartInjector:
     """
-    Handles stateful text injection, calculating deltas and backspaces
-    to transform previous text into new text.
+    Handles stateful text injection.
+    RESETS on Newlines to prevent backspacing across lines.
     """
 
     def __init__(self):
         self.last_text = ""
 
     def reset(self):
-        """Reset the injection state (usually at the start/end of a turn)."""
         self.last_text = ""
 
     def inject(self, text: str, is_final: bool = False):
-        """
-        Calculates the difference between last_text and new text,
-        then performs the necessary backspaces and typing.
-        """
-        # De-duplicate
         if text == self.last_text and not is_final:
             return
 
-        # Find common prefix length
+        # If we see a newline, it's a structural turn change.
+        if "\n" in text or "\r" in text:
+            # CRITICAL: We must still backspace any partial text currently on the line!
+            # Since newlines are only added at the START of a segment,
+            # last_text should only contain single-line partial text.
+            if self.last_text:
+                inject_backspaces(len(self.last_text))
+
+            inject_text(text)
+
+            if is_final:
+                if not text.endswith(" "):
+                    inject_text(" ")
+                self.last_text = ""
+            else:
+                self.last_text = text
+            return
+
+        # Standard single-line diffing
         common_len = 0
         for i in range(min(len(self.last_text), len(text))):
             if self.last_text[i] == text[i]:
@@ -123,21 +149,15 @@ class SmartInjector:
             else:
                 break
 
-        # Calculate backspaces needed
         backspaces = len(self.last_text) - common_len
         new_text = text[common_len:]
 
-        # Perform Backspaces
         if backspaces > 0:
-            # Safety cap
-            backspaces = min(backspaces, BACKSPACE_SAFETY_CAP)
-            inject_backspaces(backspaces)
+            inject_backspaces(min(backspaces, BACKSPACE_SAFETY_CAP))
 
-        # Perform Typing
         if new_text:
             inject_text(new_text)
 
-        # If it's final, we usually add a space and reset for the next phrase
         if is_final:
             if not text.endswith(" "):
                 inject_text(" ")

@@ -6,6 +6,7 @@ from engine.config_resolver import resolve_effective_config
 from .assemblyai_provider import AssemblyAIProvider
 from .base import BaseProvider
 from .openai_provider import OpenAIProvider
+from .speaker_manager import SpeakerManager
 
 
 class TranscriptionFactory:
@@ -17,6 +18,7 @@ class TranscriptionFactory:
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        speaker_manager: Optional[SpeakerManager] = None,
     ) -> BaseProvider:
         effective = resolve_effective_config(config)
 
@@ -35,6 +37,7 @@ class TranscriptionFactory:
                 on_final=on_final,
                 effective_config=effective.assemblyai,
                 on_status=on_status,
+                speaker_manager=speaker_manager,
             )
         else:
             raise ValueError(f"Unsupported transcription provider: {effective.provider_type}")

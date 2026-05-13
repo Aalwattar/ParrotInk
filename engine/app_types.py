@@ -52,6 +52,7 @@ class EffectiveAssemblyAIConfig:
     max_silence_ms: int
     inactivity_timeout: Optional[int]
     format_text: bool
+    enable_diarization: bool
     stop_timeout: float
     is_test: bool
 

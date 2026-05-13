@@ -216,6 +216,9 @@
 # If true, the provider adds punctuation and capitalization to final text.
 # format_text = false
 
+# If true, identifies multiple speakers in the transcription (e.g. "[S1] Hello").
+# enable_diarization = false
+
 # List of terms to boost recognition for (max 100 terms, 50 chars each).
 # Example: keyterms_prompt = ["ParrotInk", "Gemini"]
 # keyterms_prompt = []
