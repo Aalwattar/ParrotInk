@@ -1,0 +1,8 @@
+{
+  "track_id": "provider_switch_errors_20260522",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-05-22T23:15:00Z",
+  "updated_at": "2026-05-22T23:15:00Z",
+  "description": "Provider switching regression and structured error handling for AssemblyAI/OpenAI."
+}
