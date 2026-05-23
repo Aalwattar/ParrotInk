@@ -2,7 +2,7 @@
 
 ## Phase 1: Analysis & Fix of Provider Switching Regression
 - [x] Task: Create a new branch (e.g., `fix/provider-switch-and-errors`) from `master` to isolate the work for this track. 83ae857
-- [x] Task: Investigate signal routing for provider switching (tray menu & hotkeys) to identify the regression root cause. Document findings in plan. ea7dffa
+- [x] Task: Investigate signal routing for provider switching (tray menu & hotkeys) to identify the regression root cause. Document findings in plan. 7847ad3
     - Findings:
         1. `gui_main.py` is missing `on_provider_change`, `on_set_key`, and `on_toggle_sounds` callbacks in the `TrayApp` constructor call.
         2. Providers (`assemblyai_provider.py`, `openai_provider.py`) log errors but do not propagate them via callbacks to the UI.
