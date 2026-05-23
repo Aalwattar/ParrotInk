@@ -1,7 +1,7 @@
 # Implementation Plan: Provider Switching & Error Handling Fixes
 
 ## Phase 1: Analysis & Fix of Provider Switching Regression
-- [ ] Task: Create a new branch (e.g., `fix/provider-switch-and-errors`) from `master` to isolate the work for this track.
+- [~] Task: Create a new branch (e.g., `fix/provider-switch-and-errors`) from `master` to isolate the work for this track.
 - [ ] Task: Investigate signal routing for provider switching (tray menu & hotkeys) to identify the regression root cause. Document findings in plan.
 - [ ] Task: Write failing test(s) that simulate provider switching and expect the new "lazy connect" behavior to be initialized and ready for a hotkey press.
 - [ ] Task: Implement the minimal code changes necessary to fix the provider switching signal routing and enforce lazy connection.
