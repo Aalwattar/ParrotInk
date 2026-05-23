@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
-from engine.app_types import EffectiveOpenAIConfig
+from engine.app_types import EffectiveOpenAIConfig, TranscriptionError
 from engine.audio.adapter import ProviderAudioSpec
 from engine.constants import STATUS_READY
 from engine.logging import get_logger
@@ -27,6 +27,7 @@ class OpenAIProvider(BaseProvider):
         on_final: Callable[[str], None],
         effective_config: EffectiveOpenAIConfig,
         on_status: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[TranscriptionError], None]] = None,
     ):
         super().__init__(
             api_key,
@@ -35,6 +36,7 @@ class OpenAIProvider(BaseProvider):
             effective_config.url,
             stop_timeout=effective_config.stop_timeout,
             on_status=on_status,
+            on_error=on_error,
         )
         self.effective_config = effective_config
         self.url = effective_config.url
@@ -212,7 +214,26 @@ class OpenAIProvider(BaseProvider):
             self.current_transcript = ""
 
         elif ev_type == "error":
-            logger.error(f"OpenAI API Error: {event.get('error')}")
+            error_data = event.get("error", {})
+            error_msg = str(error_data.get("message") or error_data)
+            logger.error(f"OpenAI API Error: {error_msg}")
+
+            if self.on_error:
+                # Map common OpenAI Realtime errors to user-friendly messages
+                title = "OpenAI Error"
+                message = error_msg
+
+                if "invalid_api_key" in error_msg or "401" in error_msg:
+                    title = "Auth Failed"
+                    message = "Invalid OpenAI API Key. Check settings."
+                elif "rate_limit" in error_msg or "429" in error_msg:
+                    title = "Rate Limited"
+                    message = "OpenAI rate limit reached. Please wait."
+                elif "insufficient_quota" in error_msg:
+                    title = "Out of Credits"
+                    message = "Please check your OpenAI billing status."
+
+                self.on_error(TranscriptionError(title=title, message=message))
 
         elif ev_type == "session.updated":
             logger.info("OpenAI: Transcription session updated successfully.")

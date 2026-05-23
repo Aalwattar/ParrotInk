@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+from engine.app_types import TranscriptionError
 from engine.config import Config
 from engine.config_resolver import resolve_effective_config
 
@@ -18,6 +19,7 @@ class TranscriptionFactory:
         on_partial: Callable[[str], None],
         on_final: Callable[[str], None],
         on_status: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[TranscriptionError], None]] = None,
         speaker_manager: Optional[SpeakerManager] = None,
     ) -> BaseProvider:
         effective = resolve_effective_config(config)
@@ -29,6 +31,7 @@ class TranscriptionFactory:
                 on_final=on_final,
                 effective_config=effective.openai,
                 on_status=on_status,
+                on_error=on_error,
             )
         elif effective.provider_type == "assemblyai":
             return AssemblyAIProvider(
@@ -37,6 +40,7 @@ class TranscriptionFactory:
                 on_final=on_final,
                 effective_config=effective.assemblyai,
                 on_status=on_status,
+                on_error=on_error,
                 speaker_manager=speaker_manager,
             )
         else:

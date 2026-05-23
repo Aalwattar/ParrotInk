@@ -58,6 +58,14 @@ class EffectiveAssemblyAIConfig:
 
 
 @dataclass(frozen=True)
+class TranscriptionError:
+    """Unified container for transcription provider errors."""
+
+    title: str
+    message: str
+
+
+@dataclass(frozen=True)
 class EffectiveConfig:
     provider_type: ProviderType
     capture_sample_rate: int

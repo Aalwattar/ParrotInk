@@ -3,7 +3,7 @@ import contextlib
 import time
 from typing import Callable, Optional
 
-from engine.app_types import AppState
+from engine.app_types import AppState, TranscriptionError
 from engine.audio.adapter import AudioAdapter
 from engine.config import Config
 from engine.constants import STATUS_CONNECTING, STATUS_FAILED, STATUS_READY, STATUS_RETRYING
@@ -28,12 +28,14 @@ class ConnectionManager:
         on_final: Callable[[str], None],
         set_state_cb: Callable[[AppState], None],
         on_status_cb: Optional[Callable[[str], None]] = None,
+        on_error_cb: Optional[Callable[[TranscriptionError], None]] = None,
     ):
         self._config = config
         self.on_partial = on_partial
         self.on_final = on_final
         self.set_state = set_state_cb
         self.on_status = on_status_cb
+        self.on_error = on_error_cb
 
         self.provider: Optional[BaseProvider] = None
         self.audio_adapter: Optional[AudioAdapter] = None
@@ -43,6 +45,7 @@ class ConnectionManager:
 
         self._session_start_time = 0.0
         self._rotation_pending = False
+        self._provider_switch_pending = False  # New: specifically for provider changes
         self._backoff_delay = self.config.audio.initial_backoff_seconds
         self._last_fail_time = 0.0
         self._last_activity_time = 0.0
@@ -75,10 +78,11 @@ class ConnectionManager:
 
         if old_provider != new_provider:
             logger.info(f"Provider changed from {old_provider} to {new_provider}")
-            # We don't stop immediately if listening (to avoid stutter),
-            # but ensure_connected will catch it.
-            # If idle, we can mark for rotation to force a fresh connect on next use.
+            # Senior Architecture: Lazy switch enforcement.
+            # We mark rotation pending to ensure the next connect uses the new provider,
+            # but we also set _provider_switch_pending to block immediate idle reconnects.
             self._rotation_pending = True
+            self._provider_switch_pending = True
 
     async def ensure_connected(self, is_listening: bool):
         """
@@ -89,6 +93,27 @@ class ConnectionManager:
         if self._idle_timer_task:
             self._idle_timer_task.cancel()
             self._idle_timer_task = None
+
+        # LAZY CONNECTION ENFORCEMENT:
+        # 1. If a provider switch is pending, we ONLY connect if listening.
+        if self._provider_switch_pending:
+            if not is_listening:
+                logger.debug(
+                    "ensure_connected: Skipping idle connect due to pending provider switch."
+                )
+                return
+            else:
+                self._provider_switch_pending = False
+
+        # 2. General mode-based skipping
+        mode = self.config.audio.connection_mode
+        should_be_connected = (mode == "always_on") or is_listening
+
+        if not should_be_connected and mode != "warm":
+            logger.debug(
+                f"ensure_connected: Skipping connect (mode={mode}, is_listening={is_listening})"
+            )
+            return
 
         # Pre-check rotation/type-mismatch (may trigger an immediate stop_provider)
         if self.provider and self.provider.is_running:
@@ -132,6 +157,7 @@ class ConnectionManager:
                         on_partial=self.on_partial,
                         on_final=self.on_final,
                         on_status=self.on_status,
+                        on_error=self.on_error,
                         speaker_manager=self.speaker_manager,
                     )
                     self.provider = provider

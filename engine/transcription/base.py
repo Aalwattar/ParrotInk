@@ -2,6 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Union
 
+from engine.app_types import TranscriptionError
 from engine.audio.adapter import ProviderAudioSpec
 
 
@@ -16,6 +17,7 @@ class BaseProvider(ABC):
         base_url: str,
         stop_timeout: float = 2.0,
         on_status: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[TranscriptionError], None]] = None,
     ):
         self.api_key = api_key
         self.on_partial = on_partial
@@ -23,6 +25,7 @@ class BaseProvider(ABC):
         self.base_url = base_url
         self.stop_timeout = stop_timeout
         self.on_status = on_status
+        self.on_error = on_error
         self._ready_event = asyncio.Event()
 
     @property
