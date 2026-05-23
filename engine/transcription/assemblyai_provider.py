@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
-from engine.app_types import EffectiveAssemblyAIConfig
+from engine.app_types import EffectiveAssemblyAIConfig, TranscriptionError
 from engine.audio.adapter import ProviderAudioSpec
 from engine.constants import STATUS_READY
 from engine.logging import get_logger
@@ -26,6 +26,7 @@ class AssemblyAIProvider(BaseProvider):
         on_final: Callable[[str], None],
         effective_config: EffectiveAssemblyAIConfig,
         on_status: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[TranscriptionError], None]] = None,
         speaker_manager: Optional[SpeakerManager] = None,
     ):
         super().__init__(
@@ -35,6 +36,7 @@ class AssemblyAIProvider(BaseProvider):
             effective_config.url,
             stop_timeout=effective_config.stop_timeout,
             on_status=on_status,
+            on_error=on_error,
         )
         self.effective_config = effective_config
         self.url = effective_config.url
@@ -186,7 +188,26 @@ class AssemblyAIProvider(BaseProvider):
                         self.last_transcript = text
 
         elif "error" in event:
-            logger.error(f"AssemblyAI API Error: {event.get('error')}")
+            error_msg = str(event.get("error"))
+            logger.error(f"AssemblyAI API Error: {error_msg}")
+
+            if self.on_error:
+                # Map common AssemblyAI errors to user-friendly messages
+                title = "AssemblyAI Error"
+                message = error_msg
+
+                if "Insufficient funds" in error_msg:
+                    title = "Out of Credits"
+                    message = "Please top up your AssemblyAI account."
+                elif "Authentication" in error_msg or "Unauthorized" in error_msg:
+                    title = "Auth Failed"
+                    message = "Invalid AssemblyAI API Key. Check settings."
+                elif "Rate limit" in error_msg:
+                    title = "Rate Limited"
+                    message = "Too many requests. Please wait a moment."
+
+                self.on_error(TranscriptionError(title=title, message=message))
+
         elif msg_type == "SessionBegins":
             logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
             self._ready_event.set()

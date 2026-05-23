@@ -7,7 +7,7 @@ import time
 from typing import Literal, Optional
 
 from engine.anchor import Anchor
-from engine.app_types import AppState, AudioHardwareError
+from engine.app_types import AppState, AudioHardwareError, TranscriptionError
 from engine.audio.pipeline import AudioPipeline
 from engine.audio.streamer import AudioStreamer
 from engine.audio_feedback import play_sound
@@ -61,6 +61,7 @@ class AppCoordinator:
             self.on_final,
             self.set_state,
             on_status_cb=self.ui_bridge.update_status_message,
+            on_error_cb=self._on_provider_error,
         )
         self.pipeline = AudioPipeline(self.streamer)
         self.state = AppState.IDLE
@@ -179,12 +180,22 @@ class AppCoordinator:
 
         # 1. Detect if provider is changing to handle silent transitions
         provider_changed = self._last_provider != config.transcription.provider
-        self._last_provider = config.transcription.provider
 
-        if provider_changed and (self.is_listening or self.is_connecting):
-            logger.info("Provider changing during active session. Performing silent stop.")
+        if provider_changed:
+            msg = f"Provider changed from {self._last_provider} to {config.transcription.provider}"
+            logger.info(f"{msg}. Forced teardown.")
             if self.loop:
-                asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
+                # Senior Architecture: Immediate and clean teardown of the old provider.
+                # This ensures we don't hold multiple warm connections.
+                asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
+
+            # Support for silent stop if changing mid-session (preserves existing behavior)
+            if self.is_listening or self.is_connecting:
+                logger.info("Provider changing during active session. Performing silent stop.")
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
+
+        self._last_provider = config.transcription.provider
 
         # 2. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
@@ -208,6 +219,35 @@ class AppCoordinator:
     @property
     def is_shutting_down(self) -> bool:
         return self.state == AppState.SHUTTING_DOWN
+
+    def _on_provider_error(self, error: TranscriptionError):
+        """Callback from connection manager when a fatal provider error occurs."""
+        logger.error(f"Fatal Provider Error: {error.title} - {error.message}")
+
+        if self.loop:
+            # Senior Architecture: Bridge error to UI thread safely
+            self.loop.call_soon_threadsafe(self._handle_fatal_error, error)
+
+    def _handle_fatal_error(self, error: TranscriptionError):
+        """Internal handler for fatal errors, called on main thread."""
+        # 1. Stop any active listening immediately
+        if self.is_listening or self.is_connecting:
+            asyncio.create_task(self.stop_listening(silent=True))
+
+        # 2. Transition to Error state
+        self.set_state(AppState.ERROR)
+
+        # 3. Update HUD with specific error details
+        self.ui_bridge.update_status_message(f"Error: {error.title}")
+        self.ui_bridge.update_partial_text(error.message)
+
+        # 4. Record statistics (as failure)
+        self.ui_bridge.record_stats(
+            duration=0.0,
+            words=0,
+            provider=self.config.transcription.provider,
+            error=True,
+        )
 
     def set_state(self, state: AppState):
         """Updates the internal state and notifies the UI."""

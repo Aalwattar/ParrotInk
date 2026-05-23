@@ -283,6 +283,9 @@ async def main_gui(cli_args):
         config,
         ui_bridge,
         on_quit_callback=on_quit,
+        on_provider_change=on_provider_change,
+        on_set_key=on_set_key,
+        on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,
         on_before_hotkey_change=on_before_hotkey_change,
         on_toggle_hud=on_toggle_hud,
@@ -299,7 +302,6 @@ async def main_gui(cli_args):
         initial_sounds_enabled=config.interaction.sounds.enabled,
         availability=coordinator.get_provider_availability(),
     )
-
     ui_thread = threading.Thread(target=app.run, name="UIThread", daemon=False)
     ui_thread.start()
 
