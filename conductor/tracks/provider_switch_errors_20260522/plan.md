@@ -2,7 +2,11 @@
 
 ## Phase 1: Analysis & Fix of Provider Switching Regression
 - [x] Task: Create a new branch (e.g., `fix/provider-switch-and-errors`) from `master` to isolate the work for this track. 83ae857
-- [ ] Task: Investigate signal routing for provider switching (tray menu & hotkeys) to identify the regression root cause. Document findings in plan.
+- [x] Task: Investigate signal routing for provider switching (tray menu & hotkeys) to identify the regression root cause. Document findings in plan. ea7dffa
+    - Findings:
+        1. `gui_main.py` is missing `on_provider_change`, `on_set_key`, and `on_toggle_sounds` callbacks in the `TrayApp` constructor call.
+        2. Providers (`assemblyai_provider.py`, `openai_provider.py`) log errors but do not propagate them via callbacks to the UI.
+        3. No structured error handling exists to transition HUD/Tray to an Error state.
 - [ ] Task: Write failing test(s) that simulate provider switching and expect the new "lazy connect" behavior to be initialized and ready for a hotkey press.
 - [ ] Task: Implement the minimal code changes necessary to fix the provider switching signal routing and enforce lazy connection.
 - [ ] Task: Run full test suite, linting, and type checking (`uv run pytest`, `uv run ruff`, `uv run mypy`) to ensure no side effects.
