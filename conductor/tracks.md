@@ -25,11 +25,3 @@ Link: [startup_toast_20260217](./tracks/startup_toast_20260217/)
 ---
 ## [ ] Track: Stats Page
 Link: [stats_page_20260217](./tracks/stats_page_20260217/)
-
----
-
-
----
-
-- [~] **Track: Provider switching regression and structured error handling for AssemblyAI/OpenAI.**
-*Link: [./tracks/provider_switch_errors_20260522/](./tracks/provider_switch_errors_20260522/)*
