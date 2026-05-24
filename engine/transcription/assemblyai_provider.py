@@ -93,8 +93,8 @@ class AssemblyAIProvider(BaseProvider):
 
         if self.ws and is_active:
             try:
-                # Send end of stream message
-                terminate_msg = json.dumps({"terminate_session": True})
+                # Send end of stream message - V3 uses {"type": "Terminate"}
+                terminate_msg = json.dumps({"type": "Terminate"})
                 logger.debug(f"Sending termination message: {terminate_msg}")
                 await self.ws.send(terminate_msg)
                 # Give it a moment to process before hard close
@@ -102,7 +102,6 @@ class AssemblyAIProvider(BaseProvider):
             except Exception as e:
                 logger.debug(f"Error during graceful shutdown: {e}")
 
-        self._is_running = False
         if self._receive_task:
             self._receive_task.cancel()
             try:
@@ -129,7 +128,9 @@ class AssemblyAIProvider(BaseProvider):
             logger.info("AssemblyAI connection closed while sending audio.")
             self._is_running = False
         except Exception as e:
-            logger.error(f"Error sending audio: {e}")
+            if self._is_running:
+                logger.error(f"Error sending audio: {e}")
+                self._is_running = False
 
     async def _receive_loop(self):
         """Listen for transcription events."""
@@ -143,7 +144,9 @@ class AssemblyAIProvider(BaseProvider):
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error(f"Error in AssemblyAI receive loop: {e}")
+            if self._is_running:
+                logger.error(f"Error in AssemblyAI receive loop: {e}")
+                self._is_running = False
 
     async def _handle_event(self, event: dict):
         """Process incoming events."""
@@ -189,6 +192,13 @@ class AssemblyAIProvider(BaseProvider):
 
         elif "error" in event:
             error_msg = str(event.get("error"))
+
+            # Senior Robustness: Only report errors if we are still active.
+            # Errors received during intentional shutdown are logged but not escalated.
+            if not self._is_running:
+                logger.debug(f"Ignoring AssemblyAI error during shutdown: {error_msg}")
+                return
+
             logger.error(f"AssemblyAI API Error: {error_msg}")
 
             if self.on_error:
