@@ -216,6 +216,13 @@ class OpenAIProvider(BaseProvider):
         elif ev_type == "error":
             error_data = event.get("error", {})
             error_msg = str(error_data.get("message") or error_data)
+
+            # Senior Robustness: Only report errors if we are still active.
+            # Errors received during intentional shutdown are logged but not escalated.
+            if not self._is_running:
+                logger.debug(f"Ignoring OpenAI error during shutdown: {error_msg}")
+                return
+
             logger.error(f"OpenAI API Error: {error_msg}")
 
             if self.on_error:
