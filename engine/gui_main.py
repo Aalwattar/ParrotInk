@@ -6,6 +6,7 @@ import signal
 import sys
 import threading
 
+from engine.app_types import AppState
 from engine.config import ConfigError, load_config
 from engine.constants import (
     STATUS_CONFIG_UPDATED,
@@ -99,6 +100,17 @@ async def main_gui(cli_args):
 
             # Sync Tray Menu selection if it was changed by _ensure_valid_provider
             ui_bridge.update_provider(config.transcription.provider)
+
+            # If the current provider is now valid and we were in AppState.ERROR,
+            # transition back to AppState.IDLE and clear the error HUD.
+            if coordinator.state == AppState.ERROR:
+                current_provider = config.transcription.provider
+                if coordinator.get_provider_availability().get(current_provider, False):
+                    logger.info(
+                        f"Valid key detected for {current_provider}. Resetting state to IDLE."
+                    )
+                    coordinator.set_state(AppState.IDLE)
+                    ui_bridge.clear_hud()
 
             ui_bridge.notify(
                 f"API Key for {account_id.replace('_api_key', '').title()} "

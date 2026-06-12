@@ -41,3 +41,40 @@ async def test_fatal_error_propagation_to_ui():
     mock_ui_bridge.record_stats.assert_called()
     _, kwargs = mock_ui_bridge.record_stats.call_args
     assert kwargs.get("error") is True
+
+
+@pytest.mark.asyncio
+async def test_error_state_resets_input_monitor():
+    """Verify that transitioning to AppState.ERROR resets the input monitor state."""
+    mock_config = MagicMock()
+    mock_ui_bridge = MagicMock()
+
+    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.input_monitor = MagicMock()
+
+    coordinator.set_state(AppState.ERROR)
+
+    coordinator.input_monitor.reset_state.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_config_change_recovers_from_error():
+    """Verify that a config change while in ERROR state transitions back to IDLE if valid."""
+    mock_config = MagicMock()
+    mock_config.transcription.provider = "openai"
+    mock_ui_bridge = MagicMock()
+
+    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.input_monitor = MagicMock()
+    coordinator.state = AppState.ERROR
+
+    # Mock provider availability to be valid
+    coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
+
+    # Trigger config change observer
+    coordinator._on_config_changed(mock_config)
+
+    assert coordinator.state == AppState.IDLE
+    mock_ui_bridge.clear_hud.assert_called_once()
