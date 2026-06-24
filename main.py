@@ -216,6 +216,16 @@ class AppCoordinator:
         self.ui_bridge.update_settings({})
         self.ui_bridge.refresh_hud()
 
+        # Reset to IDLE if we were in ERROR state and the configuration change resolved it
+        if self.state == AppState.ERROR:
+            current_provider = config.transcription.provider
+            if self.get_provider_availability().get(current_provider, False):
+                logger.info(
+                    "Configuration update resolved provider error. Resetting state to IDLE."
+                )
+                self.set_state(AppState.IDLE)
+                self.ui_bridge.clear_hud()
+
     @property
     def is_shutting_down(self) -> bool:
         return self.state == AppState.SHUTTING_DOWN
@@ -261,6 +271,9 @@ class AppCoordinator:
             logger.info(f"Lockout timer set at {self._last_manual_stop_time}")
 
         self.state = state
+        if state == AppState.ERROR:
+            # Guarantee that input monitor is reset so keys do not hang
+            self.input_monitor.reset_state()
         self.ui_bridge.set_state(state)
 
     def get_provider_availability(self) -> dict[str, bool]:

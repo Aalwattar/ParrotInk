@@ -1,5 +1,3 @@
-import os
-
 from engine.security import SecurityManager
 
 
@@ -14,22 +12,22 @@ def test_get_key_from_keyring(mocker):
     mock_keyring.assert_called_once_with("parrotink", "openai_api_key")
 
 
-def test_get_key_fallback_to_env(mocker):
+def test_get_key_fallback_to_env(monkeypatch, mocker):
     """Should return key from environment if not in keyring."""
     mock_keyring = mocker.patch("keyring.get_password")
     mock_keyring.return_value = None
 
-    mocker.patch.dict(os.environ, {"OPENAI_API_KEY": "env-secret"})
+    monkeypatch.setenv("OPENAI_API_KEY", "env-secret")
 
     key = SecurityManager.get_key("openai_api_key")
 
     assert key == "env-secret"
 
 
-def test_get_key_not_found(mocker):
+def test_get_key_not_found(monkeypatch, mocker):
     """Should return None if key is nowhere to be found."""
     mocker.patch("keyring.get_password", return_value=None)
-    mocker.patch.dict(os.environ, {}, clear=True)
+    monkeypatch.delenv("NON_EXISTENT", raising=False)
 
     key = SecurityManager.get_key("non_existent")
     assert key is None

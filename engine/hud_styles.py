@@ -257,6 +257,9 @@ class GlassStyle(HudStyle):
             blur_sigma = 1.5
 
         status_label = (status_override or "LISTENING").upper() if is_recording else "STANDBY"
+        if not is_recording and status_override and "ERROR" in status_override.upper():
+            status_label = "ERROR"
+
         dot_color = skia.ColorCYAN
         if status_label == "FINALIZED":
             dot_color = skia.ColorSetARGB(255, 40, 200, 80)
