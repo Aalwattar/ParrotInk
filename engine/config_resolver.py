@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from .app_types import EffectiveAssemblyAIConfig, EffectiveConfig, EffectiveOpenAIConfig
 from .config import LATENCY_PROFILES, MIC_PROFILES, Config
@@ -106,6 +106,11 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         # Universal-3 Pro and U3 Multilingual support this on V3.
         if aai_core.speech_model in ("u3-rt-pro", "universal-streaming-multilingual", "whisper-rt"):
             params["language_detection"] = "true"
+        elif aai_core.speech_model == "universal-3-5-pro":
+            # For Universal-3.5 Pro, leaving language_code off enables
+            # native multi-language code-switching. So we do not set
+            # language_detection or language_code.
+            pass
         else:
             # Fallback for English-only model (universal-streaming-english)
             params["language_code"] = "en"
@@ -127,6 +132,33 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     params["end_of_turn_confidence_threshold"] = str(aai_confidence)
     params["min_end_of_turn_silence_when_confident"] = str(aai_min_silence)
     params["max_turn_silence"] = str(aai_max_silence)
+
+    # Resolve voice_focus and mode (prioritize core override over shared profiles)
+    resolved_mode: Literal["balanced", "min_latency", "max_accuracy"] = aai_core.mode
+    resolved_voice_focus: Optional[str] = None
+    if aai_core.speech_model in ("universal-3-5-pro", "u3-rt-pro"):
+        if aai_adv.override:
+            resolved_mode = aai_core.mode
+        else:
+            latency_map: dict[str, Literal["balanced", "min_latency", "max_accuracy"]] = {
+                "fast": "min_latency",
+                "balanced": "balanced",
+                "accurate": "max_accuracy",
+            }
+            resolved_mode = latency_map.get(trans.latency_profile, "balanced")
+
+        if aai_core.voice_focus:
+            resolved_voice_focus = aai_core.voice_focus
+        else:
+            resolved_voice_focus = MIC_PROFILES.get(trans.mic_profile)
+
+    # Append new streaming parameters if using the new model (or u3-rt-pro)
+    if aai_core.speech_model in ("universal-3-5-pro", "u3-rt-pro"):
+        params["mode"] = resolved_mode
+        if aai_core.agent_context:
+            params["agent_context"] = aai_core.agent_context[:1500]
+        if resolved_voice_focus:
+            params["voice_focus"] = resolved_voice_focus
 
     # Update URL with resolved parameters
     if "?" in aai_url:
@@ -157,6 +189,9 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         enable_diarization=aai_adv.enable_diarization,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
+        mode=resolved_mode,
+        agent_context=aai_core.agent_context,
+        voice_focus=resolved_voice_focus,
     )
 
     # 4. Final Assemblage

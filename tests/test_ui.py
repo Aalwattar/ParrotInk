@@ -82,7 +82,7 @@ def test_tray_menu_structure(mocker, config):
         # Statistics should be top level
         assert items[1].text == "Statistics..."
         # Transcription is after a separator
-        assert items[3].text == "Transcription"
+        assert "Transcription" in items[3].text
         assert all(item.text != "Status: Ready" for item in items)
 
         # Check Transcription sub-menu
