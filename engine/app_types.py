@@ -55,6 +55,9 @@ class EffectiveAssemblyAIConfig:
     enable_diarization: bool
     stop_timeout: float
     is_test: bool
+    mode: str = "balanced"
+    agent_context: str = ""
+    voice_focus: Optional[str] = None
 
 
 @dataclass(frozen=True)

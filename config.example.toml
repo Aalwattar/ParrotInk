@@ -189,20 +189,34 @@
 # Region host for AssemblyAI. Options: "us", "eu".
 # region = "us"
 
-# Language code for multilingual streaming.
-# language_code = "en"
+# Language code for multilingual streaming. Leaving this blank enables native
+# multi-language code-switching (supporting 18 languages).
+# language_code = ""
 
 # The transcription model to use.
 # Options:
-# "u3-rt-pro" (Default) - Latest model with instructional prompting support.
+# "universal-3-5-pro" (Default) - Flagship model with native code-switching, latency modes, and agent context.
+# "u3-rt-pro" - Latest Universal-3 model with instructional prompting support.
 # "universal-streaming-english" - Legacy English-only model.
-# speech_model = "u3-rt-pro"
+# speech_model = "universal-3-5-pro"
+
+# Latency vs Accuracy profile (Only supported on universal-3-5-pro and u3-rt-pro).
+# Options: "balanced", "min_latency", "max_accuracy".
+# mode = "balanced"
 
 # Natural language instructions to guide the transcription (e.g. "Use medical terms").
-# Note: Mutual exclusive with 'keyterms_prompt'. If both are set, 'prompt' wins.
+# Note: Mutually exclusive with 'keyterms_prompt'. If both are set, 'prompt' wins.
 # prompt = ""
 
-# Server-side VAD sensitivity. Range: 0.0 to 1.0.
+# Spoken greeting or context of the conversation to steer model expectation (max 1500 chars).
+# agent_context = ""
+
+# Acoustic focus to suppress background noise. By default, maps automatically from the
+# global transcription.mic_profile setting. Can be set here explicitly to override.
+# Options: "near_field" (headsets/phones), "far_field" (rooms/kiosks).
+# voice_focus = "near_field"
+
+# Server-side VAD sensitivity (For legacy models. Ignored on universal-3-5-pro). Range: 0.0 to 1.0.
 # vad_threshold = 0.4
 
 # Time in seconds of inactivity before session auto-termination. 0 = disabled.
@@ -211,6 +225,7 @@
 
 [providers.assemblyai.advanced]
 # If true, the manual values below will override the 'latency_profile' settings.
+# Note: Turn detection parameters below are ignored (no-ops) for universal-3-5-pro.
 # override = false
 
 # If true, the provider adds punctuation and capitalization to final text.
@@ -223,16 +238,16 @@
 # Example: keyterms_prompt = ["ParrotInk", "Gemini"]
 # keyterms_prompt = []
 
-# Confidence threshold for detecting end of sentence. Range: 0.0 to 1.0.
+# Confidence threshold for detecting end of sentence (No-op on universal-3-5-pro). Range: 0.0 to 1.0.
 # end_of_turn_confidence_threshold = 0.4
 
-# Minimum silence needed to finalize a turn (in milliseconds).
+# Minimum silence needed to finalize a turn (No-op on universal-3-5-pro) (in milliseconds).
 # min_end_of_turn_silence_when_confident_ms = 400
 
-# Maximum silence allowed before a turn is forced to finalize (in milliseconds).
+# Maximum silence allowed before a turn is forced to finalize (No-op on universal-3-5-pro) (in milliseconds).
 # max_turn_silence_ms = 1000
 
-# If true, detects spoken language (Requires multilingual model).
+# If true, detects spoken language (For legacy multilingual models. No-op on universal-3-5-pro).
 # language_detection = false
 
 [logging]

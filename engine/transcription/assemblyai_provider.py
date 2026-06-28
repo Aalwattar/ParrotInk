@@ -132,6 +132,18 @@ class AssemblyAIProvider(BaseProvider):
                 logger.error(f"Error sending audio: {e}")
                 self._is_running = False
 
+    async def update_agent_context(self, context: str):
+        """Update the agent context mid-stream using UpdateConfiguration."""
+        if not self.ws or not self._is_running:
+            return
+        trimmed = context[:1500]
+        try:
+            msg = json.dumps({"type": "UpdateConfiguration", "agent_context": trimmed})
+            logger.debug(f"Sending UpdateConfiguration for agent_context: {msg}")
+            await self.ws.send(msg)
+        except Exception as e:
+            logger.error(f"Failed to update agent context mid-stream: {e}")
+
     async def _receive_loop(self):
         """Listen for transcription events."""
         try:

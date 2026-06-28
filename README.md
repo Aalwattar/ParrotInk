@@ -100,8 +100,11 @@ I wanted true real-time streaming with professional-grade accuracy, and I wanted
 ParrotInk requires you to bring your own API key. You only pay the AI providers for the raw milliseconds of audio they process.
 
 ### AssemblyAI (Best for Professional English & Speed)
-**Featuring Universal-3 Pro (`u3-rt-pro`) and Real-time Diarization.**
-- **Why we recommend it:** The latest **U3 Pro** model is the industry benchmark for streaming accuracy. It supports **Instructional Prompting**, allowing you to guide the AI (e.g., "Always use medical terminology" or "Format as a list").
+**Featuring Universal-3.5 Pro Realtime (`universal-3-5-pro`) and Real-time Diarization.**
+- **Why we recommend it:** The latest **Universal-3.5 Pro Realtime** is the industry standard for streaming accuracy and features native multilingual code-switching across 18 languages.
+- **Accuracy & Speed Profiles:** Choose your performance balance easily out-of-the-box (`mode = "balanced"`, `"min_latency"`, or `"max_accuracy"`) without hand-tuning threshold parameters.
+- **Conversation Context:** Steer transcripts using `agent_context` (up to 1500 chars) to prime spelling and number formats (e.g. email spelling or phone number recognition).
+- **Auto-Mapped Voice Focus:** The app automatically maps your `transcription.mic_profile` setting (e.g., headset or laptop) to AssemblyAI's `voice_focus` parameter (`near_field` or `far_field`) to suppress background noise.
 - **Multi-Speaker Labels:** Automatically labels speakers in real-time with script-like formatting.
 - **Get Started for $0:** New users currently receive **$50 in free credit** upon signing up.
 - **Advanced Features:** Supports **Shaded Partials** in the HUD, letting you see the AI "thinking" in real-time before finalizing the text.

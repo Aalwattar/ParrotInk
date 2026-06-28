@@ -193,9 +193,12 @@ class AssemblyAICoreConfig(BaseModel):
     # ISO code (e.g., 'en', 'es'). If empty, enables auto-detection on V3 models.
     language_code: str = ""
     vad_threshold: float = 0.4
-    speech_model: str = "u3-rt-pro"
+    speech_model: str = "universal-3-5-pro"
     prompt: str = ""
     inactivity_timeout_seconds: int = 0
+    mode: Literal["balanced", "min_latency", "max_accuracy"] = "balanced"
+    agent_context: str = ""
+    voice_focus: Optional[Literal["near_field", "far_field"]] = None
 
     @field_validator("inactivity_timeout_seconds")
     @classmethod
@@ -207,7 +210,8 @@ class AssemblyAICoreConfig(BaseModel):
     @field_validator("language_code")
     @classmethod
     def validate_language(cls, v: str) -> str:
-        # AssemblyAI U3/V3 models support en, es, fr, de, it, pt.
+        # AssemblyAI U3/V3 models support en, es, fr, de, it, pt, etc.
+        # Universal-3.5 Pro supports 18 languages.
         # Whisper (V3) supports many more.
         # We perform a basic check. If it's a known invalid length, default to auto.
         v = v.strip().lower()

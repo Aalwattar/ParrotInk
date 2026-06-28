@@ -11,6 +11,15 @@ if TYPE_CHECKING:
     from engine.ui import TrayApp
 
 
+def get_active_model_name(app: "TrayApp") -> str:
+    """Helper to get the name of the active transcription model."""
+    if app.current_provider == "openai":
+        return app.config.providers.openai.core.transcription_model
+    if app.current_provider == "assemblyai":
+        return app.config.providers.assemblyai.core.speech_model
+    return "Unknown"
+
+
 def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     """
     Constructs the system tray menu using a structured hierarchy.
@@ -79,7 +88,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
     # 4. Transcription Sub-menu (Provider & Profiles)
     menu_items.append(
         pystray.MenuItem(
-            "Transcription",
+            lambda it: f"Transcription ({get_active_model_name(app)})",
             pystray.Menu(
                 pystray.MenuItem(
                     "Provider",
