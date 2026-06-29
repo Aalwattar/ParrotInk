@@ -275,3 +275,131 @@ def test_github_client_missing_assets():
         assert release is not None
         assert release["installer_url"] is None
         assert release["checksum_url"] is None
+
+
+def test_verify_installer_missing_checksum():
+    """Verify that _verify_installer returns False when checksum_url is missing."""
+    from pathlib import Path
+
+    on_available = MagicMock()
+    stop_event = threading.Event()
+    manager = UpdateManager(on_available, stop_event)
+    manager.installer_path = Path("dummy_setup.exe")
+
+    # Case 1: No latest_release metadata at all
+    assert manager._verify_installer() is False
+
+    # Case 2: latest_release is present but missing checksum_url
+    manager.latest_release = {"tag_name": "v9.9.9", "html_url": "url"}
+    with patch("engine.services.updates.Path.exists", return_value=True):
+        assert manager._verify_installer() is False
+
+
+def test_verify_installer_placeholder_key(tmp_path):
+    """Verify that if RELEASE_PUBLIC_KEY is placeholder, signature check is bypassed."""
+    on_available = MagicMock()
+    stop_event = threading.Event()
+    manager = UpdateManager(on_available, stop_event)
+
+    # Create dummy setup file
+    setup_file = tmp_path / "ParrotInk-Setup.exe"
+    setup_file.write_bytes(b"dummy installer")
+    manager.installer_path = setup_file
+
+    manager.latest_release = {
+        "tag_name": "v9.9.9",
+        "html_url": "url",
+        "checksum_url": "https://test/checksum",
+    }
+
+    # Expected hash for "dummy installer"
+    import hashlib
+
+    h = hashlib.sha256(b"dummy installer").hexdigest()
+
+    with (
+        patch("engine.services.updates.httpx.get") as mock_get,
+        patch("engine.constants.RELEASE_PUBLIC_KEY", "PLACEHOLDER_KEY"),
+    ):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            text=f"{h} ParrotInk-Setup.exe",
+            content=f"{h} ParrotInk-Setup.exe".encode(),
+        )
+        assert manager._verify_installer() is True
+
+
+def test_verify_installer_signature_validation(tmp_path):
+    """Verify that valid and invalid signature verification work correctly."""
+    import base64
+    import hashlib
+
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+
+    # Generate a real test keypair
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+
+    pub_b64 = base64.b64encode(public_key.public_bytes_raw()).decode("utf-8")
+
+    on_available = MagicMock()
+    stop_event = threading.Event()
+    manager = UpdateManager(on_available, stop_event)
+
+    setup_file = tmp_path / "ParrotInk-Setup.exe"
+    setup_file.write_bytes(b"installer content")
+    manager.installer_path = setup_file
+
+    h = hashlib.sha256(b"installer content").hexdigest()
+    checksum_text = f"{h} ParrotInk-Setup.exe"
+    checksum_bytes = checksum_text.encode()
+
+    # Sign checksum file
+    valid_signature = private_key.sign(checksum_bytes)
+
+    manager.latest_release = {
+        "tag_name": "v9.9.9",
+        "html_url": "url",
+        "checksum_url": "https://test/checksum",
+        "signature_url": "https://test/signature",
+    }
+
+    # Case 1: Valid signature matches public key
+    with (
+        patch("engine.services.updates.httpx.get") as mock_get,
+        patch("engine.constants.RELEASE_PUBLIC_KEY", pub_b64),
+    ):
+        # We mock two HTTP gets: first for checksum_url, second for signature_url
+        mock_checksum = MagicMock(status_code=200, text=checksum_text, content=checksum_bytes)
+        mock_sig = MagicMock(status_code=200, content=valid_signature)
+        mock_get.side_effect = [mock_checksum, mock_sig]
+
+        assert manager._verify_installer() is True
+
+    # Case 2: Mismatched signature
+    with (
+        patch("engine.services.updates.httpx.get") as mock_get,
+        patch("engine.constants.RELEASE_PUBLIC_KEY", pub_b64),
+    ):
+        mock_checksum = MagicMock(status_code=200, text=checksum_text, content=checksum_bytes)
+        mock_sig = MagicMock(
+            status_code=200, content=b"invalid_signature_bytes_12345678901234567890123456789012"
+        )
+        mock_get.side_effect = [mock_checksum, mock_sig]
+
+        assert manager._verify_installer() is False
+
+    # Case 3: Missing signature URL in release metadata
+    manager.latest_release = {
+        "tag_name": "v9.9.9",
+        "html_url": "url",
+        "checksum_url": "https://test/checksum",
+    }
+    with (
+        patch("engine.services.updates.httpx.get") as mock_get,
+        patch("engine.constants.RELEASE_PUBLIC_KEY", pub_b64),
+    ):
+        mock_checksum = MagicMock(status_code=200, text=checksum_text, content=checksum_bytes)
+        mock_get.return_value = mock_checksum
+
+        assert manager._verify_installer() is False

@@ -83,6 +83,7 @@ class GitHubClient:
                 assets = data.get("assets", [])
                 installer_url = None
                 checksum_url = None
+                signature_url = None
 
                 for asset in assets:
                     name = asset.get("name", "")
@@ -90,12 +91,15 @@ class GitHubClient:
                         installer_url = asset.get("browser_download_url")
                     elif name == "ParrotInk-Setup.exe.sha256":
                         checksum_url = asset.get("browser_download_url")
+                    elif name == "ParrotInk-Setup.exe.sha256.sig":
+                        signature_url = asset.get("browser_download_url")
 
                 return {
                     "tag_name": data.get("tag_name"),
                     "html_url": data.get("html_url"),
                     "installer_url": installer_url,
                     "checksum_url": checksum_url,
+                    "signature_url": signature_url,
                 }
         except httpx.HTTPError as e:
             logger.debug(f"GitHub API error: {e}")
@@ -343,22 +347,63 @@ class UpdateManager:
             )
 
     def _verify_installer(self) -> bool:
-        """Fetch checksum and verify the current installer_path. Returns True if valid."""
+        """Fetch checksum, verify signature, and verify the current installer_path.
+
+        Proves both download consistency and publisher authenticity using Ed25519.
+        """
         if not self.latest_release or not self.installer_path or not self.installer_path.exists():
             return False
 
         checksum_url = self.latest_release.get("checksum_url")
+        signature_url = self.latest_release.get("signature_url")
+
         if not checksum_url:
-            # If no checksum is provided by the provider, we consider it "valid" if it exists
-            return True
+            logger.error("No checksum URL provided in the release metadata.")
+            return False
 
         try:
-            # Download checksum file
+            # 1. Download checksum file
             res = httpx.get(checksum_url, timeout=10.0, follow_redirects=True)
             res.raise_for_status()
+            checksum_data = res.content
             # SHA256 file usually contains: <hash> <filename>
             expected_hash = res.text.split()[0]
 
+            # 2. Check and verify signature
+            from engine.constants import RELEASE_PUBLIC_KEY
+
+            if RELEASE_PUBLIC_KEY.startswith("PLACEHOLDER"):
+                logger.warning(
+                    "RELEASE_PUBLIC_KEY is using the default placeholder. "
+                    "Skipping publisher signature verification for testing."
+                )
+            else:
+                if not signature_url:
+                    logger.error("No signature URL provided in the release metadata.")
+                    return False
+
+                # Download signature file (.sig)
+                sig_res = httpx.get(signature_url, timeout=10.0, follow_redirects=True)
+                sig_res.raise_for_status()
+                signature_bytes = sig_res.content
+
+                # Decode public key from base64
+                import base64
+
+                from cryptography.hazmat.primitives.asymmetric import ed25519
+
+                pub_bytes = base64.b64decode(RELEASE_PUBLIC_KEY)
+                public_key = ed25519.Ed25519PublicKey.from_public_bytes(pub_bytes)
+
+                # Verify the signature
+                try:
+                    public_key.verify(signature_bytes, checksum_data)
+                    logger.info("Publisher signature verification passed.")
+                except Exception:
+                    logger.error("Publisher signature verification FAILED.")
+                    return False
+
+            # 3. Verify file hash
             return self.verifier.verify(self.installer_path, expected_hash)
         except Exception as e:
             logger.error(f"Verification check failed: {e}")
