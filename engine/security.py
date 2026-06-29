@@ -48,8 +48,10 @@ class SecurityManager:
     @classmethod
     def is_url_trusted(cls, url: str) -> bool:
         """
-        Validates if a URL belongs to a trusted transcription provider domain.
-        Used to prevent credential exfiltration to malicious custom endpoints.
+        Validates if a URL belongs to a trusted transcription provider domain and
+        uses a secure scheme.
+        Used to prevent credential exfiltration to malicious custom endpoints and
+        cleartext leakage.
 
         This check is strictly hardcoded in engine/constants.py to prevent
         manipulation via the local config file.
@@ -63,9 +65,16 @@ class SecurityManager:
             from engine.constants import TRUSTED_DOMAINS
 
             parsed = urlparse(url)
+            scheme = (parsed.scheme or "").lower()
             # hostname handles cases with ports (e.g. localhost:8081)
             host = (parsed.hostname or "").lower()
 
-            return host in TRUSTED_DOMAINS
+            if host not in TRUSTED_DOMAINS:
+                return False
+
+            if host in {"localhost", "127.0.0.1"}:
+                return scheme in {"ws", "wss"}
+
+            return scheme == "wss"
         except Exception:
             return False

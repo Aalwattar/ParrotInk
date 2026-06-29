@@ -143,7 +143,7 @@ class OpenAIProvider(BaseProvider):
         else:
             update_event["session"]["audio"]["input"]["noise_reduction"] = None
 
-        logger.debug(f"Sending session.update: {json.dumps(update_event)}")
+        logger.debug(f"Sending event: {update_event['type']}")
         await self.ws.send(json.dumps(update_event))
 
     async def _do_stop(self):
@@ -179,8 +179,12 @@ class OpenAIProvider(BaseProvider):
         """Handle incoming server events."""
         try:
             async for message in self.ws:
-                logger.debug(f"Received OpenAI message: {message}")
                 event = json.loads(message)
+                event_type = event.get("type", "unknown")
+                event_id = event.get("event_id")
+                logger.debug(
+                    f"Received OpenAI event: {event_type} | id: {event_id} | length: {len(message)}"
+                )
                 await self._handle_event(event)
         except Exception as e:
             if self._is_running:

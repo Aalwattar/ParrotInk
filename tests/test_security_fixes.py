@@ -7,11 +7,16 @@ from engine.transcription.openai_provider import OpenAIProvider
 
 
 def test_url_trust_validation():
-    """Verify that SecurityManager correctly identifies trusted domains."""
+    """Verify that SecurityManager correctly identifies trusted domains and
+    enforces secure schemes."""
     assert SecurityManager.is_url_trusted("wss://api.openai.com/v1/realtime") is True
     assert SecurityManager.is_url_trusted("wss://streaming.assemblyai.com/v3/ws") is True
     assert SecurityManager.is_url_trusted("ws://localhost:8081") is True
     assert SecurityManager.is_url_trusted("ws://127.0.0.1:8081") is True
+
+    # Schemes other than wss must be rejected for remote providers
+    assert SecurityManager.is_url_trusted("ws://api.openai.com/v1/realtime") is False
+    assert SecurityManager.is_url_trusted("ws://streaming.assemblyai.com/v3/ws") is False
 
     assert SecurityManager.is_url_trusted("wss://malicious-proxy.com") is False
     assert SecurityManager.is_url_trusted("http://evil.com") is False

@@ -139,7 +139,7 @@ class AssemblyAIProvider(BaseProvider):
         trimmed = context[:1500]
         try:
             msg = json.dumps({"type": "UpdateConfiguration", "agent_context": trimmed})
-            logger.debug(f"Sending UpdateConfiguration for agent_context: {msg}")
+            logger.debug(f"Sending UpdateConfiguration | length: {len(msg)}")
             await self.ws.send(msg)
         except Exception as e:
             logger.error(f"Failed to update agent context mid-stream: {e}")
@@ -148,8 +148,9 @@ class AssemblyAIProvider(BaseProvider):
         """Listen for transcription events."""
         try:
             async for message in self.ws:
-                logger.debug(f"Received message: {message}")
                 event = json.loads(message)
+                msg_type = event.get("type") or event.get("message_type") or "unknown"
+                logger.debug(f"Received AssemblyAI event: {msg_type} | length: {len(message)}")
                 await self._handle_event(event)
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed.")
