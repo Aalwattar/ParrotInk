@@ -1,6 +1,6 @@
 [project]
 name = "parrotink"
-version = "0.2.40"
+version = "0.2.41"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -21,21 +21,21 @@ keywords = [
 ]
 dependencies = [
     "sounddevice==0.5.5",
-    "numpy==2.4.4",
+    "numpy==2.4.6",
     "websockets==16.0",
     "httpx==0.28.1",
-    "openai==2.36.0",
-    "assemblyai==0.63.0",
+    "openai==2.44.0",
+    "assemblyai==0.64.21",
     "pystray==0.19.5",
-    "pynput==1.8.1",
+    "pynput==1.8.2",
     "keyring==25.7.0",
-    "pywin32==311; sys_platform == 'win32'",
-    "platformdirs==4.9.6",
+    "pywin32==312; sys_platform == 'win32'",
+    "platformdirs==4.10.0",
     "soxr>=1.0.0",
     "skia-python==144.0.post2",
     "tomli-w>=1.2.0",
     "win11toast",
-    "ttkbootstrap==1.20.2",
+    "ttkbootstrap==1.20.4",
     "darkdetect>=0.8.0",
     "packaging>=26.0",
     "tomlkit>=0.14.0",
@@ -51,13 +51,13 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "pytest-mock>=3.12.0",
     "pytest-cov==7.1.0",
-    "ruff==0.15.12",
+    "ruff==0.15.20",
     "mypy>=1.20.0",
-    "types-requests==2.33.0.20260408",
-    "types-setuptools==82.0.0.20260408",
-    "types-pynput==1.8.1.20260408",
-    "types-pywin32==311.0.0.20260408",
-    "pyinstaller==6.20.0",
+    "types-requests==2.33.0.20260518",
+    "types-setuptools==82.0.0.20260518",
+    "types-pynput==1.8.1.20260603",
+    "types-pywin32==312.0.0.20260609",
+    "pyinstaller==6.21.0",
     "pre-commit>=4.5.1",
     "pytest-timeout>=2.4.0",
 ]

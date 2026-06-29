@@ -480,6 +480,45 @@ class UpdateManager:
         # Instruct child PyInstaller processes to reset their own environment
         os.environ["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
 
+    def unblock_installer(self) -> bool:
+        """Removes the Mark of the Web (Zone.Identifier Alternate Data Stream) from the installer.
+
+        This prevents Windows SmartScreen, Software Restriction Policies (SRP), or AppLocker
+        from blocking execution of the downloaded installer.
+        """
+        if sys.platform != "win32" or not self.installer_path or not self.installer_path.exists():
+            return False
+
+        installer_path = str(self.installer_path)
+        logger.info(f"Attempting to unblock installer file: {installer_path}")
+
+        # Method 1: Try PowerShell's Unblock-File
+        try:
+            subprocess.run(
+                ["powershell", "-Command", f'Unblock-File -Path "{installer_path}"'],
+                check=True,
+                capture_output=True,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+            logger.info("Successfully unblocked installer file using PowerShell Unblock-File")
+            return True
+        except Exception as e:
+            logger.warning(f"PowerShell Unblock-File failed: {e}. Trying fallback.")
+
+        # Method 2: Direct removal of Zone.Identifier Alternate Data Stream via Python
+        try:
+            ads_path = installer_path + ":Zone.Identifier"
+            os.unlink(ads_path)
+            logger.info("Successfully unblocked installer file via direct unlink of ADS")
+            return True
+        except FileNotFoundError:
+            logger.debug("No Zone.Identifier stream found (file may already be unblocked).")
+            return True
+        except Exception as ex:
+            logger.warning(f"Failed to remove Zone.Identifier stream: {ex}")
+
+        return False
+
     def install_now(self) -> bool:
         """Launches the installer and returns True on success.
 
@@ -496,6 +535,9 @@ class UpdateManager:
         logger.info(f"Launching decoupled installer: {installer_path} (PID: {current_pid})")
 
         try:
+            # Unblock the downloaded installer to bypass Windows SmartScreen / SRP policies
+            self.unblock_installer()
+
             # Senior Architecture: Prevent "DLL Search Path Poisoning"
             # We must reset the DLL search path and scrub _MEIPASS from the environment
             # so the installer and the resulting new app don't try to load DLLs
