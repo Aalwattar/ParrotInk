@@ -275,3 +275,21 @@ def test_github_client_missing_assets():
         assert release is not None
         assert release["installer_url"] is None
         assert release["checksum_url"] is None
+
+
+def test_verify_installer_missing_checksum():
+    """Verify that _verify_installer returns False when checksum_url is missing."""
+    from pathlib import Path
+
+    on_available = MagicMock()
+    stop_event = threading.Event()
+    manager = UpdateManager(on_available, stop_event)
+    manager.installer_path = Path("dummy_setup.exe")
+
+    # Case 1: No latest_release metadata at all
+    assert manager._verify_installer() is False
+
+    # Case 2: latest_release is present but missing checksum_url
+    manager.latest_release = {"tag_name": "v9.9.9", "html_url": "url"}
+    with patch("engine.services.updates.Path.exists", return_value=True):
+        assert manager._verify_installer() is False
