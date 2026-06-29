@@ -135,6 +135,13 @@ jobs:
             ForEach-Object { "$($_.Hash) ParrotInk-Setup.exe" } |
             Out-File -Encoding ascii dist\ParrotInk-Setup.exe.sha256
 
+      - name: Generate Release Signature
+        shell: pwsh
+        env:
+          PARROTINK_RELEASE_SIGNING_KEY: ${{ secrets.PARROTINK_RELEASE_SIGNING_KEY }}
+        run: |
+          uv run python scripts/sign_release.py dist/ParrotInk-Setup.exe.sha256 dist/ParrotInk-Setup.exe.sha256.sig
+
       - name: Prepare Release Body
         id: release_body
         shell: pwsh
@@ -165,3 +172,4 @@ jobs:
             dist/ParrotInk.exe.sha256
             dist/ParrotInk-Setup.exe
             dist/ParrotInk-Setup.exe.sha256
+            dist/ParrotInk-Setup.exe.sha256.sig

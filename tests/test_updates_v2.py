@@ -23,7 +23,7 @@ def test_update_manager_lifecycle():
         mock_client = mock_client_cls.return_value
         mock_bits = mock_bits_cls.return_value
 
-        manager = UpdateManager(on_available, stop_event)
+        manager = UpdateManager(on_available, stop_event, is_test=True)
 
         # 1. Update found
         mock_client.fetch_latest_release.return_value = {
@@ -74,7 +74,7 @@ def test_update_manager_bits_error():
     ):
         mock_bits = mock_bits_cls.return_value
 
-        manager = UpdateManager(on_available, stop_event)
+        manager = UpdateManager(on_available, stop_event, is_test=True)
         manager.state = UpdateState.DOWNLOADING
         manager.latest_release = {"tag_name": "v1", "html_url": "url"}
 
@@ -111,7 +111,7 @@ def test_update_manager_temp_file_cleanup():
         # "valid installer found" logic.
         mock_exists.side_effect = lambda: True
 
-        manager = UpdateManager(on_available, stop_event)
+        manager = UpdateManager(on_available, stop_event, is_test=True)
 
         mock_client.fetch_latest_release.return_value = {
             "tag_name": "v9.9.9",
@@ -296,10 +296,11 @@ def test_verify_installer_missing_checksum():
 
 
 def test_verify_installer_placeholder_key(tmp_path):
-    """Verify that if RELEASE_PUBLIC_KEY is placeholder, signature check is bypassed."""
+    """Verify that if RELEASE_PUBLIC_KEY is placeholder, signature check is bypassed
+    in test mode."""
     on_available = MagicMock()
     stop_event = threading.Event()
-    manager = UpdateManager(on_available, stop_event)
+    manager = UpdateManager(on_available, stop_event, is_test=True)
 
     # Create dummy setup file
     setup_file = tmp_path / "ParrotInk-Setup.exe"
@@ -327,6 +328,40 @@ def test_verify_installer_placeholder_key(tmp_path):
             content=f"{h} ParrotInk-Setup.exe".encode(),
         )
         assert manager._verify_installer() is True
+
+
+def test_verify_installer_placeholder_key_fails_closed(tmp_path):
+    """Verify that if RELEASE_PUBLIC_KEY is placeholder in production, verification fails closed."""
+    on_available = MagicMock()
+    stop_event = threading.Event()
+    manager = UpdateManager(on_available, stop_event, is_test=False)
+
+    # Create dummy setup file
+    setup_file = tmp_path / "ParrotInk-Setup.exe"
+    setup_file.write_bytes(b"dummy installer")
+    manager.installer_path = setup_file
+
+    manager.latest_release = {
+        "tag_name": "v9.9.9",
+        "html_url": "url",
+        "checksum_url": "https://test/checksum",
+    }
+
+    # Expected hash for "dummy installer"
+    import hashlib
+
+    h = hashlib.sha256(b"dummy installer").hexdigest()
+
+    with (
+        patch("engine.services.updates.httpx.get") as mock_get,
+        patch("engine.constants.RELEASE_PUBLIC_KEY", "PLACEHOLDER_KEY"),
+    ):
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            text=f"{h} ParrotInk-Setup.exe",
+            content=f"{h} ParrotInk-Setup.exe".encode(),
+        )
+        assert manager._verify_installer() is False
 
 
 def test_verify_installer_signature_validation(tmp_path):

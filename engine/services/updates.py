@@ -270,14 +270,17 @@ class UpdateManager:
         self,
         on_update_available: Callable[[str, str, UpdateState, int], None],
         stop_event: threading.Event,
+        is_test: bool = False,
     ):
         """
         Args:
             on_update_available: Callback(new_version, url, state, percent)
             stop_event: Global shutdown signal.
+            is_test: Set to True for developer test/mock runs to allow key bypasses.
         """
         self.on_update_available = on_update_available
         self.stop_event = stop_event
+        self.is_test = is_test
         self.local_version = get_app_version()
         self.client = GitHubClient(f"ParrotInk/{self.local_version} (Update Checker)")
         self.bits = BITSClient()
@@ -373,10 +376,17 @@ class UpdateManager:
             from engine.constants import RELEASE_PUBLIC_KEY
 
             if RELEASE_PUBLIC_KEY.startswith("PLACEHOLDER"):
-                logger.warning(
-                    "RELEASE_PUBLIC_KEY is using the default placeholder. "
-                    "Skipping publisher signature verification for testing."
-                )
+                if self.is_test:
+                    logger.warning(
+                        "RELEASE_PUBLIC_KEY is using the default placeholder. "
+                        "Skipping publisher signature verification for testing."
+                    )
+                else:
+                    logger.error(
+                        "RELEASE_PUBLIC_KEY is using the default placeholder in production mode. "
+                        "Failing verification closed."
+                    )
+                    return False
             else:
                 if not signature_url:
                     logger.error("No signature URL provided in the release metadata.")
