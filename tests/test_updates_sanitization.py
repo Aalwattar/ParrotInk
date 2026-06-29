@@ -83,6 +83,7 @@ def test_install_now_shell_execute():
     with (
         patch("ctypes.windll.shell32.ShellExecuteW") as mock_shell,
         patch.object(manager, "sanitize_for_external_process") as mock_sanitize,
+        patch.object(manager, "unblock_installer") as mock_unblock,
         patch("os.getpid", return_value=1234),
     ):
         mock_shell.return_value = 42  # Success
@@ -90,7 +91,71 @@ def test_install_now_shell_execute():
         result = manager.install_now()
 
         assert result is True
+        mock_unblock.assert_called_once()
         mock_sanitize.assert_called_once()
         mock_shell.assert_called_once_with(
             None, "open", "C:\\Temp\\setup.exe", "/SILENT /pid=1234", None, 1
         )
+
+
+def test_unblock_installer_powershell_success():
+    manager = UpdateManager(on_update_available=MagicMock(), stop_event=MagicMock())
+    manager.installer_path = Path("C:\\Temp\\setup.exe")
+
+    with (
+        patch("sys.platform", "win32"),
+        patch("engine.services.updates.Path.exists", return_value=True),
+        patch("subprocess.run") as mock_run,
+    ):
+        mock_run.return_value = MagicMock(returncode=0)
+
+        result = manager.unblock_installer()
+
+        assert result is True
+        mock_run.assert_called_once()
+        args = mock_run.call_args[0][0]
+        assert "Unblock-File" in args[2]
+
+
+def test_unblock_installer_powershell_fails_python_success():
+    manager = UpdateManager(on_update_available=MagicMock(), stop_event=MagicMock())
+    manager.installer_path = Path("C:\\Temp\\setup.exe")
+
+    with (
+        patch("sys.platform", "win32"),
+        patch("engine.services.updates.Path.exists", return_value=True),
+        patch("subprocess.run", side_effect=Exception("PowerShell error")),
+        patch("os.unlink") as mock_unlink,
+    ):
+        result = manager.unblock_installer()
+
+        assert result is True
+        mock_unlink.assert_called_once_with("C:\\Temp\\setup.exe:Zone.Identifier")
+
+
+def test_unblock_installer_python_fails():
+    manager = UpdateManager(on_update_available=MagicMock(), stop_event=MagicMock())
+    manager.installer_path = Path("C:\\Temp\\setup.exe")
+
+    with (
+        patch("sys.platform", "win32"),
+        patch("engine.services.updates.Path.exists", return_value=True),
+        patch("subprocess.run", side_effect=Exception("PowerShell error")),
+        patch("os.unlink", side_effect=Exception("Permission error")),
+    ):
+        result = manager.unblock_installer()
+
+        assert result is False
+
+
+def test_unblock_installer_not_win32():
+    manager = UpdateManager(on_update_available=MagicMock(), stop_event=MagicMock())
+    manager.installer_path = Path("C:\\Temp\\setup.exe")
+
+    with (
+        patch("sys.platform", "darwin"),
+        patch("engine.services.updates.Path.exists", return_value=True),
+    ):
+        result = manager.unblock_installer()
+
+        assert result is False
