@@ -46,7 +46,7 @@ class SecurityManager:
         keyring.set_password(cls.SERVICE_NAME, account_name, key)
 
     @classmethod
-    def is_url_trusted(cls, url: str) -> bool:
+    def is_url_trusted(cls, url: str, is_test: bool = False) -> bool:
         """
         Validates if a URL belongs to a trusted transcription provider domain and
         uses a secure scheme.
@@ -73,7 +73,7 @@ class SecurityManager:
                 return False
 
             if host in {"localhost", "127.0.0.1"}:
-                return scheme in {"ws", "wss"}
+                return is_test and (scheme in {"ws", "wss"})
 
             return scheme == "wss"
         except Exception:

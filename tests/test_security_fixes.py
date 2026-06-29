@@ -11,16 +11,22 @@ def test_url_trust_validation():
     enforces secure schemes."""
     assert SecurityManager.is_url_trusted("wss://api.openai.com/v1/realtime") is True
     assert SecurityManager.is_url_trusted("wss://streaming.assemblyai.com/v3/ws") is True
-    assert SecurityManager.is_url_trusted("ws://localhost:8081") is True
-    assert SecurityManager.is_url_trusted("ws://127.0.0.1:8081") is True
+    assert SecurityManager.is_url_trusted("ws://localhost:8081", is_test=True) is True
+    assert SecurityManager.is_url_trusted("ws://127.0.0.1:8081", is_test=True) is True
+
+    # localhost and 127.0.0.1 must be rejected in production mode (is_test=False)
+    assert SecurityManager.is_url_trusted("ws://localhost:8081", is_test=False) is False
+    assert SecurityManager.is_url_trusted("ws://127.0.0.1:8081", is_test=False) is False
 
     # Schemes other than wss must be rejected for remote providers
-    assert SecurityManager.is_url_trusted("ws://api.openai.com/v1/realtime") is False
-    assert SecurityManager.is_url_trusted("ws://streaming.assemblyai.com/v3/ws") is False
+    assert SecurityManager.is_url_trusted("ws://api.openai.com/v1/realtime", is_test=True) is False
+    assert (
+        SecurityManager.is_url_trusted("ws://streaming.assemblyai.com/v3/ws", is_test=True) is False
+    )
 
-    assert SecurityManager.is_url_trusted("wss://malicious-proxy.com") is False
-    assert SecurityManager.is_url_trusted("http://evil.com") is False
-    assert SecurityManager.is_url_trusted("") is False
+    assert SecurityManager.is_url_trusted("wss://malicious-proxy.com", is_test=True) is False
+    assert SecurityManager.is_url_trusted("http://evil.com", is_test=True) is False
+    assert SecurityManager.is_url_trusted("", is_test=True) is False
 
 
 def test_config_update_validation_enforced():

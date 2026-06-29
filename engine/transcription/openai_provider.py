@@ -64,10 +64,8 @@ class OpenAIProvider(BaseProvider):
         from engine.security import SecurityManager
 
         self._ready_event.clear()
-        # Security Strategy: Only send the API key if the URL is trusted.
-        # This prevents credential leak to malicious endpoints in config.
-        is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
+        is_trusted = SecurityManager.is_url_trusted(self.url, is_test=is_test)
 
         if not is_trusted and not is_test:
             logger.error(f"Refusing to connect to untrusted endpoint: {self.url}")

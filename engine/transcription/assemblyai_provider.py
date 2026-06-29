@@ -64,8 +64,8 @@ class AssemblyAIProvider(BaseProvider):
         from engine.security import SecurityManager
 
         self._ready_event.clear()
-        is_trusted = SecurityManager.is_url_trusted(self.url)
         is_test = self.effective_config.is_test
+        is_trusted = SecurityManager.is_url_trusted(self.url, is_test=is_test)
 
         if not is_trusted and not is_test:
             logger.error(f"Refusing to connect to untrusted endpoint: {self.url}")
