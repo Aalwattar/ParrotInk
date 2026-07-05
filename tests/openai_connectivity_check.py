@@ -12,11 +12,14 @@ import pytest
 
 from tests.golden_tools.auth_utils import get_openai_key
 
-# Add PROJECT context check
-IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+# Opt-in environment variable for connectivity tests
+RUN_CONNECTIVITY_TEST = os.getenv("RUN_CONNECTIVITY_TEST") == "true"
 
 
-@pytest.mark.skipif(IS_GITHUB_ACTIONS, reason="Skipping connectivity test in CI")
+@pytest.mark.skipif(
+    not RUN_CONNECTIVITY_TEST,
+    reason="Opt-in only via RUN_CONNECTIVITY_TEST=true environment variable",
+)
 def test_connectivity():
     try:
         api_key = get_openai_key()
@@ -37,10 +40,9 @@ def test_connectivity():
             if response.status_code == 200:
                 print("Successfully fetched models list via httpx.")
             else:
-                print(f"Error response: {response.text}")
+                print("Error response status code is not 200")
     except Exception as e:
         print(f"httpx connection failed: {e}")
-        traceback.print_exc()
 
     # 2. Test with OpenAI library
     print("\n--- Step 2: OpenAI Library check ---")

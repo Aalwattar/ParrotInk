@@ -59,6 +59,27 @@ async def test_error_state_resets_input_monitor():
 
 
 @pytest.mark.asyncio
+async def test_error_state_resets_input_monitor_when_already_in_error():
+    """Verify that calling set_state(AppState.ERROR) while already in ERROR
+    resets the input monitor.
+    """
+    mock_config = MagicMock()
+    mock_ui_bridge = MagicMock()
+
+    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.input_monitor = MagicMock()
+
+    # Force initial state to ERROR
+    coordinator.state = AppState.ERROR
+
+    # Call set_state(AppState.ERROR) again
+    coordinator.set_state(AppState.ERROR)
+
+    coordinator.input_monitor.reset_state.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_config_change_recovers_from_error():
     """Verify that a config change while in ERROR state transitions back to IDLE if valid."""
     mock_config = MagicMock()
