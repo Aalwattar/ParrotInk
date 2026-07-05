@@ -349,9 +349,8 @@ class UpdateManager:
 
         checksum_url = self.latest_release.get("checksum_url")
         if not checksum_url:
-            # If no checksum is provided by the provider, we consider it "valid" if it exists
-            return True
-
+            logger.error("No checksum URL provided in the release metadata.")
+            return False
         try:
             # Download checksum file
             res = httpx.get(checksum_url, timeout=10.0, follow_redirects=True)
