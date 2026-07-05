@@ -262,6 +262,10 @@ class AppCoordinator:
     def set_state(self, state: AppState):
         """Updates the internal state and notifies the UI."""
         if self.state == state:
+            if state == AppState.ERROR:
+                # Even if we are already in ERROR, guarantee the input monitor is reset
+                # to prevent key hangs if a start attempt fails early.
+                self.input_monitor.reset_state()
             return
         logger.debug(f"State transition: {self.state.name} -> {state.name}")
 
