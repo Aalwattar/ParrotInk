@@ -77,6 +77,10 @@ class AudioPipeline:
 
                 processed = adapter.process(chunk)
 
+                # Providers that require explicit commits receive every VAD sample,
+                # including sustained silence, before the corresponding audio chunk.
+                await provider.notify_voice_activity(adapter.voice_active, capture_time)
+
                 # Update Voice Activity Signal (Debounced for the HUD)
                 if self.on_voice_activity and adapter.voice_active != last_voice_active:
                     self.on_voice_activity(adapter.voice_active)
@@ -96,3 +100,5 @@ class AudioPipeline:
             if self._is_running:
                 logger.error(f"Critical error in audio pipeline: {e}")
                 logger.debug("Pipeline traceback: ", exc_info=True)
+        finally:
+            self._is_running = False

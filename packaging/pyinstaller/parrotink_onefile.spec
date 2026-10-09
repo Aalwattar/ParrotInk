@@ -12,7 +12,6 @@ APP_NAME = "ParrotInk"
 repo_root = os.path.abspath(os.path.join(SPECPATH, "..", ".."))
 
 hiddenimports = []
-hiddenimports += collect_submodules("pynput")
 hiddenimports += collect_submodules("pystray")
 hiddenimports += collect_submodules("PIL")
 hiddenimports += collect_submodules("websockets")

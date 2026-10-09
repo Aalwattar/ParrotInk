@@ -27,6 +27,7 @@ class BaseProvider(ABC):
         self.on_status = on_status
         self.on_error = on_error
         self._ready_event = asyncio.Event()
+        self._failure_event = asyncio.Event()
 
     @property
     @abstractmethod
@@ -36,13 +37,29 @@ class BaseProvider(ABC):
 
     async def wait_for_ready(self, timeout: float = 10.0):
         """Wait for the server to confirm the session is ready."""
+        ready = asyncio.create_task(self._ready_event.wait())
+        failed = asyncio.create_task(self._failure_event.wait())
         try:
             async with asyncio.timeout(timeout):
-                await self._ready_event.wait()
-        except TimeoutError:
-            from engine.logging import get_logger
+                await asyncio.wait((ready, failed), return_when=asyncio.FIRST_COMPLETED)
+            if self._failure_event.is_set() or not self.is_running:
+                raise ConnectionError(f"{self.get_type()} disconnected before becoming ready")
+        finally:
+            ready.cancel()
+            failed.cancel()
+            await asyncio.gather(ready, failed, return_exceptions=True)
 
-            get_logger("Provider").warning(f"{self.get_type()} wait_for_ready timed out.")
+    def reset_utterance(self):
+        """Prepare a new recording while preserving the connected session."""
+        return None
+
+    async def notify_voice_activity(self, active: bool, capture_time: float):
+        """Receive local VAD information; providers with server endpointing can ignore it."""
+        return None
+
+    async def finish_utterance(self):
+        """Finalize pending audio without closing a reusable session."""
+        return None
 
     @abstractmethod
     def get_audio_spec(self) -> ProviderAudioSpec:

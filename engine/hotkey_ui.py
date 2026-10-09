@@ -4,6 +4,7 @@ import ctypes
 from ctypes import wintypes
 from typing import Callable, List, Optional, Set
 
+from engine.hotkeys import key_name, parse_hotkey
 from engine.logging import get_logger
 from engine.platform_win.api import (
     AC_SRC_ALPHA,
@@ -115,35 +116,14 @@ class HotkeyRecorder:
                     self._draw()
 
     def _is_valid(self, keys: List[str]) -> bool:
-        """Minimum requirement: one non-modifier key or a function key."""
-        modifiers = {"ctrl", "alt", "shift", "cmd"}
-        non_mods = [k for k in keys if k not in modifiers]
-        # Allow combos like Ctrl+Alt+V or single keys like F12
-        return len(non_mods) > 0
+        try:
+            parse_hotkey("+".join(keys))
+        except ValueError:
+            return False
+        return True
 
     def _vk_to_text(self, vk: int, scan_code: int) -> Optional[str]:
-        # Modifiers
-        if vk in (0x10, 0xA0, 0xA1):
-            return "shift"
-        if vk in (0x11, 0xA2, 0xA3):
-            return "ctrl"
-        if vk in (0x12, 0xA4, 0xA5):
-            return "alt"
-        if vk in (0x5B, 0x5C):
-            return "cmd"
-
-        # F-keys
-        if 112 <= vk <= 123:
-            return f"f{vk - 111}"
-
-        # GetKeyNameText handles most other keys
-        lparam = scan_code << 16
-        # Check if extended bit is needed (e.g. for arrow keys, etc.)
-        # For simplicity, we just use the name from Windows
-        buffer = ctypes.create_unicode_buffer(32)
-        if user32.GetKeyNameTextW(lparam, buffer, 32) > 0:
-            return buffer.value.lower()
-        return None
+        return key_name(vk)
 
     def _draw(self):
         if not self._hwnd:

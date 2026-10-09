@@ -13,9 +13,11 @@ from ctypes import wintypes
 from typing import Callable, Optional, Set
 
 from engine.constants import SESSION_QUIT_TIMEOUT, TOGGLE_DEBOUNCE_COOLDOWN
+from engine.hotkeys import MODIFIER_BASE, MODIFIER_VKS, key_name, parse_hotkey
 from engine.logging import get_logger
 
 from .platform_win.keys import (
+    HOOK_PROBE_TAG,
     HOOKPROC,
     INPUT,
     KBDLLHOOKSTRUCT,
@@ -23,15 +25,8 @@ from .platform_win.keys import (
     KEYEVENTF_KEYUP,
     LLKHF_EXTENDED,
     LLKHF_INJECTED,
-    VK_CONTROL,
-    VK_LCONTROL,
-    VK_LMENU,
-    VK_LSHIFT,
-    VK_MENU,
-    VK_RCONTROL,
-    VK_RMENU,
-    VK_RSHIFT,
-    VK_SHIFT,
+    PARROTINK_INPUT_TAG,
+    VK_NONAME,
     WH_KEYBOARD_LL,
     WM_KEYDOWN,
     WM_KEYUP,
@@ -58,6 +53,16 @@ user32.UnhookWindowsHookEx.restype = wintypes.BOOL
 
 user32.GetKeyNameTextW.argtypes = [wintypes.LONG, wintypes.LPWSTR, ctypes.c_int]
 user32.GetKeyNameTextW.restype = ctypes.c_int
+
+user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
+user32.SendInput.restype = wintypes.UINT
+user32.PostThreadMessageW.argtypes = [
+    wintypes.DWORD,
+    wintypes.UINT,
+    wintypes.WPARAM,
+    wintypes.LPARAM,
+]
+user32.PostThreadMessageW.restype = wintypes.BOOL
 
 # State Constants
 STATE_IDLE = 0
@@ -93,11 +98,15 @@ class Win32InputMonitor:
         self._thread: Optional[threading.Thread] = None
         self._thread_id: Optional[int] = None
         self._stop_event = threading.Event()
+        self._ready = threading.Event()
+        self._probe_seen = threading.Event()
+        self._callback_thread: Optional[threading.Thread] = None
 
         # Keyboard State
         self._hotkey_vk = 0
         self._modifier_vks: Set[int] = set()
         self._pressed_modifiers: Set[int] = set()
+        self._pressed_keys: Set[int] = set()
         self._lock = threading.Lock()
 
         # Event Queue for bridge back to AsyncIO/Main thread
@@ -105,6 +114,7 @@ class Win32InputMonitor:
 
     def set_hotkey(self, hotkey_str: str, hold_mode: bool = False):
         """Parses hotkey string into VK codes and sets mode."""
+        modifiers, main_key = self._parse_hotkey(hotkey_str)
         was_running = False
         with self._lock:
             if self._hotkey_str == hotkey_str and self._hold_mode == hold_mode:
@@ -112,7 +122,7 @@ class Win32InputMonitor:
             self._hotkey_str = hotkey_str
             self._hold_mode = hold_mode
             was_running = self._is_running
-            self._modifier_vks, self._hotkey_vk = self._parse_hotkey(hotkey_str)
+            self._modifier_vks, self._hotkey_vk = modifiers, main_key
             logger.debug(
                 f"Hotkey Parsed: {hotkey_str} -> Modifiers: {self._modifier_vks}, "
                 f"Main: {self._hotkey_vk}"
@@ -122,33 +132,7 @@ class Win32InputMonitor:
             self.restart()
 
     def _parse_hotkey(self, hotkey_str: str) -> tuple[Set[int], int]:
-        """Maps hotkey names to Virtual Key codes."""
-        parts = [p.strip().lower() for p in hotkey_str.split("+")]
-        modifiers = set()
-        main_key = 0
-
-        # Mapping common names to VKs
-        vk_map = {
-            "ctrl": VK_CONTROL,
-            "shift": VK_SHIFT,
-            "alt": VK_MENU,
-            "space": 0x20,
-            "v": ord("V"),
-            "k": ord("K"),
-            "r": ord("R"),
-            "z": ord("Z"),
-        }
-
-        for part in parts:
-            vk = vk_map.get(part)
-            if vk in (VK_CONTROL, VK_SHIFT, VK_MENU):
-                modifiers.add(vk)
-            elif vk:
-                main_key = vk
-            elif len(part) == 1:
-                main_key = ord(part.upper())
-
-        return modifiers, main_key
+        return parse_hotkey(hotkey_str)
 
     def set_any_key_callback(self, callback: Callable[[str], None]):
         self._any_key_callback = callback
@@ -159,7 +143,8 @@ class Win32InputMonitor:
     def reset_state(self):
         with self._lock:
             self._state = STATE_IDLE
-            self._pressed_modifiers.clear()
+            # Keep physical key state until release; session cleanup must not
+            # turn a still-held hotkey's repeat into another start.
 
     @property
     def is_running(self) -> bool:
@@ -178,30 +163,35 @@ class Win32InputMonitor:
         for vk in list(self._pressed_modifiers):
             inp = INPUT(
                 type=1,  # INPUT_KEYBOARD
-                union=InputUnion(ki=KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP)),
+                union=InputUnion(
+                    ki=KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP, dwExtraInfo=PARROTINK_INPUT_TAG)
+                ),
             )
             user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp))
             logger.debug(f"Released stuck modifier vk=0x{vk:02X}")
 
     def _get_key_name(self, vk: int, scan_code: int, is_extended: bool) -> str:
         """Retrieves a human-readable name for a VK code."""
-        # 1. Check common overrides for consistency with hotkey parsing
-        overrides = {
-            VK_CONTROL: "ctrl",
-            VK_SHIFT: "shift",
-            VK_MENU: "alt",
-            0x20: "space",
-        }
-        if vk in overrides:
-            return overrides[vk]
+        return key_name(vk) or f"key_{vk}"
 
-        # 2. Use Win32 API for others
-        l_param = (scan_code << 16) | (1 << 24 if is_extended else 0)
-        buf = ctypes.create_unicode_buffer(32)
-        if user32.GetKeyNameTextW(l_param, buf, 32) > 0:
-            return buf.value.lower()
-
-        return f"key_{vk}"
+    def check_health(self, timeout: float = 1.0) -> bool | None:
+        """Probe delivery, not the stale handle. None means Windows blocked input."""
+        if not self._is_running:
+            return None
+        if not self._hook:
+            return False
+        self._probe_seen.clear()
+        # A key-up for VK_NONAME produces no typed character or held key.
+        # The live hook suppresses this tagged probe before it reaches an app.
+        inp = INPUT(
+            type=1,
+            union=InputUnion(
+                ki=KEYBDINPUT(wVk=VK_NONAME, dwFlags=KEYEVENTF_KEYUP, dwExtraInfo=HOOK_PROBE_TAG)
+            ),
+        )
+        if user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp)) != 1:
+            return None
+        return self._probe_seen.wait(timeout)
 
     def _ll_keyboard_handler(self, n_code, w_param, l_param):
         """Native Keyboard Hook Procedure."""
@@ -217,37 +207,31 @@ class Win32InputMonitor:
 
         self._last_event_ts = time.time()
 
-        # 1. Skip synthetic/injected events to prevent recursion
-        if is_injected:
+        if is_injected and kb.dwExtraInfo == HOOK_PROBE_TAG:
+            self._probe_seen.set()
+            return 1
+
+        # Only our own generated input is ignored. Shared keyboards use injected input too.
+        if is_injected and kb.dwExtraInfo == PARROTINK_INPUT_TAG:
             return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
 
         # 2. Track modifier state for chord detection
-        modifier_keys = {
-            VK_CONTROL,
-            VK_LCONTROL,
-            VK_RCONTROL,
-            VK_SHIFT,
-            VK_LSHIFT,
-            VK_RSHIFT,
-            VK_MENU,
-            VK_LMENU,
-            VK_RMENU,
-        }
-
-        # Mapping specific keys back to base modifiers for chord matching
-        base_vk = vk
-        if vk in (VK_LCONTROL, VK_RCONTROL):
-            base_vk = VK_CONTROL
-        elif vk in (VK_LSHIFT, VK_RSHIFT):
-            base_vk = VK_SHIFT
-        elif vk in (VK_LMENU, VK_RMENU):
-            base_vk = VK_MENU
-
-        if base_vk in modifier_keys:
-            if is_down:
-                self._pressed_modifiers.add(base_vk)
-            elif is_up:
-                self._pressed_modifiers.discard(base_vk)
+        base_vk = MODIFIER_BASE.get(vk, vk)
+        repeated = is_down and vk in self._pressed_keys
+        if is_down:
+            self._pressed_keys.add(vk)
+        elif is_up:
+            self._pressed_keys.discard(vk)
+        if base_vk in MODIFIER_VKS.values():
+            self._pressed_modifiers = {
+                MODIFIER_BASE.get(key, key)
+                for key in self._pressed_keys
+                if MODIFIER_BASE.get(key, key) in MODIFIER_VKS.values()
+            }
+        if repeated:
+            if base_vk == self._hotkey_vk or self._state == STATE_DICTATING:
+                return 1
+            return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
 
         # 3. Chord Detection
         combo_fired = (
@@ -303,9 +287,11 @@ class Win32InputMonitor:
 
             else:  # STATE_DICTATING
                 # Release of ANY part of the hotkey stops dictation
-                if is_up and (base_vk == self._hotkey_vk or base_vk in self._modifier_vks):
+                if is_up and (
+                    base_vk == self._hotkey_vk
+                    or (base_vk in self._modifier_vks and base_vk not in self._pressed_modifiers)
+                ):
                     self._state = STATE_IDLE
-                    self._pressed_modifiers.discard(base_vk)
                     self._event_queue.put("stop")
                     return 1  # Suppress the KEYUP
 
@@ -316,10 +302,14 @@ class Win32InputMonitor:
     def _hook_loop(self):
         """Owner thread for the Low-Level Keyboard Hook."""
         self._thread_id = kernel32.GetCurrentThreadId()
+        # Create the message queue before stop() can post WM_QUIT.
+        msg = wintypes.MSG()
+        user32.PeekMessageW(ctypes.byref(msg), None, 0, 0, 0)
 
         # CRITICAL: Hook MUST be installed on the thread that runs the loop
         self._hook_proc = HOOKPROC(self._ll_keyboard_handler)
         self._hook = user32.SetWindowsHookExW(WH_KEYBOARD_LL, self._hook_proc, None, 0)
+        self._ready.set()
 
         if not self._hook:
             err = kernel32.GetLastError()
@@ -329,7 +319,10 @@ class Win32InputMonitor:
         logger.debug(f"Native hook installed. Thread ID: {self._thread_id}")
 
         # Start the queue polling sidecar thread for callbacks
-        threading.Thread(target=self._poll_events, name="HookCallbackThread", daemon=True).start()
+        self._callback_thread = threading.Thread(
+            target=self._poll_events, name="HookCallbackThread", daemon=True
+        )
+        self._callback_thread.start()
 
         msg = wintypes.MSG()
         while user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
@@ -343,9 +336,11 @@ class Win32InputMonitor:
 
     def _poll_events(self):
         """Bridges hook events back to the coordinator callbacks."""
-        while self._is_running:
+        while self._is_running and not self._stop_event.is_set():
             try:
                 event = self._event_queue.get(timeout=0.1)
+                if self._stop_event.is_set():
+                    break
                 if event == "start":
                     self._on_press_callback()
                 elif event == "stop":
@@ -361,13 +356,19 @@ class Win32InputMonitor:
         with self._lock:
             if self._is_running:
                 return
+            if any(t and t.is_alive() for t in (self._thread, self._callback_thread)):
+                raise RuntimeError("Previous input monitor threads have not stopped")
             self._is_running = True
 
         self._stop_event.clear()
+        self._ready.clear()
+        self._pressed_keys.clear()
+        self._pressed_modifiers.clear()
         self._thread = threading.Thread(
             target=self._hook_loop, name="Win32HookThread", daemon=False
         )
         self._thread.start()
+        self._ready.wait(timeout=1.0)
 
     def stop(self):
         """Stops the hook and joins the thread."""
@@ -375,21 +376,31 @@ class Win32InputMonitor:
             if not self._is_running:
                 return
             self._is_running = False
+        self._stop_event.set()
 
         if self._thread_id:
             logger.debug("Posting WM_QUIT to hook thread...")
             user32.PostThreadMessageW(self._thread_id, 0x0012, 0, 0)  # WM_QUIT
             if self._thread:
                 self._thread.join(timeout=SESSION_QUIT_TIMEOUT)
-            self._thread_id = None
+            if not self._thread or not self._thread.is_alive():
+                self._thread_id = None
 
         # Final cleanup for the queue
         self._event_queue.put(None)
+        if self._callback_thread and self._callback_thread is not threading.current_thread():
+            self._callback_thread.join(timeout=SESSION_QUIT_TIMEOUT)
+        while not self._event_queue.empty():
+            try:
+                self._event_queue.get_nowait()
+            except queue.Empty:
+                break
 
-    def restart(self):
+    def restart(self, preserve_state: bool = False):
         """Native restart for desktop recovery or watchdog recovery."""
         self.stop()
-        self.reset_state()
+        if not preserve_state:
+            self.reset_state()
         self.start()
 
 

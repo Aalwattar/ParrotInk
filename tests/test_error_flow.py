@@ -4,20 +4,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from engine.app_types import AppState, TranscriptionError
-from main import AppCoordinator
 
 
 @pytest.mark.asyncio
-async def test_fatal_error_propagation_to_ui():
+async def test_fatal_error_propagation_to_ui(coordinator):
     """
     Integration test to verify that a fatal error from a provider
     correctly transitions the AppCoordinator to ERROR state and updates the UI.
     """
-    mock_config = MagicMock()
-    mock_ui_bridge = MagicMock()
-
-    # Initialize coordinator
-    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
+    mock_ui_bridge = coordinator.ui_bridge
     coordinator._loop = asyncio.get_running_loop()
 
     # Simulate a fatal error from the provider/connection manager
@@ -44,12 +39,8 @@ async def test_fatal_error_propagation_to_ui():
 
 
 @pytest.mark.asyncio
-async def test_error_state_resets_input_monitor():
+async def test_error_state_resets_input_monitor(coordinator):
     """Verify that transitioning to AppState.ERROR resets the input monitor state."""
-    mock_config = MagicMock()
-    mock_ui_bridge = MagicMock()
-
-    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
     coordinator._loop = asyncio.get_running_loop()
     coordinator.input_monitor = MagicMock()
 
@@ -59,14 +50,10 @@ async def test_error_state_resets_input_monitor():
 
 
 @pytest.mark.asyncio
-async def test_error_state_resets_input_monitor_when_already_in_error():
+async def test_error_state_resets_input_monitor_when_already_in_error(coordinator):
     """Verify that calling set_state(AppState.ERROR) while already in ERROR
     resets the input monitor.
     """
-    mock_config = MagicMock()
-    mock_ui_bridge = MagicMock()
-
-    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
     coordinator._loop = asyncio.get_running_loop()
     coordinator.input_monitor = MagicMock()
 
@@ -80,13 +67,10 @@ async def test_error_state_resets_input_monitor_when_already_in_error():
 
 
 @pytest.mark.asyncio
-async def test_config_change_recovers_from_error():
+async def test_config_change_recovers_from_error(coordinator):
     """Verify that a config change while in ERROR state transitions back to IDLE if valid."""
-    mock_config = MagicMock()
-    mock_config.transcription.provider = "openai"
-    mock_ui_bridge = MagicMock()
-
-    coordinator = AppCoordinator(mock_config, mock_ui_bridge)
+    coordinator.config.transcription.provider = "openai"
+    mock_ui_bridge = coordinator.ui_bridge
     coordinator._loop = asyncio.get_running_loop()
     coordinator.input_monitor = MagicMock()
     coordinator.state = AppState.ERROR
@@ -95,7 +79,7 @@ async def test_config_change_recovers_from_error():
     coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
 
     # Trigger config change observer
-    coordinator._on_config_changed(mock_config)
+    coordinator._on_config_changed(coordinator.config)
 
     assert coordinator.state == AppState.IDLE
     mock_ui_bridge.clear_hud.assert_called_once()

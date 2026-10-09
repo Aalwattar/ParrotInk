@@ -1,3 +1,4 @@
+import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -10,24 +11,20 @@ from main import AppCoordinator
 
 @pytest.fixture
 def mock_config():
-    config = MagicMock(spec=Config)
-    config.audio = MagicMock()
+    config = Config()
     config.audio.capture_sample_rate = 16000
     config.audio.chunk_ms = 30
-    config.hotkeys = MagicMock()
     config.hotkeys.hotkey = "ctrl+space"
     config.hotkeys.hold_mode = True  # Set to Hold Mode
-    config.test = MagicMock()
     config.test.enabled = True
-    config.transcription = MagicMock()
     config.transcription.provider = "openai"
-    config.interaction = MagicMock()
     config.interaction.stop_on_any_key = True
     config.interaction.sounds.enabled = False
     return config
 
 
-def test_hold_mode_interruption_bug(mock_config):
+@pytest.mark.asyncio
+async def test_hold_mode_interruption_bug(mock_config):
     """
     Test that when hold_mode is True, pressing a random key does NOT stop listening.
     Current behavior (Bug): It STOPS listening.
@@ -38,11 +35,14 @@ def test_hold_mode_interruption_bug(mock_config):
         patch("main.AudioStreamer"),
         patch("main.InputMonitor"),
         patch("main.MouseMonitor"),
-        patch("main.ConnectionManager"),
+        patch("main.ConnectionManager") as connection_manager,
         patch("main.UIBridge"),
         patch("main.InjectionController"),
         patch("engine.platform_win.session.SessionMonitor"),
+        patch("engine.services.updates.UpdateManager.start"),
+        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
+        connection_manager.return_value.stop_provider = AsyncMock()
         coordinator = AppCoordinator(mock_config)
 
         # Setup active listening state
@@ -53,7 +53,7 @@ def test_hold_mode_interruption_bug(mock_config):
         coordinator.is_injecting = False
         coordinator.injection_lock = MagicMock()
         coordinator.injection_lock.locked.return_value = False
-        coordinator.loop = MagicMock()  # Mock the loop
+        coordinator._loop = asyncio.get_running_loop()
 
         # Simulate pressing 'a' (not the hotkey)
         # This simulates the "Stop on Any Key" callback
@@ -62,3 +62,4 @@ def test_hold_mode_interruption_bug(mock_config):
         # ASSERT: verify stop_listening was NOT called
         # This should FAIL currently because the bug exists
         coordinator.stop_listening.assert_not_called()
+        await coordinator.shutdown()

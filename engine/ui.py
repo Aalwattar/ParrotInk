@@ -70,6 +70,7 @@ class TrayApp:
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
+        on_after_hotkey_change: Callable[[], None] | None = None,
     ):
         self.config = config
         self.bridge = bridge
@@ -82,6 +83,7 @@ class TrayApp:
         self.on_toggle_sounds = on_toggle_sounds
         self.on_hotkey_change = on_hotkey_change
         self.on_before_hotkey_change = on_before_hotkey_change
+        self.on_after_hotkey_change = on_after_hotkey_change
         self.on_toggle_hud = on_toggle_hud
         self.on_toggle_click_through = on_toggle_click_through
         self.on_toggle_startup = on_toggle_startup
@@ -339,12 +341,23 @@ class TrayApp:
             self.on_before_hotkey_change()
 
         def record():
-            from .hotkey_ui import HotkeyRecorder
+            try:
+                from .hotkey_ui import HotkeyRecorder
 
-            recorder = HotkeyRecorder(on_captured=self.on_hotkey_change)
-            recorder.run()
+                recorder = HotkeyRecorder(on_captured=self.on_hotkey_change)
+                recorder.run()
+            except Exception:
+                logger.exception("Hotkey recording failed")
+            finally:
+                if self.on_after_hotkey_change:
+                    self.on_after_hotkey_change()
 
-        threading.Thread(target=record, daemon=True).start()
+        try:
+            threading.Thread(target=record, daemon=True).start()
+        except Exception:
+            if self.on_after_hotkey_change:
+                self.on_after_hotkey_change()
+            raise
 
     def _on_set_key_clicked(self, provider_id: str, provider_name: str):
         # We launch the dialog on the UI Thread via after(0, ...)

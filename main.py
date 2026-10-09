@@ -4,6 +4,7 @@ import ctypes
 import sys
 import threading
 import time
+from concurrent.futures import Future
 from typing import Literal, Optional
 
 from engine.anchor import Anchor
@@ -65,6 +66,9 @@ class AppCoordinator:
         )
         self.pipeline = AudioPipeline(self.streamer)
         self.state = AppState.IDLE
+        self._stop_lock = asyncio.Lock()
+        self._pending_injections: set[Future[None]] = set()
+        self._recording_provider = config.transcription.provider
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         # Interaction monitoring (Short Path)
@@ -454,9 +458,7 @@ class AppCoordinator:
         # 2. Inject into target application (Only if enabled in config)
         if self.config.transcription.partial_results:
             if self.loop and self.injection_controller:
-                asyncio.run_coroutine_threadsafe(
-                    self.injection_controller.smart_inject(text), self.loop
-                )
+                self._queue_injection(text)
 
     def on_final(self, text: str):
         if self.session_cancelled:
@@ -475,9 +477,7 @@ class AppCoordinator:
 
         # Ensure final text is fully synchronized and add a trailing space
         if self.loop and self.injection_controller:
-            asyncio.run_coroutine_threadsafe(
-                self.injection_controller.smart_inject(text + " ", is_final=True), self.loop
-            )
+            self._queue_injection(text + " ", is_final=True)
 
     def _play_feedback_sound(self, sound_type: Literal["start", "stop"]):
         """Plays the configured sound feedback if enabled."""
@@ -501,6 +501,9 @@ class AppCoordinator:
 
         if self.anchor and not self.anchor.is_match(x, y):
             logger.info(f"Click away detected at ({x}, {y}) outside anchor. Cancelling session.")
+            self.session_cancelled = True
+            for future in tuple(self._pending_injections):
+                future.cancel()
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
@@ -534,6 +537,7 @@ class AppCoordinator:
                 return
 
         self.session_cancelled = False
+        self._recording_provider = self.config.transcription.provider
         self.start_time = time.time()
         self.session_start_time = self.start_time
         self.session_word_count = 0
@@ -564,6 +568,7 @@ class AppCoordinator:
                     return
 
                 # 3. Start pipeline with the resolved connection components
+                self.connection_manager.provider.reset_utterance()
                 await self.pipeline.start(
                     adapter=self.connection_manager.audio_adapter,
                     provider=self.connection_manager.provider,
@@ -572,7 +577,7 @@ class AppCoordinator:
             self._play_feedback_sound("start")
 
             # 4. Start mouse monitoring
-            self.mouse_monitor.start()
+            self._start_mouse_monitor()
             self.input_monitor.enable_any_key_monitoring(self.config.interaction.stop_on_any_key)
 
             # 5. Start listening monitor (inactivity + health)
@@ -689,9 +694,24 @@ class AppCoordinator:
             logger.error(f"Error in mic recovery poll: {e}")
 
     async def stop_listening(self, silent: bool = False):
+        async with self._stop_lock:
+            await self._stop_listening(silent)
+
+    def _queue_injection(self, text: str, is_final: bool = False):
+        future = asyncio.run_coroutine_threadsafe(
+            self.injection_controller.smart_inject(text, is_final=is_final), self.loop
+        )
+        self._pending_injections.add(future)
+        future.add_done_callback(self._pending_injections.discard)
+
+    async def _stop_listening(self, silent: bool = False):
         """Stops the current transcription session."""
         if self.state == AppState.IDLE:
             return
+
+        was_error = self.state == AppState.ERROR
+        if not was_error and not self.is_shutting_down:
+            self.set_state(AppState.STOPPING)
 
         logger.debug("Stopping transcription session...")
         self.input_monitor.reset_state()
@@ -706,7 +726,37 @@ class AppCoordinator:
         # ConnectionManager handles keeping the connection "warm" or rotating it.
         await self.pipeline.stop()
         self.pipeline.on_voice_activity = None
-        self.connection_manager.start_idle_timer()
+        provider = self.connection_manager.provider
+        if provider and provider.is_running and not self.session_cancelled and not was_error:
+            try:
+                async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
+                    await provider.finish_utterance()
+                # Final callbacks queue cursor writes; drain them before a new anchor
+                # or session can be selected.
+                pending = list(self._pending_injections)
+                if pending:
+                    async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
+                        await asyncio.gather(*(asyncio.wrap_future(f) for f in pending))
+            except Exception as exc:
+                # Record the cause without echoing server payloads or transcript text.
+                logger.error("Could not finalize the recording (%s)", type(exc).__name__)
+                self.session_cancelled = True
+                self.set_state(AppState.ERROR)
+                self.ui_bridge.update_status_message("Final transcription failed")
+                await self.connection_manager.stop_provider()
+        if (
+            self.session_cancelled
+            or was_error
+            or self.state == AppState.ERROR
+            or self.config.audio.connection_mode == "on_demand"
+        ):
+            await self.connection_manager.stop_provider()
+        elif provider is not None and not provider.is_running:
+            # Grok's audio.done is terminal even when the app uses warm mode.
+            # Detach its old receiver and adapter before another recording starts.
+            await self.connection_manager.stop_provider()
+        else:
+            self.connection_manager.start_idle_timer()
 
         if not silent:
             self._play_feedback_sound("stop")
@@ -719,7 +769,7 @@ class AppCoordinator:
         self.ui_bridge.record_stats(
             duration=duration,
             words=self.session_word_count,
-            provider=self.config.transcription.provider,
+            provider=self._recording_provider,
             error=(self.state == AppState.ERROR),
         )
         self.session_start_time = 0.0
@@ -727,6 +777,13 @@ class AppCoordinator:
 
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)
+
+    def _start_mouse_monitor(self):
+        if (
+            self.config.interaction.cancel_on_click_outside_anchor
+            and not self.config.hotkeys.hold_mode
+        ):
+            self.mouse_monitor.start()
 
     def _on_unlock(self):
         """Callback from SessionMonitor when Windows is unlocked."""
@@ -739,10 +796,11 @@ class AppCoordinator:
         try:
             while True:
                 await asyncio.sleep(interval)
-                # If hook is dead or has disappeared (WH_KEYBOARD_LL can be fickle)
-                if not getattr(self.input_monitor, "_hook", None) and self.input_monitor.is_running:
+                # A retained handle does not prove Windows is still delivering events.
+                healthy = await asyncio.to_thread(self.input_monitor.check_health)
+                if healthy is False and self.input_monitor.is_running:
                     logger.warning("Watchdog detected dead hook. Restarting interaction layer...")
-                    self.input_monitor.restart()
+                    self.input_monitor.restart(preserve_state=True)
         except asyncio.CancelledError:
             pass
 
@@ -771,8 +829,9 @@ class AppCoordinator:
                     self.mouse_monitor.stop()
 
                     # 2. Stop connection and pipeline
-                    await self.connection_manager.stop_provider()
                     await self.pipeline.stop()
+                    self.session_cancelled = True
+                    await self.connection_manager.stop_provider()
                     self.streamer.stop()
 
                     # 3. Final cleanup

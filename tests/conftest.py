@@ -9,6 +9,21 @@ import pytest
 IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
+@pytest.fixture(autouse=True)
+def isolate_desktop_input():
+    """Unit tests must not hook or inject input on the user's Windows desktop."""
+    with (
+        patch("ctypes.windll.user32.SetWindowsHookExW", return_value=123),
+        patch("ctypes.windll.user32.UnhookWindowsHookEx", return_value=True),
+        patch("ctypes.windll.user32.SendInput", return_value=1),
+        patch("engine.injector.USER32.SendInput", side_effect=lambda count, *_: count),
+        patch("engine.mouse._get_button_state", return_value=0),
+        patch("engine.mouse._get_cursor_pos", return_value=0),
+        patch("engine.mouse._get_foreground_window", return_value=0),
+    ):
+        yield
+
+
 @pytest.fixture(scope="session", autouse=True)
 def global_test_env(tmp_path_factory):
     """
@@ -81,7 +96,12 @@ def config():
 
 @pytest.fixture(autouse=True)
 def mock_audio_feedback():
-    with patch("engine.audio_feedback.play_sound") as mock:
+    # The coordinator imports play_sound directly. Patch both references so
+    # lifecycle tests never open the real Windows audio playback stream.
+    with (
+        patch("engine.audio_feedback.play_sound") as mock,
+        patch("main.play_sound", new=mock),
+    ):
         yield mock
 
 

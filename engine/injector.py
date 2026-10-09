@@ -10,6 +10,7 @@ from .platform_win.keys import (
     KEYBDINPUT,
     KEYEVENTF_KEYUP,
     KEYEVENTF_UNICODE,
+    PARROTINK_INPUT_TAG,
     VK_BACK,
     VK_RETURN,
 )
@@ -18,6 +19,8 @@ logger = get_logger("Injector")
 
 # Windows API Constants & Structures
 USER32 = ctypes.WinDLL("user32", use_last_error=True)
+USER32.SendInput.argtypes = [ctypes.c_uint, ctypes.c_void_p, ctypes.c_int]
+USER32.SendInput.restype = ctypes.c_uint
 
 
 def inject_text(text: str):
@@ -37,13 +40,15 @@ def inject_text(text: str):
     for char in text:
         if char == "\n":
             # PHYSICAL ENTER: Use VK_RETURN for maximum compatibility.
-            ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, 0)
-            ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, 0)
+            ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, PARROTINK_INPUT_TAG)
+            ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, PARROTINK_INPUT_TAG)
         else:
             # Standard Unicode injection
             codepoint = ord(char)
-            ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, 0)
-            ki_up = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
+            ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, PARROTINK_INPUT_TAG)
+            ki_up = KEYBDINPUT(
+                0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, PARROTINK_INPUT_TAG
+            )
 
         # Build structures
         inp_down = INPUT()
@@ -83,13 +88,13 @@ def inject_backspaces(count: int):
 
     inputs = []
     for _ in range(count):
-        ki_down = KEYBDINPUT(VK_BACK, 0, 0, 0, 0)
+        ki_down = KEYBDINPUT(VK_BACK, 0, 0, 0, PARROTINK_INPUT_TAG)
         inp_down = INPUT()
         inp_down.type = INPUT_KEYBOARD
         inp_down.union.ki = ki_down
         inputs.append(inp_down)
 
-        ki_up = KEYBDINPUT(VK_BACK, 0, KEYEVENTF_KEYUP, 0, 0)
+        ki_up = KEYBDINPUT(VK_BACK, 0, KEYEVENTF_KEYUP, 0, PARROTINK_INPUT_TAG)
         inp_up = INPUT()
         inp_up.type = INPUT_KEYBOARD
         inp_up.union.ki = ki_up

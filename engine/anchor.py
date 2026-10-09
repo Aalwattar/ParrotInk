@@ -7,15 +7,26 @@ from engine.logging import get_logger
 logger = get_logger("Anchor")
 
 # --- ctypes Definitions ---
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
+user32 = ctypes.WinDLL("user32", use_last_error=True)
+kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+user32.GetForegroundWindow.argtypes = []
+user32.GetForegroundWindow.restype = wintypes.HWND
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+user32.WindowFromPoint.argtypes = [wintypes.POINT]
+user32.WindowFromPoint.restype = wintypes.HWND
+user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
+user32.GetAncestor.restype = wintypes.HWND
+user32.GetParent.argtypes = [wintypes.HWND]
+user32.GetParent.restype = wintypes.HWND
 
 # Constants
 GA_ROOT = 2
 
 
 def get_foreground_window() -> int:
-    return int(user32.GetForegroundWindow())
+    return int(user32.GetForegroundWindow() or 0)
 
 
 def get_window_thread_process_id(hwnd: int) -> tuple[int, int]:
@@ -29,11 +40,11 @@ def window_from_point(x: int, y: int) -> int:
     point = wintypes.POINT()
     point.x = x
     point.y = y
-    return int(user32.WindowFromPoint(point))
+    return int(user32.WindowFromPoint(point) or 0)
 
 
 def get_ancestor(hwnd: int, flags: int) -> int:
-    return int(user32.GetAncestor(hwnd, flags))
+    return int(user32.GetAncestor(hwnd, flags) or 0)
 
 
 class GUITHREADINFO(ctypes.Structure):
@@ -48,6 +59,10 @@ class GUITHREADINFO(ctypes.Structure):
         ("hwndCaret", wintypes.HWND),
         ("rcCaret", wintypes.RECT),
     ]
+
+
+user32.GetGUIThreadInfo.argtypes = [wintypes.DWORD, ctypes.POINTER(GUITHREADINFO)]
+user32.GetGUIThreadInfo.restype = wintypes.BOOL
 
 
 class Anchor:

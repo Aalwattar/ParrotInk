@@ -200,16 +200,23 @@ async def main_gui(cli_args):
         logger.info("Pausing hooks for hotkey recording...")
         # 1. Stop dictation immediately
         asyncio.run_coroutine_threadsafe(coordinator.stop_listening(), coordinator.loop)
-        # 2. Stop the global pynput listener
+        # 2. Stop the native Windows listener
         coordinator.input_monitor.stop()
 
     def on_hotkey_change(new_hotkey):
         def apply():
             logger.info(f"Applying new hotkey: {new_hotkey}")
             config.update_and_save({"hotkeys": {"hotkey": new_hotkey}})
-            # Update and Restart the listener
+            # The recorder completion callback restarts on success or cancellation.
             coordinator.input_monitor.set_hotkey(new_hotkey, config.hotkeys.hold_mode)
-            coordinator.input_monitor.start()
+
+        if coordinator.loop:
+            coordinator.loop.call_soon_threadsafe(apply)
+
+    def on_after_hotkey_change():
+        def apply():
+            if not coordinator.is_shutting_down:
+                coordinator.input_monitor.start()
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
@@ -300,6 +307,7 @@ async def main_gui(cli_args):
         on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,
         on_before_hotkey_change=on_before_hotkey_change,
+        on_after_hotkey_change=on_after_hotkey_change,
         on_toggle_hud=on_toggle_hud,
         on_toggle_click_through=on_toggle_click_through,
         on_toggle_startup=on_toggle_startup,

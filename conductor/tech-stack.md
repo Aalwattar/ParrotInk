@@ -19,8 +19,7 @@
 - **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.
 - **platformdirs:** Resolves platform-specific user directories for log files and configuration.
 - **keyring:** Accesses the system's keyring service (Windows Credential Manager) for secure secret storage.
-- **keyboard:** The primary engine for global hotkey suppression and 'any-key' cancellation, providing low-level, zero-leakage input management.
-- **pynput:** Powering the `HotkeyRecorder` and `MouseMonitor`, used to capture specific mouse and keyboard events during configuration.
+- **Native Win32 input (`ctypes`):** A dedicated `WH_KEYBOARD_LL` thread detects and suppresses hotkeys. The recorder handles native window messages, and the mouse monitor polls Windows state. No `keyboard` or `pynput` library is used.
 - **soxr (python-soxr):** High-quality, stateful audio resampling library used to convert microphone capture rates to provider-specific requirements (e.g., 24kHz for OpenAI).
 - **skia-python:** Powers the high-performance, hardware-accelerated HUD rendering with anti-aliased typography.
 - **tomllib:** (Standard Library) Used for safe parsing of `pyproject.toml` to extract application metadata.
@@ -40,7 +39,7 @@
 
 ## 4. Alternatives
 
-- **pynput:** Can be used as a simpler, higher-level alternative to `pywin32` for managing global hotkeys if `pywin32` proves too complex for the initial implementation.
+- **Input libraries:** The earlier `keyboard` and `pynput` implementations were replaced by native Windows hooks to address stale hooks, stuck modifiers, and shutdown failures. Keep the native implementation.
 
 ## 5. CI/CD & Automation
 - **GitHub Actions:** Provides automated CI/CD pipelines for linting, testing, and building the application.

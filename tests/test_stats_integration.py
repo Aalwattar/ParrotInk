@@ -4,12 +4,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from engine.app_types import AppState
+from engine.config import Config
 from main import AppCoordinator
 
 
 @pytest.fixture
 def mock_config():
-    config = MagicMock()
+    config = Config()
     config.hotkeys.hotkey = "ctrl+space"
     config.hotkeys.hold_mode = False
     config.audio.inactivity_timeout_seconds = 30
@@ -33,6 +34,8 @@ async def test_stats_integration_emits_on_stop(mock_config):
     mock_conn = MagicMock()
     mock_conn.ensure_connected = AsyncMock()
     mock_conn.stop_provider = AsyncMock()
+    mock_conn.provider.is_running = True
+    mock_conn.provider.finish_utterance = AsyncMock()
 
     with (
         patch("main.AudioPipeline", return_value=mock_pipeline),
@@ -40,6 +43,9 @@ async def test_stats_integration_emits_on_stop(mock_config):
         patch("main.InputMonitor"),
         patch("main.MouseMonitor"),
         patch("main.InjectionController"),
+        patch("engine.services.updates.UpdateManager.start"),
+        patch("engine.platform_win.session.SessionMonitor.start"),
+        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
         coordinator = AppCoordinator(mock_config, bridge)
         coordinator.set_state(AppState.LISTENING)
@@ -55,6 +61,8 @@ async def test_stats_integration_emits_on_stop(mock_config):
         assert args["words"] == 10
         assert args["provider"] == "openai"
         assert args["error"] is False
+        mock_conn.provider.finish_utterance.assert_awaited_once()
+        await coordinator.shutdown()
 
 
 @pytest.mark.asyncio
@@ -62,12 +70,17 @@ async def test_stats_word_counting(mock_config):
     """Verify that on_final increments the word count."""
     bridge = MagicMock()
     with (
-        patch("main.AudioPipeline"),
-        patch("main.ConnectionManager"),
+        patch("main.AudioPipeline") as pipeline,
+        patch("main.ConnectionManager") as connection_manager,
         patch("main.InputMonitor"),
         patch("main.MouseMonitor"),
         patch("main.InjectionController"),
+        patch("engine.services.updates.UpdateManager.start"),
+        patch("engine.platform_win.session.SessionMonitor.start"),
+        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
+        pipeline.return_value.stop = AsyncMock()
+        connection_manager.return_value.stop_provider = AsyncMock()
         coordinator = AppCoordinator(mock_config, bridge)
         coordinator.session_word_count = 0
 
@@ -76,3 +89,4 @@ async def test_stats_word_counting(mock_config):
 
         coordinator.on_final("This is a test.")
         assert coordinator.session_word_count == 6  # 2 + 4
+        await coordinator.shutdown()

@@ -45,6 +45,16 @@ class AssemblyAIProvider(BaseProvider):
         self._is_running = False
         self.last_transcript = ""
         self.speaker_manager = speaker_manager if effective_config.enable_diarization else None
+        self.session_id: Optional[str] = None
+        self.expires_at: Optional[int] = None
+        self.session_configuration: dict = {}
+        self._stopping = False
+        self._termination_event = asyncio.Event()
+        self._final_event = asyncio.Event()
+        self._pending_audio = False
+        self._pending_turns: set[int] = set()
+        self._completed_turns: set[int] = set()
+        self._finish_lock = asyncio.Lock()
 
     @property
     def is_running(self) -> bool:
@@ -64,6 +74,14 @@ class AssemblyAIProvider(BaseProvider):
         from engine.security import SecurityManager
 
         self._ready_event.clear()
+        self._failure_event.clear()
+        self._stopping = False
+        self._termination_event.clear()
+        self._completed_turns.clear()
+        self.reset_utterance()
+        self.session_id = None
+        self.expires_at = None
+        self.session_configuration = {}
         is_test = self.effective_config.is_test
         is_trusted = SecurityManager.is_url_trusted(self.url, is_test=is_test)
 
@@ -75,46 +93,92 @@ class AssemblyAIProvider(BaseProvider):
         logger.info(f"Connecting to AssemblyAI at {self.url}...")
         try:
             self.ws = await websockets.connect(
-                self.url, additional_headers=headers if not is_test else None
+                self.url,
+                additional_headers=headers if not is_test else None,
+                proxy=None if is_test else True,
             )
             self._is_running = True
             self._receive_task = asyncio.create_task(self._receive_loop())
             logger.info("Connected to AssemblyAI successfully.")
-            # V3 does not send a SessionBegins handshake message, so we are ready immediately
-            self._ready_event.set()
         except Exception as e:
             logger.error(f"Failed to connect to AssemblyAI: {e}")
             raise
 
     async def _do_stop(self):
         """Close connection and stop tasks."""
-        is_active = self._is_running
-        self._is_running = False
-
-        if self.ws and is_active:
-            try:
-                # Send end of stream message - V3 uses {"type": "Terminate"}
-                terminate_msg = json.dumps({"type": "Terminate"})
-                logger.debug(f"Sending termination message: {terminate_msg}")
-                await self.ws.send(terminate_msg)
-                # Give it a moment to process before hard close
-                await asyncio.sleep(0.2)
-            except Exception as e:
-                logger.debug(f"Error during graceful shutdown: {e}")
-
-        if self._receive_task:
-            self._receive_task.cancel()
-            try:
-                await self._receive_task
-            except asyncio.CancelledError:
-                pass
-
-        if self.ws:
-            try:
-                await self.ws.close()
-            finally:
-                self.ws = None
+        self._stopping = True
+        try:
+            if self.ws and self._is_running:
+                await self.finish_utterance()
+                await self.ws.send(json.dumps({"type": "Terminate"}))
+                # Keep receiving final turns until the server acknowledges termination.
+                try:
+                    await asyncio.wait_for(
+                        self._termination_event.wait(),
+                        timeout=min(1.0, max(0.05, self.stop_timeout * 0.2)),
+                    )
+                except TimeoutError:
+                    logger.debug("AssemblyAI termination acknowledgement timed out.")
+        except Exception as e:
+            logger.debug(f"Error during graceful shutdown: {e}")
+        finally:
+            self._is_running = False
+            self._ready_event.clear()
+            if self._receive_task:
+                self._receive_task.cancel()
+                try:
+                    await self._receive_task
+                except asyncio.CancelledError:
+                    pass
+                self._receive_task = None
+            if self.ws:
+                ws, self.ws = self.ws, None
+                await ws.close()
         logger.info("Disconnected from AssemblyAI.")
+
+    def reset_utterance(self):
+        """Clear recording-local text while retaining session-wide turn deduplication."""
+        self.last_transcript = ""
+        self._voice_active: Optional[bool] = None
+        self._pending_audio = False
+        self._pending_turns.clear()
+        self._final_event.clear()
+
+    async def finish_utterance(self):
+        """Request a final turn without terminating the reusable streaming session."""
+        async with self._finish_lock:
+            if not self._pending_audio and not self._pending_turns and not self.last_transcript:
+                return
+            if not self.ws or not self._is_running:
+                raise ConnectionError("AssemblyAI disconnected before the current phrase finished.")
+            self._final_event.clear()
+            try:
+                await self.ws.send(json.dumps({"type": "ForceEndpoint"}))
+                await asyncio.wait_for(
+                    self._final_event.wait(),
+                    timeout=min(3.0, max(0.05, self.stop_timeout * 0.5)),
+                )
+            except TimeoutError:
+                logger.warning("AssemblyAI final turn timed out.")
+                raise TimeoutError(
+                    "AssemblyAI did not finalize the current phrase in time."
+                ) from None
+            except Exception as e:
+                self._connection_failed(f"Could not finish the current phrase: {e}")
+                raise
+            # Transport failure and Termination also wake waiters. Neither is proof
+            # that the pending phrase received its final transcript.
+            if not self._is_running or self._pending_audio or self._pending_turns:
+                raise ConnectionError("AssemblyAI disconnected before the current phrase finished.")
+
+    def _connection_failed(self, message: str):
+        was_running = self._is_running
+        self._is_running = False
+        self._failure_event.set()
+        self._ready_event.clear()
+        self._final_event.set()
+        if was_running and not self._stopping and self.on_error:
+            self.on_error(TranscriptionError(title="AssemblyAI Connection Lost", message=message))
 
     async def send_audio(self, processed_chunk: Union[bytes, str], capture_time: float):
         """Send audio chunk as raw binary PCM16."""
@@ -123,14 +187,21 @@ class AssemblyAIProvider(BaseProvider):
 
         # In V3, we send the raw bytes directly. processed_chunk is already bytes.
         try:
+            if processed_chunk and getattr(self, "_voice_active", None) is not False:
+                self._pending_audio = True
             await self.ws.send(processed_chunk)
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed while sending audio.")
-            self._is_running = False
+            self._connection_failed("The streaming connection closed while sending audio.")
         except Exception as e:
             if self._is_running:
                 logger.error(f"Error sending audio: {e}")
-                self._is_running = False
+                self._connection_failed(str(e))
+
+    async def notify_voice_activity(self, active: bool, capture_time: float):
+        # Trailing silence after an already-final turn needs no ForceEndpoint.
+        # Server SpeechStarted/Turn events still track speech missed by local VAD.
+        self._voice_active = active
 
     async def update_agent_context(self, context: str):
         """Update the agent context mid-stream using UpdateConfiguration."""
@@ -146,6 +217,7 @@ class AssemblyAIProvider(BaseProvider):
 
     async def _receive_loop(self):
         """Listen for transcription events."""
+        failure = "The streaming connection closed unexpectedly. Please reconnect."
         try:
             async for message in self.ws:
                 event = json.loads(message)
@@ -155,21 +227,68 @@ class AssemblyAIProvider(BaseProvider):
         except websockets.exceptions.ConnectionClosed:
             logger.info("AssemblyAI connection closed.")
         except asyncio.CancelledError:
-            pass
+            return
         except Exception as e:
             if self._is_running:
                 logger.error(f"Error in AssemblyAI receive loop: {e}")
-                self._is_running = False
+                failure = str(e)
+        finally:
+            if self._is_running:
+                self._connection_failed(failure)
 
     async def _handle_event(self, event: dict):
         """Process incoming events."""
+        if self._failure_event.is_set():
+            return
         msg_type = event.get("type") or event.get("message_type")
-        text = event.get("transcript") or event.get("text")
+        text = event.get("transcript", event.get("text"))
 
-        if text is not None:
+        if msg_type in {"Begin", "SessionBegins"}:
+            self.session_id = event.get("id") or event.get("session_id")
+            self.expires_at = event.get("expires_at")
+            self.session_configuration = event.get("configuration", {})
+            logger.info(f"AssemblyAI session started: {self.session_id}")
+            self._ready_event.set()
+            if self.on_status:
+                self.on_status(STATUS_READY)
+            return
+        if msg_type == "Termination":
+            self._termination_event.set()
+            self._final_event.set()
+            if not self._stopping:
+                self._connection_failed("The streaming session ended. Please reconnect.")
+            return
+        if msg_type == "SpeechStarted":
+            self._pending_audio = True
+            return
+
+        if msg_type == "Turn" and text is not None:
             words = event.get("words", [])
             is_final = bool(event.get("end_of_turn"))
             turn_speaker = event.get("speaker_label")
+            turn_order = event.get("turn_order")
+            if turn_order is not None and turn_order in self._completed_turns:
+                return
+            if turn_order is not None:
+                self._pending_turns.add(turn_order)
+            # Legacy streaming models send an unformatted final and then its formatted
+            # revision. Emit only the formatted revision when formatting was requested.
+            awaiting_format = (
+                is_final
+                and self.effective_config.format_text
+                and event.get("turn_is_formatted") is False
+            )
+            if awaiting_format:
+                self.last_transcript = text
+                return
+            if is_final:
+                if turn_order is not None:
+                    self._completed_turns.add(turn_order)
+                    self._pending_turns.discard(turn_order)
+                self._pending_audio = False
+                self.last_transcript = ""
+                if not self._pending_turns:
+                    self._final_event.set()
 
             if self.speaker_manager:
                 if is_final:
@@ -208,16 +327,16 @@ class AssemblyAIProvider(BaseProvider):
 
             # Senior Robustness: Only report errors if we are still active.
             # Errors received during intentional shutdown are logged but not escalated.
-            if not self._is_running:
+            if not self._is_running or self._stopping:
                 logger.debug(f"Ignoring AssemblyAI error during shutdown: {error_msg}")
                 return
 
-            logger.error(f"AssemblyAI API Error: {error_msg}")
+            logger.error("AssemblyAI rejected the streaming session")
 
             if self.on_error:
                 # Map common AssemblyAI errors to user-friendly messages
                 title = "AssemblyAI Error"
-                message = error_msg
+                message = "Check your AssemblyAI credentials, model, and connection settings."
 
                 if "Insufficient funds" in error_msg:
                     title = "Out of Credits"
@@ -230,9 +349,7 @@ class AssemblyAIProvider(BaseProvider):
                     message = "Too many requests. Please wait a moment."
 
                 self.on_error(TranscriptionError(title=title, message=message))
-
-        elif msg_type == "SessionBegins":
-            logger.info(f"AssemblyAI Session Started: {event.get('session_id')}")
-            self._ready_event.set()
-            if self.on_status:
-                self.on_status(STATUS_READY)
+            self._is_running = False
+            self._failure_event.set()
+            self._ready_event.clear()
+            self._final_event.set()

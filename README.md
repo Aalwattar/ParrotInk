@@ -147,6 +147,12 @@ ParrotInk monitors a global hotkey via native Win32 hooks. You can switch betwee
 2. Select **Settings > Change Hotkey...**.
 3. Press the new key combination (e.g., `Alt + S` or `Ctrl + Space`). ParrotInk saves it instantly.
 
+Use one main key, with optional Ctrl, Alt, Shift, or Windows modifiers. Function keys,
+navigation keys, and punctuation keys are supported. Press Escape or click the recorder
+to cancel and keep your current shortcut active. Holding a toggle shortcut triggers it
+once; release it before pressing again. Forwarded keyboard input, including Mouse
+Without Borders, is accepted on the machine running ParrotInk.
+
 <details>
 <summary><b>⚙️ Deep Configuration (Advanced Users)</b></summary>
 

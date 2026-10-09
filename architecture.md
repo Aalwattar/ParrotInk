@@ -13,8 +13,8 @@ ParrotInk follows a **hybrid asynchronous/threaded model** designed to handle re
 ```mermaid
 graph TD
     User[User Hardware] -->|Audio| SD[AudioStreamer (Thread)]
-    User -->|Keys| Hooks[keyboard (Thread)]
-    User -->|Mouse| MHooks[pynput (Thread)]
+    User -->|Keys| Hooks[Native Win32 hook thread]
+    User -->|Mouse| MHooks[Win32 state polling thread]
 
     SD -->|Queue| Pipe[AudioPipeline (Async)]
     Hooks -->|ThreadSafe Call| Coord[AppCoordinator (Asyncio)]
@@ -44,9 +44,10 @@ graph TD
     *   **`pipeline.py`**: Orchestrates the flow from streamer through adapter to provider.
     *   **`adapter.py`**: Handles resampling (via `soxr`) and format conversion.
 *   **`interaction.py`**
-    *   **`InputMonitor`**: Wraps the `keyboard` library. Provides zero-leakage suppression and multi-key debouncing.
+    *   **`InputMonitor`**: Uses a native `WH_KEYBOARD_LL` hook through `ctypes`. Suppresses dictation shortcuts, ignores tagged ParrotInk input, and accepts input forwarded by keyboard sharing tools. A tagged key-up probe verifies hook delivery so the watchdog can recover silently removed hooks.
+*   **`hotkeys.py`**: Shares stable Windows key names and validation between shortcut recording and detection.
 *   **`mouse.py`**
-    *   **`MouseMonitor`**: Wraps `pynput.mouse`. Listens for clicks to trigger click-away cancellation.
+    *   **`MouseMonitor`**: Polls native Windows button and cursor state for click-away cancellation.
 *   **`injector.py`** & **`injection.py`**
     *   **`SmartInjector`**: Calculates text deltas and performs Win32 `SendInput` calls.
 *   **`anchor.py`**
@@ -73,7 +74,7 @@ graph TD
 ### A. The "Life" of a Transcription Session
 
 1.  **Trigger (Hotkey Press)**
-    *   `keyboard` hook thread detects combo.
+    *   The native Windows hook thread detects the combination and queues one event per key press.
     *   Calls `coordinator.start_listening()` via `asyncio.run_coroutine_threadsafe`.
 
 2.  **Initialization**
