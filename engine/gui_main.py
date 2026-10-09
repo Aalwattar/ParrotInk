@@ -14,6 +14,7 @@ from engine.constants import (
     STATUS_RELOADING,
 )
 from engine.logging import configure_logging, get_logger
+from engine.platform_win.paths import get_config_path
 from engine.security import SecurityManager
 from engine.ui_bridge import UIBridge
 
@@ -23,9 +24,23 @@ from main import AppCoordinator
 logger = get_logger("GUI")
 
 
-async def main_gui(cli_args):
+def save_cloudflare_settings(config, settings: dict):
+    """Validate public settings and persist the token only in Credential Manager."""
+    core_type = type(config.providers.cloudflare.core)
+    core = core_type.model_validate(
+        {**config.providers.cloudflare.core.model_dump(), **settings["core"]}
+    )
+    if settings.get("api_token"):
+        SecurityManager.set_key("cloudflare_api_token", settings["api_token"])
+    config.update_and_save(
+        {"providers": {"cloudflare": {"core": core.model_dump()}}}, blocking=True
+    )
+
+
+async def main_gui(cli_args, config=None):
     try:
-        config = load_config()
+        if config is None:
+            config = load_config()
     except ConfigError as e:
         print(f"\n[CONFIGURATION ERROR] {e}", file=sys.stderr)
         return
@@ -36,6 +51,14 @@ async def main_gui(cli_args):
         config.logging.file_enabled = True
 
     configure_logging(config, verbose_count=cli_args.verbose, quiet=cli_args.quiet)
+    logger.warning(
+        "Configuration loaded from %s; Cloudflare account ID present=%s, "
+        "gateway ID present=%s, token present=%s",
+        get_config_path(),
+        bool(config.providers.cloudflare.core.account_id),
+        bool(config.providers.cloudflare.core.gateway_id),
+        bool(config.get_cloudflare_key()),
+    )
 
     # Senior Architecture: Set AUMID to ensure Windows identifies us as 'ParrotInk'
     if sys.platform == "win32":
@@ -120,6 +143,44 @@ async def main_gui(cli_args):
 
         if coordinator.loop:
             coordinator.loop.call_soon_threadsafe(apply)
+
+    def on_model_change(provider_name, model_id):
+        from engine.transcription.catalog import model_config_update
+
+        def apply():
+            config.update_and_save(model_config_update(provider_name, model_id))
+            ui_bridge.update_settings({})
+            ui_bridge.refresh_hud()
+
+        coordinator.loop.call_soon_threadsafe(apply)
+
+    def on_cloudflare_settings():
+        def show():
+            from engine.cloudflare_ui import ask_cloudflare_settings
+
+            settings = ask_cloudflare_settings(app.ui_root, config)
+            if settings is None:
+                return
+
+            def apply():
+                try:
+                    save_cloudflare_settings(config, settings)
+                    coordinator._ensure_valid_provider()
+                    ui_bridge.update_availability(coordinator.get_provider_availability())
+                    ui_bridge.update_provider(config.transcription.provider)
+                    ui_bridge.update_settings({})
+                    ui_bridge.notify("Cloudflare Gateway settings saved.", "Gateway Settings")
+                except Exception:
+                    logger.error("Could not save Cloudflare Gateway settings")
+                    ui_bridge.notify(
+                        "Could not save Gateway settings or the API token. Try again.",
+                        "Gateway Settings",
+                    )
+
+            coordinator.loop.call_soon_threadsafe(apply)
+
+        if app.ui_root:
+            app.ui_root.after(0, show)
 
     def on_toggle_sounds(enabled):
         def apply():
@@ -303,6 +364,8 @@ async def main_gui(cli_args):
         ui_bridge,
         on_quit_callback=on_quit,
         on_provider_change=on_provider_change,
+        on_model_change=on_model_change,
+        on_cloudflare_settings=on_cloudflare_settings,
         on_set_key=on_set_key,
         on_toggle_sounds=on_toggle_sounds,
         on_hotkey_change=on_hotkey_change,

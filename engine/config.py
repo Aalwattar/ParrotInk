@@ -23,8 +23,8 @@ logger = get_logger("Config")
 # --- Profile Mappings ---
 
 CORE_MODEL_INVARIANTS = {
-    "openai": "gpt-4o-mini-transcribe",
-    "assemblyai": "universal-streaming-english",
+    "openai": "gpt-live-transcribe",
+    "assemblyai": "universal-3-6-pro",
 }
 
 LATENCY_PROFILES = {
@@ -114,7 +114,7 @@ class AudioConfig(BaseModel):
 
 class TranscriptionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    provider: Literal["openai", "assemblyai"] = Field(
+    provider: Literal["openai", "assemblyai", "cloudflare"] = Field(
         default="openai", validation_alias=AliasChoices("provider", "active_provider")
     )
     latency_profile: Literal["fast", "balanced", "accurate"] = "balanced"
@@ -127,6 +127,7 @@ class AppTestConfig(BaseModel):
     enabled: bool = False
     openai_mock_url: str = "ws://localhost:8081"
     assemblyai_mock_url: str = "ws://localhost:8081"
+    cloudflare_mock_url: str = "ws://localhost:8081"
 
 
 class LoggingConfig(BaseModel):
@@ -141,16 +142,18 @@ class LoggingConfig(BaseModel):
 class OpenAICoreConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     realtime_ws_url_base: str = "wss://api.openai.com/v1/realtime"
-    transcription_model: str = "gpt-4o-mini-transcribe"
+    transcription_model: str = "gpt-live-transcribe"
     # ISO-639-1 code (e.g., 'en', 'ar'). If empty, model auto-detects.
     language: str = ""
     session_rotation_seconds: int = 3300
+    languages: List[str] = Field(default_factory=list)
 
     @field_validator("transcription_model")
     @classmethod
     def validate_model(cls, v: str) -> str:
-        if v.startswith("gpt-realtime"):
-            raise ValueError("Conversational models not supported. Use 'gpt-4o-mini-transcribe'.")
+        from .transcription.catalog import get_model
+
+        get_model("openai", v)
         return v
 
     @field_validator("language")
@@ -174,6 +177,15 @@ class OpenAIAdvancedConfig(BaseModel):
     vad_threshold: float = 0.6
     prefix_padding_ms: int = 300
     silence_duration_ms: int = 500
+    keywords: List[str] = Field(default_factory=list)
+    delay: Literal["minimal", "low", "medium", "high", "xhigh"] = "medium"
+
+    @field_validator("keywords")
+    @classmethod
+    def validate_keywords(cls, values: List[str]) -> List[str]:
+        if any(any(char in value for char in "<>\r\n") for value in values):
+            raise ValueError("Keywords must be single lines without '<' or '>'")
+        return [value.strip() for value in values if value.strip()]
 
 
 class OpenAIConfig(BaseModel):
@@ -193,12 +205,19 @@ class AssemblyAICoreConfig(BaseModel):
     # ISO code (e.g., 'en', 'es'). If empty, enables auto-detection on V3 models.
     language_code: str = ""
     vad_threshold: float = 0.4
-    speech_model: str = "universal-3-5-pro"
+    speech_model: str = "universal-3-6-pro"
     prompt: str = ""
     inactivity_timeout_seconds: int = 0
     mode: Literal["balanced", "min_latency", "max_accuracy"] = "balanced"
     agent_context: str = ""
-    voice_focus: Optional[Literal["near_field", "far_field"]] = None
+    voice_focus: Optional[Literal["near-field", "far-field"]] = None
+    language_codes: List[str] = Field(default_factory=list)
+
+    @field_validator("voice_focus", mode="before")
+    @classmethod
+    def normalize_voice_focus(cls, value):
+        # Accept older saved settings, but send the current API spelling.
+        return value.replace("_", "-") if isinstance(value, str) else value
 
     @field_validator("inactivity_timeout_seconds")
     @classmethod
@@ -253,10 +272,44 @@ class AssemblyAIConfig(BaseModel):
     )
 
 
+class CloudflareCoreConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    account_id: str = ""
+    gateway_id: str = "default"
+    model: str = "@cf/deepgram/nova-3"
+    language: str = ""
+    endpointing_ms: int = Field(default=500, ge=100, le=10000)
+    use_byok: bool = True
+
+    @field_validator("account_id", "gateway_id")
+    @classmethod
+    def validate_identifiers(cls, value: str) -> str:
+        import re
+
+        value = value.strip()
+        if value and not re.fullmatch(r"[A-Za-z0-9_-]+", value):
+            raise ValueError("Use the account or gateway ID, without a URL or path")
+        return value
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, value: str) -> str:
+        from .transcription.catalog import get_model
+
+        get_model("cloudflare", value)
+        return value
+
+
+class CloudflareConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    core: CloudflareCoreConfig = Field(default_factory=CloudflareCoreConfig)
+
+
 class ProvidersConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
     assemblyai: AssemblyAIConfig = Field(default_factory=AssemblyAIConfig)
+    cloudflare: CloudflareConfig = Field(default_factory=CloudflareConfig)
 
 
 class UIConfig(BaseModel):
@@ -337,6 +390,9 @@ class Config(BaseModel):
 
     def get_assemblyai_key(self) -> Optional[str]:
         return SecurityManager.get_key("assemblyai_api_key")
+
+    def get_cloudflare_key(self) -> Optional[str]:
+        return SecurityManager.get_key("cloudflare_api_token")
 
     def reload(self, path: Optional[Path | str] = None):
         """

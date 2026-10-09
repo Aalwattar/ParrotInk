@@ -116,6 +116,9 @@
 # Timeout for the initial server handshake in seconds.
 # connection_timeout_seconds = 20.0
 
+# Timeout to finish pending transcription and close the provider in seconds.
+# provider_stop_timeout_seconds = 7.0
+
 # Timeout for application cleanup during shutdown in seconds.
 # shutdown_timeout_seconds = 10.0
 
@@ -130,7 +133,7 @@
 
 [transcription]
 # The active transcription service provider.
-# Options: "openai", "assemblyai"
+# Options: "openai", "assemblyai", "cloudflare"
 # provider = "openai"
 
 # Performance profile.
@@ -155,100 +158,143 @@
 # --- OpenAI Configuration ---
 
 [providers.openai.core]
-# Models allowed: "gpt-4o-mini-transcribe", "gpt-4o-transcribe"
-# transcription_model = "gpt-4o-mini-transcribe"
+# Recommended live streaming model. "gpt-transcribe" begins after each phrase is
+# committed. Legacy "gpt-4o-mini-transcribe" and "gpt-4o-transcribe" remain selectable
+# until the provider retires them; new configurations use the modern live model.
+# transcription_model = "gpt-live-transcribe"
 
-# BCP-47 language code (e.g., "en", "es", "fr", "ja").
-# language = "en"
+# Expected language codes for modern models; empty means automatic detection.
+# Example: languages = ["en", "ar"]
+# languages = []
 
-# How long to keep a single OpenAI session open before refreshing (in seconds).
+# Older single-language setting remains supported. Modern models use it only when
+# languages is empty; legacy models use this singular setting.
+# language = ""
+
+# How long to keep one OpenAI session open before refreshing (in seconds).
 # session_rotation_seconds = 3300
 
 [providers.openai.advanced]
-# If true, the manual values below will override the 'latency_profile' settings.
+# Manual noise reduction, silence timing, and delay override the shared profiles.
 # override = false
 
-# Contextual instructions to improve ASR accuracy (jargon, names, etc.).
+# Context to improve recognition of jargon, names, or the conversation topic.
 # prompt = ""
 
-# Noise reduction filter level. Options: "near_field", "far_field", "off".
+# Literal vocabulary hints. Each keyword must be a single line without < or >.
+# Example: keywords = ["ParrotInk", "AssemblyAI"]
+# keywords = []
+
+# Transcript latency/accuracy tradeoff for modern models; used when override=true.
+# Options: "minimal", "low", "medium", "high", "xhigh".
+# Otherwise fast/balanced/accurate map to low/medium/high.
+# delay = "medium"
+
+# Noise reduction. Options: "near_field", "far_field", "off".
 # noise_reduction = "off"
 
-# Server-side VAD sensitivity. Range: 0.0 to 1.0.
-# vad_threshold = 0.6
-
-# Audio padding included BEFORE speech detection (in milliseconds).
-# prefix_padding_ms = 300
-
-# Silence duration required to finalize a segment (in milliseconds).
+# Modern models use local speech detection and explicit audio commits. This setting
+# controls silence before a phrase is committed when override=true.
 # silence_duration_ms = 500
+
+# Legacy OpenAI models only: server-side speech detection.
+# turn_detection_type = "server_vad"
+# vad_threshold = 0.6
+# Leading audio padding; also used as local pre-roll for modern models.
+# prefix_padding_ms = 300
 
 # --- AssemblyAI Configuration ---
 
 [providers.assemblyai.core]
-# Region host for AssemblyAI. Options: "us", "eu".
+# Region host. Options: "us", "eu".
 # region = "us"
 
-# Language code for multilingual streaming. Leaving this blank enables native
-# multi-language code-switching (supporting 18 languages).
+# Modern model language hints. Leave empty for native multilingual recognition.
+# Example: language_codes = ["en", "fr"]
+# language_codes = []
+
+# Older single-language setting remains supported. Modern models use it only when
+# language_codes is empty. Legacy models use this singular setting.
 # language_code = ""
 
-# The transcription model to use.
-# Options:
-# "universal-3-5-pro" (Default) - Flagship model with native code-switching, latency modes, and agent context.
-# "u3-rt-pro" - Latest Universal-3 model with instructional prompting support.
-# "universal-streaming-english" - Legacy English-only model.
-# speech_model = "universal-3-5-pro"
+# Recommended modern streaming model. The tray Model menu also offers
+# "universal-3-5-pro", "u3-rt-pro", and legacy streaming models.
+# speech_model = "universal-3-6-pro"
 
-# Latency vs Accuracy profile (Only supported on universal-3-5-pro and u3-rt-pro).
-# Options: "balanced", "min_latency", "max_accuracy".
+# Modern model latency mode, used when advanced.override=true; otherwise selected
+# by the shared latency profile. Options: "balanced", "min_latency", "max_accuracy".
 # mode = "balanced"
 
-# Natural language instructions to guide the transcription (e.g. "Use medical terms").
-# Note: Mutually exclusive with 'keyterms_prompt'. If both are set, 'prompt' wins.
+# Recognition instructions. Mutually exclusive with keyterms_prompt; prompt wins.
 # prompt = ""
 
-# Spoken greeting or context of the conversation to steer model expectation (max 1500 chars).
+# Conversation context (up to 1500 characters).
 # agent_context = ""
 
-# Acoustic focus to suppress background noise. By default, maps automatically from the
-# global transcription.mic_profile setting. Can be set here explicitly to override.
-# Options: "near_field" (headsets/phones), "far_field" (rooms/kiosks).
-# voice_focus = "near_field"
+# Optional acoustic focus override. Otherwise derived from transcription.mic_profile.
+# Options: "near-field" for headsets/phones, "far-field" for rooms/kiosks.
+# Older underscore spellings are accepted and converted to the current API values.
+# Example: voice_focus = "near-field"
 
-# Server-side VAD sensitivity (For legacy models. Ignored on universal-3-5-pro). Range: 0.0 to 1.0.
+# Server-side voice activity sensitivity. Range: 0.0 to 1.0.
 # vad_threshold = 0.4
 
-# Time in seconds of inactivity before session auto-termination. 0 = disabled.
-# Range: 0 or 5 to 3600.
+# Session inactivity timeout in seconds. 0 disables it; otherwise 5 to 3600.
 # inactivity_timeout_seconds = 0
 
 [providers.assemblyai.advanced]
-# If true, the manual values below will override the 'latency_profile' settings.
-# Note: Turn detection parameters below are ignored (no-ops) for universal-3-5-pro.
+# Manual latency mode and turn silence settings override the shared profile.
 # override = false
 
-# If true, the provider adds punctuation and capitalization to final text.
+# Legacy models: punctuation/capitalization through formatted turns. Modern models
+# produce formatted text directly, so this flag does not request another turn.
 # format_text = false
 
-# If true, identifies multiple speakers in the transcription (e.g. "[S1] Hello").
+# Identify multiple speakers, displayed as [S1], [S2], etc.
 # enable_diarization = false
 
-# List of terms to boost recognition for (max 100 terms, 50 chars each).
+# Recognition vocabulary (at most 100 terms, 50 characters per term).
 # Example: keyterms_prompt = ["ParrotInk", "Gemini"]
 # keyterms_prompt = []
 
-# Confidence threshold for detecting end of sentence (No-op on universal-3-5-pro). Range: 0.0 to 1.0.
+# End-of-turn confidence applies to legacy models.
 # end_of_turn_confidence_threshold = 0.4
 
-# Minimum silence needed to finalize a turn (No-op on universal-3-5-pro) (in milliseconds).
+# Minimum/maximum turn silence in milliseconds. For modern models these are sent
+# only when override=true, using the current min_turn_silence/max_turn_silence API.
 # min_end_of_turn_silence_when_confident_ms = 400
-
-# Maximum silence allowed before a turn is forced to finalize (No-op on universal-3-5-pro) (in milliseconds).
 # max_turn_silence_ms = 1000
 
-# If true, detects spoken language (For legacy multilingual models. No-op on universal-3-5-pro).
-# language_detection = false
+# --- Cloudflare AI Gateway Configuration ---
+# Configure Settings > Cloudflare AI Gateway... in the tray. The API token is saved
+# separately in Windows Credential Manager; never put it in this TOML file.
+
+[providers.cloudflare.core]
+# Cloudflare dashboard account ID (32 hexadecimal characters).
+# account_id = ""
+
+# ID of an existing AI Gateway in that account.
+# gateway_id = "default"
+
+# Supported streaming transcription models through Gateway:
+# "@cf/deepgram/nova-3" (default), "@cf/deepgram/flux",
+# "openai/gpt-live-transcribe", "openai/gpt-transcribe".
+# "xai/grok-stt" uses the unified Cloudflare streaming endpoint, Workers AI Read
+# token permission, and Gateway credits. OpenAI BYOK does not apply to Grok.
+# Models with different wire protocols require matching adapters in the catalog.
+# model = "@cf/deepgram/nova-3"
+
+# Optional language hint for Nova-3. OpenAI Gateway models share the OpenAI language,
+# keywords, delay, and turn settings above. Flux currently uses its model defaults.
+# language = ""
+
+# Nova-3 silence before endpointing, in milliseconds (100 to 10000).
+# endpointing_ms = 500
+
+# OpenAI Gateway models: true uses your OpenAI key stored in Cloudflare Gateway BYOK.
+# false sends your locally saved OpenAI key through Gateway. Both need the Cloudflare
+# API token. Hosted Nova-3/Flux use your Cloudflare account billing and API token.
+# use_byok = true
 
 [logging]
 # Enable logging to a local file in %LOCALAPPDATA%\ParrotInk\Logs.
@@ -269,10 +315,11 @@
 # file_backup_count = 5
 
 # Custom path for the log file. If empty, uses the default AppData location.
-# file_path = ""
+# Example: file_path = "C:/Logs/ParrotInk.log"
 
 [test]
 # FOR DEVELOPERS ONLY: Use local mock servers instead of real API endpoints.
 # enabled = false
 # openai_mock_url = "ws://localhost:8081"
 # assemblyai_mock_url = "ws://localhost:8081"
+# cloudflare_mock_url = "ws://localhost:8081"

@@ -20,7 +20,7 @@ class AudioHardwareError(Exception):
     """Raised when the audio device is busy, unavailable, or rejects the requested format."""
 
 
-ProviderType = Literal["openai", "assemblyai"]
+ProviderType = Literal["openai", "assemblyai", "cloudflare"]
 
 
 @dataclass(frozen=True)
@@ -36,6 +36,11 @@ class EffectiveOpenAIConfig:
     language: str
     stop_timeout: float
     is_test: bool
+    languages: tuple[str, ...] = ()
+    keywords: tuple[str, ...] = ()
+    delay: str = "medium"
+    headers: Optional[dict[str, str]] = None
+    provider_id: str = "openai"
 
 
 @dataclass(frozen=True)
@@ -69,6 +74,19 @@ class TranscriptionError:
 
 
 @dataclass(frozen=True)
+class EffectiveCloudflareConfig:
+    url: str
+    model: str
+    protocol: str
+    sample_rate: int
+    language: str
+    endpointing_ms: int
+    stop_timeout: float
+    is_test: bool
+    gateway_id: str = "default"
+
+
+@dataclass(frozen=True)
 class EffectiveConfig:
     provider_type: ProviderType
     capture_sample_rate: int
@@ -78,3 +96,4 @@ class EffectiveConfig:
     partial_results: bool
     openai: EffectiveOpenAIConfig
     assemblyai: EffectiveAssemblyAIConfig
+    cloudflare: Optional[EffectiveCloudflareConfig] = None

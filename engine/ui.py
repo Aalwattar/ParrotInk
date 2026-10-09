@@ -70,6 +70,8 @@ class TrayApp:
         initial_provider: ProviderType = "openai",
         initial_sounds_enabled: bool = True,
         availability: Optional[dict[str, bool]] = None,
+        on_cloudflare_settings: Callable[[], None] | None = None,
+        on_model_change: Callable[[str, str], None] | None = None,
         on_after_hotkey_change: Callable[[], None] | None = None,
     ):
         self.config = config
@@ -94,7 +96,13 @@ class TrayApp:
         self.on_reload_config = on_reload_config
         self.on_check_updates = on_check_updates
         self.on_install_update = on_install_update
-        self.availability = availability or {"openai": True, "assemblyai": True}
+        self.on_cloudflare_settings = on_cloudflare_settings
+        self.on_model_change = on_model_change
+        self.availability = availability or {
+            "openai": True,
+            "assemblyai": True,
+            "cloudflare": False,
+        }
 
         # Update info
         self.latest_version: Optional[str] = None
@@ -223,12 +231,20 @@ class TrayApp:
                 _master_root.withdraw()
 
             self.ui_root = _master_root
+            self.ui_root.report_callback_exception = self._report_ui_error
             self._ui_ready.set()
 
             # Enter the hidden Master mainloop
             self.ui_root.mainloop()
         except Exception as e:
             logger.error(f"FATAL: UI Master Loop crashed: {e}", exc_info=True)
+
+    def _report_ui_error(self, error_type, error_value, traceback):
+        logger.error(
+            "A settings window failed to open or respond",
+            exc_info=(error_type, error_value, traceback),
+        )
+        self.notify("Could not open settings. See the application log.", "Settings Error")
 
     def _get_icon_asset(self, state: AppState) -> Optional[Image.Image]:
         """
@@ -298,6 +314,14 @@ class TrayApp:
         self.current_provider = provider
         if self.on_provider_change:
             self.on_provider_change(provider)
+
+    def _on_model_selection(self, icon: pystray.Icon, provider: str, model: str) -> None:
+        if self.on_model_change:
+            self.on_model_change(provider, model)
+
+    def _on_cloudflare_settings_clicked(self, *args) -> None:
+        if self.on_cloudflare_settings:
+            self.on_cloudflare_settings()
 
     def _on_toggle_sounds_clicked(self, icon: pystray.Icon, item: pystray.MenuItem) -> None:
         self.sounds_enabled = not self.sounds_enabled
@@ -539,10 +563,12 @@ class TrayApp:
                 if self._ensure_indicator():
                     self.indicator.update_status_icon(data)
             elif msg_type == UIEvent.UPDATE_PROVIDER:
+                self.current_provider = data
                 if self._ensure_indicator():
                     self.indicator.update_provider(data)
                 # Refresh tooltip with new provider
                 self.set_state(self.state)
+                self._refresh_menu()
             elif msg_type == UIEvent.UPDATE_SETTINGS:
                 if self._ensure_indicator():
                     self.indicator.update_settings(data)

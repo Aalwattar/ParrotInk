@@ -110,7 +110,7 @@ async def test_provider_allows_untrusted_url_in_test_mode(mocker):
 
     assert "Mock connected" in str(excinfo.value)
     # Verify connect was called WITHOUT headers
-    mock_connect.assert_called_once_with("ws://untrusted.com", additional_headers=None)
+    mock_connect.assert_called_once_with("ws://untrusted.com", additional_headers=None, proxy=None)
 
 
 def test_log_pii_redaction():

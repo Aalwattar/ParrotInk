@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import time
 import wave
 from pathlib import Path
 from typing import Optional
 
+from engine.app_types import TranscriptionError
 from engine.audio.adapter import AudioAdapter
 from engine.audio.replay import WavReplayer
 from engine.config import load_config
@@ -83,8 +85,18 @@ class EvalCoordinator:
         try:
             # Force the selected provider in config for the factory
             self.config.transcription.provider = self.provider_name
+            if getattr(self.cli_args, "model", None):
+                from engine.transcription.catalog import model_config_update
+
+                update = model_config_update(self.provider_name, self.cli_args.model)
+                provider_config = update["providers"][self.provider_name]["core"]
+                for field, value in provider_config.items():
+                    setattr(getattr(self.config.providers, self.provider_name).core, field, value)
             provider = TranscriptionFactory.create(
-                self.config, on_partial=self.on_partial, on_final=self.on_final
+                self.config,
+                on_partial=self.on_partial,
+                on_final=self.on_final,
+                on_error=self.on_error,
             )
             adapter = AudioAdapter(
                 capture_rate_hz=wav_sample_rate,
@@ -94,64 +106,55 @@ class EvalCoordinator:
             self._fail("config_error", str(e))
             return
 
-        try:
-            await provider.start()
-        except Exception as e:
-            self._fail("provider_auth", str(e))
-            return
-
-        self.start_time = time.time()
-        logger.info("Starting audio replay...")
-
-        # Run replayer and provider in parallel
+        started = False
         try:
             async with asyncio.timeout(self.cli_args.timeout_seconds):
-                # Task 1: Replay audio
-                async def stream_audio():
-                    try:
-                        async for chunk, _ in replayer.async_generator():
-                            processed = adapter.process(chunk)
-                            await provider.send_audio(processed, time.time())
-                        logger.info("Audio replay finished.")
-                    except Exception as e:
-                        logger.error(f"Replayer error: {e}")
-                        self._fail("replayer_error", str(e))
-
-                audio_task = asyncio.create_task(stream_audio())
-                finish_task = asyncio.create_task(self.finished_event.wait())
-
-                # Wait for replayer to finish OR a non-empty final result
-                # We use a wait with a small grace period after the replayer finishes
-                # to allow the provider to send the final transcript.
-                done, pending = await asyncio.wait(
-                    [audio_task, finish_task],
-                    return_when=asyncio.FIRST_COMPLETED,
+                await provider.start()
+                await self._call_hook(provider, "wait_for_ready")
+                started = True
+                self.start_time = time.time()
+                logger.info("Starting audio replay...")
+                try:
+                    async for chunk, capture_time in replayer.async_generator():
+                        if self.error:
+                            break
+                        processed = adapter.process(chunk)
+                        await self._call_hook(
+                            provider,
+                            "notify_voice_activity",
+                            bool(adapter.voice_active),
+                            capture_time,
+                        )
+                        await provider.send_audio(processed, capture_time)
+                    logger.info("Audio replay finished.")
+                except Exception as e:
+                    self._fail("replayer_error", str(e))
+                    return
+                if self.error:
+                    return
+                # Provider finalization drains every committed turn. An early final
+                # measures latency; it must never truncate the rest of the recording.
+                has_finish_hook = await asyncio.wait_for(
+                    self._call_hook(provider, "finish_utterance"), timeout=5.0
                 )
-
-                if audio_task in done:
-                    # Replayer finished. Wait up to 5s for a final transcript.
+                if not has_finish_hook:
                     try:
-                        async with asyncio.timeout(5.0):
-                            await self.finished_event.wait()
-                    except asyncio.TimeoutError:
-                        logger.warning("No final transcript received after replayer finished.")
-                        self.finished_event.set()
-                else:
-                    # Got a final transcript before the replayer finished (unlikely but possible)
-                    audio_task.cancel()
-
-                # Cleanup finish_task
-                if not finish_task.done():
-                    finish_task.cancel()
+                        await asyncio.wait_for(self.finished_event.wait(), timeout=5.0)
+                    except TimeoutError:
+                        logger.warning("No final transcript received after audio replay.")
         except asyncio.TimeoutError:
             self._fail("timeout", f"Evaluation timed out after {self.cli_args.timeout_seconds}s")
             return
         except Exception as e:
-            self._fail("ws_error", str(e))
+            self._fail("ws_error" if started else "provider_auth", str(e))
             return
         finally:
-            await provider.stop()
-            adapter.close()
+            try:
+                await provider.stop()
+            except Exception as e:
+                self._fail("ws_error", f"Could not stop the provider: {e}")
+            finally:
+                adapter.close()
 
         # Success Output
         if not self.error:
@@ -169,9 +172,25 @@ class EvalCoordinator:
             print(json.dumps(result))
 
     def _fail(self, code: str, message: str):
+        if self.error:
+            return
         self.error = {"status": "error", "error_code": code, "message": message}
         print(json.dumps(self.error))
         self.finished_event.set()
+
+    def on_error(self, error: TranscriptionError):
+        self._fail("ws_error", f"{error.title}: {error.message}")
+
+    @staticmethod
+    async def _call_hook(provider, name: str, *args) -> bool:
+        """Allow older evaluation doubles that lack the newer lifecycle hooks."""
+        hook = getattr(provider, name, None)
+        if not callable(hook):
+            return False
+        result = hook(*args)
+        if inspect.isawaitable(result):
+            await result
+        return True
 
 
 async def main_eval(cli_args):

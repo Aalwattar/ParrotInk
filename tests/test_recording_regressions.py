@@ -3,11 +3,58 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from engine.app_types import AppState
+from engine.app_types import AppState, EffectiveCloudflareConfig
 from engine.config import Config
 from engine.config_resolver import resolve_effective_config
+from engine.injection import InjectionController
 from engine.mouse import MouseMonitor
 from engine.transcription.assemblyai_provider import AssemblyAIProvider
+from engine.transcription.cloudflare_provider import CloudflareProvider
+
+
+@pytest.mark.asyncio
+async def test_completed_cloudflare_recording_does_not_show_finalization_failure(coordinator):
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.pipeline.stop = AsyncMock()
+    coordinator.injection_controller = InjectionController()
+    coordinator.injection_controller.set_loop(coordinator._loop)
+    coordinator.state = AppState.LISTENING
+    cfg = EffectiveCloudflareConfig(
+        url="ws://localhost",
+        model="@cf/deepgram/nova-3",
+        protocol="deepgram_nova",
+        sample_rate=16000,
+        language="",
+        endpointing_ms=500,
+        stop_timeout=0.2,
+        is_test=True,
+    )
+    provider = CloudflareProvider("", coordinator.on_partial, coordinator.on_final, cfg)
+    provider.ws = AsyncMock()
+    provider._is_running = True
+    provider._has_audio = True
+
+    async def acknowledge(message):
+        await provider._handle_event(
+            {
+                "type": "Results",
+                "is_final": True,
+                "from_finalize": True,
+                "channel": {"alternatives": [{"transcript": "test phrase"}]},
+                "start": 0,
+                "duration": 1,
+                "channel_index": [0, 1],
+            }
+        )
+
+    provider.ws.send.side_effect = acknowledge
+    coordinator.connection_manager.provider = provider
+    await coordinator.stop_listening()
+    assert coordinator.state == AppState.IDLE
+    assert not any(
+        call.args == ("Final transcription failed",)
+        for call in coordinator.ui_bridge.update_status_message.call_args_list
+    )
 
 
 def test_short_click_between_samples_is_not_lost(mocker):

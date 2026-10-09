@@ -5,7 +5,7 @@ import pytest
 
 from engine.config import Config
 from engine.connection import ConnectionManager
-from tests.test_connection_lifecycle import connect_and_ready
+from tests.test_connection_lifecycle import ReadyStreamingSocket, connect_and_ready
 
 
 @pytest.mark.asyncio
@@ -28,8 +28,7 @@ async def test_immediate_rotation_after_stop():
     )
 
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
+        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
 
         # 1. Connect
         await connect_and_ready(cm, is_listening=True)
@@ -47,11 +46,16 @@ async def test_immediate_rotation_after_stop():
         # 4. Stop listening should trigger immediate rotation
         cm.start_idle_timer()
 
-        # Give it a moment to run the async task and trigger its ready event
-        await asyncio.sleep(0.1)
-        if cm.provider and cm.provider != provider1:
-            cm.provider._ready_event.set()
-        await asyncio.sleep(0.5)
+        async def wait_for_rotation():
+            while (
+                cm.provider is provider1
+                or cm.provider is None
+                or not cm.provider.is_running
+                or cm._rotation_pending
+            ):
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_rotation(), timeout=2.0)
 
         # Verify provider was rotated
         assert cm.provider is not provider1

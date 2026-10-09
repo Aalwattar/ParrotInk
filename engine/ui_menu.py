@@ -5,6 +5,12 @@ import pystray
 
 from engine.app_types import AppState
 from engine.constants import URL_HOMEPAGE, URL_ISSUES
+from engine.transcription.catalog import (
+    PROVIDER_LABELS,
+    get_model,
+    get_selected_model,
+    models_for_provider,
+)
 from engine.ui_utils import get_app_version
 
 if TYPE_CHECKING:
@@ -13,11 +19,69 @@ if TYPE_CHECKING:
 
 def get_active_model_name(app: "TrayApp") -> str:
     """Helper to get the name of the active transcription model."""
-    if app.current_provider == "openai":
-        return app.config.providers.openai.core.transcription_model
-    if app.current_provider == "assemblyai":
-        return app.config.providers.assemblyai.core.speech_model
-    return "Unknown"
+    return get_selected_model(app.config, app.current_provider)
+
+
+def _uses_modern_assemblyai(app: "TrayApp") -> bool:
+    return (
+        app.current_provider == "assemblyai"
+        and get_model("assemblyai", get_active_model_name(app)).modern
+    )
+
+
+def _supports_mic_profile(app: "TrayApp") -> bool:
+    return (
+        app.current_provider == "openai"
+        or _uses_modern_assemblyai(app)
+        or (
+            app.current_provider == "cloudflare"
+            and get_active_model_name(app).startswith("openai/")
+        )
+    )
+
+
+def _provider_menu(app: "TrayApp") -> pystray.Menu:
+    def select(provider):
+        return lambda icon, item: app._on_provider_selection(icon, provider)
+
+    def checked(provider):
+        return lambda item: app.current_provider == provider
+
+    return pystray.Menu(
+        *(
+            pystray.MenuItem(
+                label,
+                select(provider),
+                checked=checked(provider),
+                radio=True,
+                enabled=lambda item: app.state in (AppState.IDLE, AppState.ERROR),
+            )
+            for provider, label in PROVIDER_LABELS.items()
+        )
+    )
+
+
+def _model_menu(app: "TrayApp") -> pystray.Menu:
+    provider = app.current_provider
+
+    def select(model):
+        return lambda icon, item: app._on_model_selection(icon, provider, model)
+
+    def checked(model):
+        return lambda item: get_selected_model(app.config, provider) == model
+
+    return pystray.Menu(
+        *(
+            pystray.MenuItem(
+                spec.label,
+                select(spec.id),
+                checked=checked(spec.id),
+                radio=True,
+                enabled=lambda item: app.state in (AppState.IDLE, AppState.ERROR),
+            )
+            for spec in models_for_provider(app.current_provider)
+        )
+    )
 
 
 def build_tray_menu(app: "TrayApp") -> pystray.Menu:
@@ -92,24 +156,12 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
             pystray.Menu(
                 pystray.MenuItem(
                     "Provider",
-                    pystray.Menu(
-                        pystray.MenuItem(
-                            "OpenAI",
-                            lambda i, it: app._on_provider_selection(i, "openai"),
-                            checked=lambda i: app.current_provider == "openai",
-                            radio=True,
-                        ),
-                        pystray.MenuItem(
-                            "AssemblyAI",
-                            lambda i, it: app._on_provider_selection(i, "assemblyai"),
-                            checked=lambda i: app.current_provider == "assemblyai",
-                            radio=True,
-                        ),
-                    ),
+                    _provider_menu(app),
                 ),
+                pystray.MenuItem("Model", _model_menu(app)),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(
-                    "Response Speed",
+                    "Transcription Speed",
                     pystray.Menu(
                         pystray.MenuItem(
                             "Fast (Less accurate)",
@@ -134,9 +186,13 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             radio=True,
                         ),
                     ),
+                    enabled=lambda i: (
+                        app.current_provider != "cloudflare"
+                        or get_active_model_name(app).startswith("openai/")
+                    ),
                 ),
                 pystray.MenuItem(
-                    "Noise Suppression (OpenAI Only)",
+                    "Microphone Profile",
                     pystray.Menu(
                         pystray.MenuItem(
                             "Optimized for Headsets",
@@ -157,15 +213,23 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             radio=True,
                         ),
                     ),
-                    # OpenAI specific optimization
-                    enabled=lambda i: app.current_provider == "openai",
+                    enabled=lambda i: _supports_mic_profile(app),
                 ),
                 pystray.MenuItem(
-                    "Real-time Punctuation",
+                    lambda it: (
+                        "Punctuation (automatic)"
+                        if _uses_modern_assemblyai(app)
+                        else "Format Final Text"
+                    ),
                     app._on_toggle_realtime_punctuation_clicked,
-                    checked=lambda i: app.config.providers.assemblyai.advanced.format_text,
+                    checked=lambda i: (
+                        _uses_modern_assemblyai(app)
+                        or app.config.providers.assemblyai.advanced.format_text
+                    ),
                     # AssemblyAI specific feature
-                    enabled=lambda i: app.current_provider == "assemblyai",
+                    enabled=lambda i: (
+                        app.current_provider == "assemblyai" and not _uses_modern_assemblyai(app)
+                    ),
                 ),
             ),
         )
@@ -189,7 +253,16 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                                 "assemblyai_api_key", "AssemblyAI"
                             ),
                         ),
+                        pystray.MenuItem(
+                            "Set Cloudflare API Token...",
+                            lambda i, it: app._on_set_key_clicked(
+                                "cloudflare_api_token", "Cloudflare API Token"
+                            ),
+                        ),
                     ),
+                ),
+                pystray.MenuItem(
+                    "Configure Cloudflare Gateway...", app._on_cloudflare_settings_clicked
                 ),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem(

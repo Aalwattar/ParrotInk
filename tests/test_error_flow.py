@@ -80,6 +80,8 @@ async def test_config_change_recovers_from_error(coordinator):
 
     # Trigger config change observer
     coordinator._on_config_changed(coordinator.config)
+    if coordinator._configuration_future:
+        await asyncio.wrap_future(coordinator._configuration_future)
 
     assert coordinator.state == AppState.IDLE
     mock_ui_bridge.clear_hud.assert_called_once()

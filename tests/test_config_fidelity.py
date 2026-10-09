@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 import tomlkit
 
 from engine.config import Config
@@ -36,3 +39,13 @@ hold_mode = false
     # Verify it's still valid TOML
     parsed = tomlkit.parse(saved_content)
     assert parsed["hotkeys"]["hotkey"] == "ctrl+shift+x"
+
+
+def test_documented_example_matches_defaults_when_uncommented():
+    """Every documented default must be valid and match the actual schema."""
+    example = Path(__file__).resolve().parents[1] / "config.example.toml"
+    assert Config.from_file(example).model_dump() == Config().model_dump()
+    text = example.read_text(encoding="utf-8")
+    uncommented = re.sub(r"^# ([A-Za-z_]+\s*=.*)$", r"\1", text, flags=re.MULTILINE)
+    configured = Config(**tomlkit.parse(uncommented))
+    assert configured.model_dump() == Config().model_dump()

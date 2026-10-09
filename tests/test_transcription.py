@@ -184,18 +184,18 @@ def test_assemblyai_universal_35_config_resolution():
     assert eff.assemblyai.speech_model == "universal-3-5-pro"
     assert eff.assemblyai.mode == "balanced"
     assert eff.assemblyai.agent_context == "test greeting"
-    assert eff.assemblyai.voice_focus == "near_field"
+    assert eff.assemblyai.voice_focus == "near-field"
     assert "mode=balanced" in eff.assemblyai.url
     assert "agent_context=test+greeting" in eff.assemblyai.url
-    assert "voice_focus=near_field" in eff.assemblyai.url
+    assert "voice_focus=near-field" in eff.assemblyai.url
     # Ensure language_detection flag is omitted
     assert "language_detection" not in eff.assemblyai.url
 
-    # Case B: Mic profile 'laptop' maps to 'far_field'
+    # Case B: Mic profile 'laptop' maps to 'far-field'
     config.transcription.mic_profile = "laptop"
     eff = resolve_effective_config(config)
-    assert eff.assemblyai.voice_focus == "far_field"
-    assert "voice_focus=far_field" in eff.assemblyai.url
+    assert eff.assemblyai.voice_focus == "far-field"
+    assert "voice_focus=far-field" in eff.assemblyai.url
 
     # Case C: Dynamic mapping of latency_profile -> mode when override is false
     config.transcription.latency_profile = "fast"

@@ -89,16 +89,17 @@ def test_tray_menu_structure(mocker, config):
         trans_menu = items[3].submenu
         trans_items = list(trans_menu)
         assert trans_items[0].text == "Provider"
-        # Index 1 is separator
-        assert trans_items[2].text == "Response Speed"
-        assert trans_items[3].text == "Noise Suppression (OpenAI Only)"
-        assert trans_items[4].text == "Real-time Punctuation"
+        assert trans_items[1].text == "Model"
+        assert trans_items[3].text == "Transcription Speed"
+        assert trans_items[4].text == "Microphone Profile"
+        assert trans_items[5].text == "Format Final Text"
 
         # Check Providers sub-menu
         providers_menu = trans_items[0].submenu
         provider_items = list(providers_menu)
         assert provider_items[0].text == "OpenAI"
         assert provider_items[1].text == "AssemblyAI"
+        assert provider_items[2].text == "Cloudflare AI Gateway"
 
 
 def test_tray_settings_menu_hold_mode(mocker, config):

@@ -88,7 +88,7 @@ I wanted true real-time streaming with professional-grade accuracy, and I wanted
     >
     > To run the app: Click **More info** -> **Run anyway**.
 3.  **Setup API Key**:
-    *   **What is an API Key?** A "secret password" that allows ParrotInk to securely talk to the AI models (OpenAI or AssemblyAI).
+    *   **What is an API Key?** A "secret password" that allows ParrotInk to securely talk to the AI models (OpenAI, AssemblyAI, or Cloudflare AI Gateway).
     *   **How to get one**: Sign up for a free account at [AssemblyAI](https://www.assemblyai.com/dashboard/) or [OpenAI](https://platform.openai.com/api-keys).
     *   **Where to put it**: Right-click the ParrotInk tray icon and select **Settings > API Credentials**.
 4.  **Start Dictating**: Press `Ctrl + Alt + V` (default) and start speaking. Your words will appear instantly at your cursor!
@@ -97,22 +97,51 @@ I wanted true real-time streaming with professional-grade accuracy, and I wanted
 
 ## Choose Your Engine
 
-ParrotInk requires you to bring your own API key. You only pay the AI providers for the raw milliseconds of audio they process.
+ParrotInk supports direct OpenAI and AssemblyAI connections and Cloudflare AI Gateway. Stop dictation, then right-click the tray icon to select **Transcription > Provider** and **Transcription > Model**. Model choices come from the app's shared model catalog. Pending audio is finalized before the next model connection starts.
 
-### AssemblyAI (Best for Professional English & Speed)
-**Featuring Universal-3.5 Pro Realtime (`universal-3-5-pro`) and Real-time Diarization.**
-- **Why we recommend it:** The latest **Universal-3.5 Pro Realtime** is the industry standard for streaming accuracy and features native multilingual code-switching across 18 languages.
-- **Accuracy & Speed Profiles:** Choose your performance balance easily out-of-the-box (`mode = "balanced"`, `"min_latency"`, or `"max_accuracy"`) without hand-tuning threshold parameters.
-- **Conversation Context:** Steer transcripts using `agent_context` (up to 1500 chars) to prime spelling and number formats (e.g. email spelling or phone number recognition).
-- **Auto-Mapped Voice Focus:** The app automatically maps your `transcription.mic_profile` setting (e.g., headset or laptop) to AssemblyAI's `voice_focus` parameter (`near_field` or `far_field`) to suppress background noise.
-- **Multi-Speaker Labels:** Automatically labels speakers in real-time with script-like formatting.
-- **Get Started for $0:** New users currently receive **$50 in free credit** upon signing up.
-- **Advanced Features:** Supports **Shaded Partials** in the HUD, letting you see the AI "thinking" in real-time before finalizing the text.
+### AssemblyAI
 
-### OpenAI (The Global & RTL Powerhouse)
-**Unmatched support for 50+ languages and Arabic.**
-- **Why use it:** For native **Arabic**, Japanese, Chinese, or multilingual workflows, OpenAI provides world-class coverage.
-- **Language Support:** Perfect for users who switch between global languages frequently.
+The default model is **Universal 3.6 Pro Realtime** (`universal-3-6-pro`). It supports native multilingual recognition, vocabulary and conversation context, acoustic focus, and speaker labels.
+
+- Use the response speed profile for `min_latency`, `balanced`, or `max_accuracy` operation.
+- Set `language_codes` for expected languages, or leave it empty for multilingual recognition.
+- Headset and laptop microphone profiles map to `near-field` and `far-field` Voice Focus. Explicit `voice_focus` settings override the profile.
+- Advanced settings include recognition instructions, `agent_context`, and speaker labeling. Modern models return formatted turns directly.
+
+The adapter waits for the server's `Begin` acknowledgement and finalizes the pending phrase when capture stops. See the [AssemblyAI streaming reference](https://www.assemblyai.com/docs/streaming/api-spec/streaming-websocket) and [release notes](https://www.assemblyai.com/changelog).
+
+### OpenAI
+
+The default model is **GPT Live Transcribe** (`gpt-live-transcribe`), which emits text while you speak. **GPT Transcribe** (`gpt-transcribe`) begins transcription after each committed phrase and is available in the Model menu.
+
+Both modern models use local speech detection and explicit audio commits. ParrotInk commits after the configured silence interval or when you stop dictation, then waits for the final transcript. Transcript items are tracked separately and delivered in spoken order even if the server finishes them out of order.
+
+Set `languages` for multilingual hints and use `prompt` and `keywords` for contextual vocabulary. The response speed profile maps to `delay = "low"`, `"medium"`, or `"high"`; advanced overrides allow all supported delay levels. Legacy GPT-4o transcription models remain selectable for existing configurations. Their announced retirement date is February 26, 2027. See the [OpenAI realtime transcription guide](https://developers.openai.com/api/docs/guides/realtime-transcription) and [deprecation schedule](https://developers.openai.com/api/docs/deprecations).
+
+### Cloudflare AI Gateway
+
+Cloudflare is a connection route to supported speech models, including Cloudflare-hosted models and third-party OpenAI and xAI models. The app currently supports:
+
+| Model | Behavior |
+| --- | --- |
+| `@cf/deepgram/nova-3` (default) | Cloudflare-hosted streaming transcription with interim and final results. |
+| `@cf/deepgram/flux` | Cloudflare-hosted streaming transcription with turn events. |
+| `xai/grok-stt` | Grok speech-to-text through Cloudflare's unified streaming endpoint. |
+| `openai/gpt-live-transcribe` | OpenAI live transcription routed through Gateway. |
+| `openai/gpt-transcribe` | OpenAI transcription after a committed phrase, routed through Gateway. |
+
+To configure it:
+
+1. Create an AI Gateway in your [Cloudflare dashboard](https://dash.cloudflare.com/) and obtain an API token with access to the gateway and selected model service.
+2. Open **Settings > Configure Cloudflare Gateway...** from the tray. Enter your **Account ID**, **Gateway ID**, selected **Transcription model**, and **API token**. You can also set the token through **Settings > API Credentials > Set Cloudflare API Token...**.
+3. For an OpenAI model, enable **Use provider keys stored in Cloudflare (BYOK)** if you configured your OpenAI key in Gateway under the default key alias. Disable it to use the OpenAI key saved locally through **Settings > API Credentials > Set OpenAI Key...**. The Cloudflare token is required in both cases. Hosted Nova-3 and Flux use the Cloudflare account's billing and token.
+4. Save and select **Transcription > Provider > Cloudflare AI Gateway**. Use **Transcription > Model** to change models later.
+
+The token is stored in Windows Credential Manager. Account ID, Gateway ID, model, and other nonsecret settings are saved in TOML; leaving the dialog's token field blank preserves the saved token. OpenAI Gateway models reuse the OpenAI language, keyword, delay, and turn settings.
+
+Grok uses `api.cloudflare.com` and requires a Cloudflare token with **Account > Workers AI > Read** permission plus sufficient AI Gateway credits for third-party inference. It does not use the OpenAI BYOK setting. Each recording is finalized with `audio.done`, then the next recording opens a fresh streaming connection. Streaming model access and forwarding of interim results must be checked with your credentials. See [Cloudflare Grok STT](https://developers.cloudflare.com/ai/models/xai/grok-stt/) and the [unified API authentication requirements](https://developers.cloudflare.com/ai-gateway/usage/rest-api/).
+
+The available models are limited to the speech protocols implemented by ParrotInk. Gateway support for an arbitrary model does not make it a compatible transcription model. Gateway's chat Dynamic Routing does not perform live audio model switching; ParrotInk switches connections at phrase boundaries. See the [Cloudflare realtime WebSocket guide](https://developers.cloudflare.com/ai-gateway/usage/websockets-api/realtime-api/) and [Gateway BYOK documentation](https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/).
 
 ---
 
@@ -130,7 +159,7 @@ ParrotInk monitors a global hotkey via native Win32 hooks. You can switch betwee
 *Best for short bursts, quick replies, and coding snippets.*
 - **Action:** Press and **hold** your hotkey.
 - **Dictate:** Speak your mind.
-- **Stop:** **Release** the hotkey. The session ends immediately when you let go.
+- **Stop:** **Release** the hotkey. Audio capture stops when you let go; the pending phrase is finalized before the session closes.
 
 #### 2. Toggle Mode (The "Hands-Free")
 *Best for long-form writing, drafting long emails, or deep thinking.*
@@ -181,7 +210,7 @@ Detailed documentation on all technical settings and their default values can be
 As an open-source project, transparency is our priority:
 - **Encrypted Storage**: Your API keys are stored directly in the **Windows Credential Manager**, encrypted at the OS level.
 - **No Local Audio Storage**: Audio is streamed via encrypted WebSockets to the provider and is **never** saved to your hard drive.
-- **Local Logs & Stats**: All diagnostic data is kept strictly on your machine.
+- **Local Logs & Stats**: Application logs and statistics are stored locally. Cloudflare Gateway logging and retention depend on your gateway settings; configure them in the Cloudflare dashboard.
 
 ### Understanding the Icon
 ParrotInk stays out of your way in the **System Tray**. The icon color tells you exactly what the app is doing:
@@ -194,10 +223,10 @@ ParrotInk stays out of your way in the **System Tray**. The icon color tells you
 
 ## Building from Source
 
-ParrotInk is built with Python 3.12+ and uses modern, high-performance libraries like `skia-python` for rendering and `sounddevice` for low-latency audio capture.
+ParrotInk is built with Python 3.11+ and uses modern, high-performance libraries like `skia-python` for rendering and `sounddevice` for low-latency audio capture.
 
 1.  **Prerequisites**:
-    - Python 3.12+
+    - Python 3.11+
     - [uv](https://github.com/astral-sh/uv) (for dependency management)
 2.  **Clone & Setup**:
     ```powershell

@@ -1,6 +1,11 @@
 from typing import Any, Literal, Optional
 
-from .app_types import EffectiveAssemblyAIConfig, EffectiveConfig, EffectiveOpenAIConfig
+from .app_types import (
+    EffectiveAssemblyAIConfig,
+    EffectiveCloudflareConfig,
+    EffectiveConfig,
+    EffectiveOpenAIConfig,
+)
 from .config import LATENCY_PROFILES, MIC_PROFILES, Config
 from .logging import get_logger
 
@@ -36,7 +41,15 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         noise_reduction = MIC_PROFILES.get(trans.mic_profile)
 
     # Invariant: Must use the transcription intent in the URL
-    openai_url = f"{openai_core.realtime_ws_url_base}?intent=transcription"
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    def with_params(url: str, parameters: dict) -> str:
+        parsed = urlsplit(url)
+        query = dict(parse_qsl(parsed.query))
+        query.update(parameters)
+        return urlunsplit(parsed._replace(query=urlencode(query)))
+
+    openai_url = with_params(openai_core.realtime_ws_url_base, {"intent": "transcription"})
     if config.test.enabled:
         openai_url = config.test.openai_mock_url
 
@@ -52,6 +65,13 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         language=openai_core.language,
         stop_timeout=config.audio.provider_stop_timeout_seconds,
         is_test=config.test.enabled,
+        languages=tuple(
+            openai_core.languages or ([openai_core.language] if openai_core.language else [])
+        ),
+        keywords=tuple(openai_adv.keywords),
+        delay=openai_adv.delay
+        if openai_adv.override
+        else {"fast": "low", "balanced": "medium", "accurate": "high"}[trans.latency_profile],
     )
 
     # 3. Resolve AssemblyAI
@@ -78,30 +98,39 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
             aai_url = "wss://streaming.eu.assemblyai.com/v3/ws"
 
     # Append mandatory query parameters for V3
-    from urllib.parse import urlencode
+    from .transcription.catalog import get_model
 
-    params: dict[str, Any] = {}
-    if "?" not in aai_url:
-        params["sample_rate"] = config.audio.capture_sample_rate
-        params["encoding"] = "pcm_s16le"
+    aai_model = get_model("assemblyai", aai_core.speech_model)
+    params: dict[str, Any] = {
+        "sample_rate": config.audio.capture_sample_rate,
+        "encoding": "pcm_s16le",
+    }
 
     params["speech_model"] = aai_core.speech_model
 
     # Priority Logic: prompt vs keyterms_prompt (mutual exclusivity)
     if aai_core.prompt:
         params["prompt"] = aai_core.prompt
-        if aai_adv.keyterms_prompt:
+        if aai_adv.keyterms_prompt and not aai_model.modern:
             logger.warning(
                 "Both 'prompt' and 'keyterms_prompt' provided for AssemblyAI. "
                 "'prompt' takes precedence; 'keyterms_prompt' ignored."
             )
-    elif aai_adv.keyterms_prompt:
+    if aai_adv.keyterms_prompt and (not aai_core.prompt or aai_model.modern):
         import json
 
         params["keyterms_prompt"] = json.dumps(aai_adv.keyterms_prompt)
 
     # Language Handling: Auto-detection vs Manual ISO code
-    if not aai_core.language_code:
+    if aai_model.modern:
+        import json
+
+        codes = aai_core.language_codes or (
+            [aai_core.language_code] if aai_core.language_code else []
+        )
+        if codes:
+            params["language_codes"] = json.dumps(codes)
+    elif not aai_core.language_code:
         # If language is empty, enable auto-detection for supported models.
         # Universal-3 Pro and U3 Multilingual support this on V3.
         if aai_core.speech_model in ("u3-rt-pro", "universal-streaming-multilingual", "whisper-rt"):
@@ -117,26 +146,29 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     else:
         params["language_code"] = aai_core.language_code
 
-    if aai_adv.format_text:
+    if aai_adv.format_text and not aai_model.modern:
         params["format_turns"] = "true"
 
     if aai_adv.enable_diarization:
         params["speaker_labels"] = "true"
 
-    params["vad_threshold"] = str(aai_core.vad_threshold)
+    if not aai_model.modern or aai_adv.override:
+        params["vad_threshold"] = str(aai_core.vad_threshold)
 
     if aai_core.inactivity_timeout_seconds > 0:
         params["inactivity_timeout"] = str(aai_core.inactivity_timeout_seconds)
 
     # Turn detection overrides or profile values
-    params["end_of_turn_confidence_threshold"] = str(aai_confidence)
-    params["min_end_of_turn_silence_when_confident"] = str(aai_min_silence)
-    params["max_turn_silence"] = str(aai_max_silence)
+    if not aai_model.modern or aai_adv.override:
+        params["min_turn_silence"] = str(aai_min_silence)
+        params["max_turn_silence"] = str(aai_max_silence)
+    if not aai_model.modern:
+        params["end_of_turn_confidence_threshold"] = str(aai_confidence)
 
     # Resolve voice_focus and mode (prioritize core override over shared profiles)
     resolved_mode: Literal["balanced", "min_latency", "max_accuracy"] = aai_core.mode
     resolved_voice_focus: Optional[str] = None
-    if aai_core.speech_model in ("universal-3-5-pro", "u3-rt-pro"):
+    if aai_model.modern:
         if aai_adv.override:
             resolved_mode = aai_core.mode
         else:
@@ -150,10 +182,11 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         if aai_core.voice_focus:
             resolved_voice_focus = aai_core.voice_focus
         else:
-            resolved_voice_focus = MIC_PROFILES.get(trans.mic_profile)
+            focus = MIC_PROFILES.get(trans.mic_profile)
+            resolved_voice_focus = focus.replace("_", "-") if focus else None
 
     # Append new streaming parameters if using the new model (or u3-rt-pro)
-    if aai_core.speech_model in ("universal-3-5-pro", "u3-rt-pro"):
+    if aai_model.modern:
         params["mode"] = resolved_mode
         if aai_core.agent_context:
             params["agent_context"] = aai_core.agent_context[:1500]
@@ -161,10 +194,7 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
             params["voice_focus"] = resolved_voice_focus
 
     # Update URL with resolved parameters
-    if "?" in aai_url:
-        aai_url = f"{aai_url}&{urlencode(params)}"
-    else:
-        aai_url = f"{aai_url}?{urlencode(params)}"
+    aai_url = with_params(aai_url, params)
 
     if config.test.enabled:
         aai_url = config.test.assemblyai_mock_url
@@ -194,6 +224,55 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         voice_focus=resolved_voice_focus,
     )
 
+    # Gateway is a route to a selected model, whose wire protocol stays explicit.
+    cf_core = config.providers.cloudflare.core
+    cf_model = get_model("cloudflare", cf_core.model)
+    cf_base = f"wss://gateway.ai.cloudflare.com/v1/{cf_core.account_id}/{cf_core.gateway_id}"
+    cf_params: dict[str, Any]
+    if cf_model.protocol == "openai":
+        cf_url = with_params(f"{cf_base}/openai", {"intent": "transcription"})
+    elif cf_model.protocol == "grok_stt":
+        cf_params = {
+            "model": cf_core.model,
+            "websocket": "true",
+            "audio_format": "pcm",
+            "sample_rate": config.audio.capture_sample_rate,
+            "interim_results": "true",
+        }
+        if cf_core.language:
+            cf_params["language"] = cf_core.language
+            cf_params["format"] = "true"
+        cf_url = with_params(
+            f"wss://api.cloudflare.com/client/v4/accounts/{cf_core.account_id}/ai/run",
+            cf_params,
+        )
+    else:
+        cf_params = {
+            "model": cf_core.model,
+            "encoding": "linear16",
+            "sample_rate": config.audio.capture_sample_rate,
+        }
+        if cf_model.protocol == "deepgram_nova":
+            cf_params.update(
+                interim_results="true", endpointing=cf_core.endpointing_ms, smart_format="true"
+            )
+            if cf_core.language:
+                cf_params["language"] = cf_core.language
+        cf_url = with_params(f"{cf_base}/workers-ai", cf_params)
+    if config.test.enabled:
+        cf_url = config.test.cloudflare_mock_url
+    resolved_cf = EffectiveCloudflareConfig(
+        url=cf_url,
+        model=cf_core.model,
+        protocol=cf_model.protocol,
+        sample_rate=config.audio.capture_sample_rate,
+        language=cf_core.language,
+        endpointing_ms=cf_core.endpointing_ms,
+        stop_timeout=config.audio.provider_stop_timeout_seconds,
+        is_test=config.test.enabled,
+        gateway_id=cf_core.gateway_id,
+    )
+
     # 4. Final Assemblage
     return EffectiveConfig(
         provider_type=trans.provider,
@@ -204,4 +283,5 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         partial_results=config.transcription.partial_results,
         openai=resolved_openai,
         assemblyai=resolved_aai,
+        cloudflare=resolved_cf,
     )

@@ -41,8 +41,8 @@ async def test_openai_dialect_b_payload():
         audio_input = session["audio"]["input"]
         assert audio_input["format"]["type"] == "audio/pcm"
         assert audio_input["format"]["rate"] == 24000
-        assert audio_input["transcription"]["model"] == "gpt-4o-mini-transcribe"
-        assert "turn_detection" in audio_input
+        assert audio_input["transcription"]["model"] == "gpt-live-transcribe"
+        assert audio_input["turn_detection"] is None
         # Noise reduction is optional in the implementation if "off"
         if "noise_reduction" in audio_input and audio_input["noise_reduction"] is not None:
             assert audio_input["noise_reduction"]["type"] in ["near_field", "far_field"]

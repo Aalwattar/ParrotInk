@@ -66,9 +66,12 @@ class AppCoordinator:
         )
         self.pipeline = AudioPipeline(self.streamer)
         self.state = AppState.IDLE
+        self._configuration_lock = asyncio.Lock()
         self._stop_lock = asyncio.Lock()
+        self._configuration_future: Optional[Future[None]] = None
         self._pending_injections: set[Future[None]] = set()
         self._recording_provider = config.transcription.provider
+        self._last_connection_settings = self._connection_settings(config)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         # Interaction monitoring (Short Path)
@@ -182,39 +185,25 @@ class AppCoordinator:
         """Reacts to configuration updates in-flight."""
         logger.info("Configuration changed. Reloading settings...")
 
-        # 1. Detect if provider is changing to handle silent transitions
-        provider_changed = self._last_provider != config.transcription.provider
-
-        if provider_changed:
-            msg = f"Provider changed from {self._last_provider} to {config.transcription.provider}"
-            logger.info(f"{msg}. Forced teardown.")
-            if self.loop:
-                # Senior Architecture: Immediate and clean teardown of the old provider.
-                # This ensures we don't hold multiple warm connections.
-                asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
-
-            # Support for silent stop if changing mid-session (preserves existing behavior)
-            if self.is_listening or self.is_connecting:
-                logger.info("Provider changing during active session. Performing silent stop.")
-                if self.loop:
-                    asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
-
+        # UI-only settings must not tear down a live transcription connection.
+        settings = self._connection_settings(config)
+        connection_changed = settings != self._last_connection_settings
+        self._last_connection_settings = settings
         self._last_provider = config.transcription.provider
 
-        # 2. Update hotkey capture
         self.input_monitor.set_hotkey(config.hotkeys.hotkey, config.hotkeys.hold_mode)
         self.input_monitor.enable_any_key_monitoring(config.interaction.stop_on_any_key)
 
-        # 2. Update connection manager config (crucial for provider switching)
-        self.connection_manager.config = config
-        self.streamer.device_name = config.audio.input_device
+        if connection_changed and self.loop:
+            self._configuration_future = asyncio.run_coroutine_threadsafe(
+                self._apply_connection_config(config), self.loop
+            )
+        elif not self.loop:
+            self.connection_manager.config = config
+            self.streamer.device_name = config.audio.input_device
 
         # 3. Update logging level dynamically
         set_global_level(config.logging.file_level)
-
-        # 4. Force provider reset to apply new settings (e.g. prompt, thresholds)
-        if self.loop:
-            asyncio.run_coroutine_threadsafe(self.connection_manager.stop_provider(), self.loop)
 
         # 4. Notify UI to refresh menu/labels
         self.ui_bridge.update_settings({})
@@ -229,6 +218,38 @@ class AppCoordinator:
                 )
                 self.set_state(AppState.IDLE)
                 self.ui_bridge.clear_hud()
+
+    @staticmethod
+    def _connection_settings(config: Config) -> dict:
+        settings = config.model_dump(include={"audio", "transcription", "test"})
+        provider = config.transcription.provider
+        settings["provider_settings"] = getattr(config.providers, provider).model_dump()
+        if provider == "cloudflare" and config.providers.cloudflare.core.model.startswith(
+            "openai/"
+        ):
+            settings["openai_settings"] = config.providers.openai.model_dump()
+        return settings
+
+    async def _apply_connection_config(self, config: Config):
+        async with self._configuration_lock:
+            if self.is_shutting_down:
+                return
+            if self.is_listening or self.is_connecting or self.state == AppState.STOPPING:
+                await self.stop_listening(silent=True)
+            await self.connection_manager.stop_provider()
+            self.connection_manager.config = config
+            self.streamer.device_name = config.audio.input_device
+            self.streamer.sample_rate = config.audio.capture_sample_rate
+            self.streamer.chunk_size = (
+                config.audio.capture_sample_rate * config.audio.chunk_ms // 1000
+            )
+
+    def _queue_injection(self, text: str, is_final: bool = False):
+        future = asyncio.run_coroutine_threadsafe(
+            self.injection_controller.smart_inject(text, is_final=is_final), self.loop
+        )
+        self._pending_injections.add(future)
+        future.add_done_callback(self._pending_injections.discard)
 
     @property
     def is_shutting_down(self) -> bool:
@@ -287,7 +308,7 @@ class AppCoordinator:
     def get_provider_availability(self) -> dict[str, bool]:
         """Returns a mapping of provider names to their availability status."""
         if self.config.test.enabled:
-            return {"openai": True, "assemblyai": True}
+            return {"openai": True, "assemblyai": True, "cloudflare": True}
 
         def is_valid(provider: str, key: str | None) -> bool:
             """
@@ -312,6 +333,16 @@ class AppCoordinator:
         return {
             "openai": is_valid("openai", self.config.get_openai_key()),
             "assemblyai": is_valid("assemblyai", self.config.get_assemblyai_key()),
+            "cloudflare": bool(
+                self.config.get_cloudflare_key()
+                and self.config.providers.cloudflare.core.account_id
+                and self.config.providers.cloudflare.core.gateway_id
+                and (
+                    not self.config.providers.cloudflare.core.model.startswith("openai/")
+                    or self.config.providers.cloudflare.core.use_byok
+                    or is_valid("openai", self.config.get_openai_key())
+                )
+            ),
         }
 
     def _ensure_valid_provider(self):
@@ -508,6 +539,8 @@ class AppCoordinator:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     async def start_listening(self):
+        if self._configuration_future and not self._configuration_future.done():
+            await asyncio.wrap_future(self._configuration_future)
         if self.state not in (AppState.IDLE, AppState.ERROR):
             logger.debug(f"start_listening ignored: current state is {self.state.name}")
             return
@@ -515,14 +548,33 @@ class AppCoordinator:
         # 1. API Key Check
         availability = self.get_provider_availability()
         if not availability.get(self.config.transcription.provider, False):
-            logger.error(f"Missing API Key for {self.config.transcription.provider}")
+            title = "Missing API Key"
             msg = "Provider Missing API Key. Right-click Tray Icon > Settings to configure."
-            self.ui_bridge.notify(msg, "Missing API Key")
+            hint = "Open Tray Menu > Settings to add your key."
+            if self.config.transcription.provider == "cloudflare":
+                core = self.config.providers.cloudflare.core
+                missing = []
+                if not self.config.get_cloudflare_key():
+                    missing.append("API token")
+                if not core.account_id:
+                    missing.append("account ID")
+                if not core.gateway_id:
+                    missing.append("gateway ID")
+                if not missing:
+                    missing.append("OpenAI API key for the selected model")
+                title = "Cloudflare Settings Incomplete"
+                msg = f"Cloudflare is missing: {', '.join(missing)}."
+                hint = "Open Settings > Configure Cloudflare Gateway."
+                from engine.platform_win.paths import get_config_path
+
+                logger.error("Cloudflare configuration path: %s", get_config_path())
+            logger.error(msg)
+            self.ui_bridge.notify(f"{msg} {hint}", title)
 
             # Show onboarding instructions in HUD
             self.set_state(AppState.ERROR)
             self.ui_bridge.update_status_message(msg)
-            self.ui_bridge.update_partial_text("Open Tray Menu > Settings to add your key.")
+            self.ui_bridge.update_partial_text(hint)
             return
 
         # 2. Fast Path: If we previously failed due to privacy, check if it's still blocked
@@ -567,8 +619,9 @@ class AppCoordinator:
                     logger.info("Session cancelled during connection. Aborting pipeline start.")
                     return
 
-                # 3. Start pipeline with the resolved connection components
                 self.connection_manager.provider.reset_utterance()
+
+                # 3. Start pipeline with the resolved connection components
                 await self.pipeline.start(
                     adapter=self.connection_manager.audio_adapter,
                     provider=self.connection_manager.provider,
@@ -595,6 +648,7 @@ class AppCoordinator:
                 self.loop.create_task(self.stop_listening())
             else:
                 await self.stop_listening()
+
         except Exception as e:
             logger.error(f"Error starting session: {e}")
             self.set_state(AppState.ERROR)
@@ -603,6 +657,13 @@ class AppCoordinator:
                 self.loop.create_task(self.stop_listening())
             else:
                 await self.stop_listening()
+
+    def _start_mouse_monitor(self):
+        if (
+            self.config.interaction.cancel_on_click_outside_anchor
+            and not self.config.hotkeys.hold_mode
+        ):
+            self.mouse_monitor.start()
 
     def _handle_audio_failure(self, error: Exception):
         """
@@ -697,13 +758,6 @@ class AppCoordinator:
         async with self._stop_lock:
             await self._stop_listening(silent)
 
-    def _queue_injection(self, text: str, is_final: bool = False):
-        future = asyncio.run_coroutine_threadsafe(
-            self.injection_controller.smart_inject(text, is_final=is_final), self.loop
-        )
-        self._pending_injections.add(future)
-        future.add_done_callback(self._pending_injections.discard)
-
     async def _stop_listening(self, silent: bool = False):
         """Stops the current transcription session."""
         if self.state == AppState.IDLE:
@@ -777,13 +831,6 @@ class AppCoordinator:
 
         if self.state != AppState.ERROR:
             self.set_state(AppState.IDLE)
-
-    def _start_mouse_monitor(self):
-        if (
-            self.config.interaction.cancel_on_click_outside_anchor
-            and not self.config.hotkeys.hold_mode
-        ):
-            self.mouse_monitor.start()
 
     def _on_unlock(self):
         """Callback from SessionMonitor when Windows is unlocked."""
@@ -870,14 +917,17 @@ def handle_cli():
     eval_parser = subparsers.add_parser("eval", help="Run evaluation mode")
     eval_parser.add_argument("--audio", required=True, help="Path to WAV file")
     eval_parser.add_argument(
-        "--provider", required=True, choices=["openai", "assemblyai"], help="Provider"
+        "--provider", required=True, choices=["openai", "assemblyai", "cloudflare"], help="Provider"
     )
+    eval_parser.add_argument("--model", help="Override the selected transcription model")
     eval_parser.add_argument("--config", help="Path to config.toml")
     eval_parser.add_argument("--chunk-ms", type=int, help="Chunk duration")
     eval_parser.add_argument("--timeout-seconds", type=int, default=120, help="Timeout")
 
     set_key_parser = subparsers.add_parser("set-key", help="Set an API key")
-    set_key_parser.add_argument("provider", choices=["openai", "assemblyai"], help="Provider")
+    set_key_parser.add_argument(
+        "provider", choices=["openai", "assemblyai", "cloudflare"], help="Provider"
+    )
 
     config_parser = subparsers.add_parser("config", help="Configuration utilities")
     config_parser.add_argument("--explain", action="store_true", help="Explain profiles")
@@ -924,6 +974,7 @@ if __name__ == "__main__":
         account_map = {
             "openai": ("openai_api_key", "OpenAI"),
             "assemblyai": ("assemblyai_api_key", "AssemblyAI"),
+            "cloudflare": ("cloudflare_api_token", "Cloudflare Gateway API Token"),
         }
         account_id, provider_name = account_map[cli_args.provider]
         key = ask_key(None, f"Set {provider_name} Key")
@@ -970,6 +1021,6 @@ if __name__ == "__main__":
         show_startup_toast(config)
 
     try:
-        asyncio.run(main_gui(cli_args))
+        asyncio.run(main_gui(cli_args, config=config))
     except KeyboardInterrupt:
         sys.exit(0)

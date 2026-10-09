@@ -1,4 +1,5 @@
 import asyncio
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,17 +8,34 @@ from engine.config import Config
 from engine.connection import ConnectionManager
 
 
+class ReadyStreamingSocket:
+    """A live receiver that acknowledges the current providers' session handshakes."""
+
+    def __init__(self):
+        self.events = asyncio.Queue()
+        self.events.put_nowait(json.dumps({"type": "Begin", "id": "test-session"}))
+        self.close = AsyncMock()
+        self.send = AsyncMock(side_effect=self._send)
+
+    async def _send(self, message):
+        if isinstance(message, bytes):
+            return
+        event = json.loads(message)
+        if event["type"] == "session.update":
+            self.events.put_nowait(json.dumps({"type": "session.updated"}))
+        elif event["type"] == "Terminate":
+            self.events.put_nowait(json.dumps({"type": "Termination"}))
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        return await self.events.get()
+
+
 async def connect_and_ready(cm: ConnectionManager, is_listening: bool = False):
-    """Helper to handle new wait_for_ready synchronization in tests."""
-    task = asyncio.create_task(cm.ensure_connected(is_listening=is_listening))
-    # Poll for provider initialization to avoid flaky timing
-    for _ in range(20):
-        if cm.provider:
-            break
-        await asyncio.sleep(0.05)
-    if cm.provider:
-        cm.provider._ready_event.set()
-    await task
+    """Connect through the actual acknowledgement and persistent receive loop."""
+    await asyncio.wait_for(cm.ensure_connected(is_listening=is_listening), timeout=2.0)
 
 
 @pytest.mark.asyncio
@@ -38,8 +56,7 @@ async def test_ensure_connected_idempotency():
 
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
         # Mock successful connection
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
+        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
 
         # First connection
         await connect_and_ready(cm)
@@ -72,8 +89,7 @@ async def test_openai_rotation_guard():
     )
 
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
+        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
 
         await connect_and_ready(cm)
         provider1 = cm.provider
@@ -106,8 +122,7 @@ async def test_provider_switching():
     )
 
     with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value = mock_ws
+        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
 
         await connect_and_ready(cm)
         assert cm.provider.get_type() == "openai"

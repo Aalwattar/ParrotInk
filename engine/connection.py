@@ -31,6 +31,7 @@ class ConnectionManager:
         on_error_cb: Optional[Callable[[TranscriptionError], None]] = None,
     ):
         self._config = config
+        self._configured_provider = config.transcription.provider
         self.on_partial = on_partial
         self.on_final = on_final
         self.set_state = set_state_cb
@@ -72,9 +73,10 @@ class ConnectionManager:
         Updates the internal configuration.
         If the provider has changed, we prepare for rotation or restart.
         """
-        old_provider = self._config.transcription.provider
+        old_provider = self._configured_provider
         new_provider = new_config.transcription.provider
         self._config = new_config
+        self._configured_provider = new_provider
 
         if old_provider != new_provider:
             logger.info(f"Provider changed from {old_provider} to {new_provider}")
@@ -117,7 +119,17 @@ class ConnectionManager:
 
         # Pre-check rotation/type-mismatch (may trigger an immediate stop_provider)
         if self.provider and self.provider.is_running:
-            if self.config.transcription.provider == "openai":
+            expires_at = getattr(self.provider, "expires_at", None)
+            if isinstance(expires_at, (int, float)) and time.time() >= expires_at - 10:
+                if not is_listening:
+                    await self.stop_provider()
+                else:
+                    self._rotation_pending = True
+            uses_openai = self.config.transcription.provider == "openai" or (
+                self.config.transcription.provider == "cloudflare"
+                and self.config.providers.cloudflare.core.model.startswith("openai/")
+            )
+            if self.provider and uses_openai:
                 age = time.time() - self._session_start_time
                 rotation_threshold = self.config.providers.openai.core.session_rotation_seconds
                 if age > rotation_threshold:

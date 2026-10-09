@@ -14,6 +14,8 @@ TRUSTED_DOMAINS = {
     "api.openai.com",
     "streaming.assemblyai.com",
     "streaming.eu.assemblyai.com",
+    "gateway.ai.cloudflare.com",
+    "api.cloudflare.com",
     "localhost",
     "127.0.0.1",
 }
