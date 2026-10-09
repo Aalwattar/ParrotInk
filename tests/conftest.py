@@ -1,3 +1,4 @@
+import ctypes
 import os
 import threading
 import time
@@ -7,6 +8,52 @@ import pytest
 
 # Helper to check if running in GitHub Actions
 IS_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
+
+
+def pytest_sessionstart(session):
+    """Block live input for the whole process, including late worker teardown."""
+    original_dll = ctypes.WinDLL
+
+    def send_input(count, *_):
+        return count
+
+    def no_input(*_):
+        return 0
+
+    def isolate_library(library):
+        library.SendInput = send_input
+        for name in (
+            "mouse_event",
+            "keybd_event",
+            "SetCursorPos",
+            "SetPhysicalCursorPos",
+            "ClipCursor",
+            "BlockInput",
+            "SetCapture",
+            "ReleaseCapture",
+            "AttachThreadInput",
+            "CreateWindowExW",
+            "CreateWindowExA",
+        ):
+            setattr(library, name, no_input)
+        library.SetWindowsHookExW = lambda *_: 123
+        library.SetWindowsHookExA = lambda *_: 123
+        return library
+
+    def guarded_dll(name, *args, **kwargs):
+        library = original_dll(name, *args, **kwargs)
+        basename = str(name).replace("\\", "/").rsplit("/", 1)[-1].lower()
+        if basename in ("user32", "user32.dll"):
+            isolate_library(library)
+        return library
+
+    isolate_library(ctypes.windll.user32)
+    ctypes.WinDLL = guarded_dll
+    import engine.hud_renderer
+
+    engine.hud_renderer.HUD_AVAILABLE = False
+    # Keep these guards until process exit; restoring native calls here would
+    # let a late executor task touch the desktop after fixtures are unpatched.
 
 
 @pytest.fixture(autouse=True)

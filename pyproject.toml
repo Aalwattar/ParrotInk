@@ -75,7 +75,7 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 no_implicit_optional = true
-exclude = ["hotkey_review_pack", "scripts", "nanobanana-output"]
+exclude = ["hotkey_review_pack", "scripts", "nanobanana-output", "^build/", "^dist/"]
 # strict = true # Uncomment if you want to go full strict mode
 
 [[tool.mypy.overrides]]
