@@ -229,15 +229,14 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     cf_model = get_model("cloudflare", cf_core.model)
     cf_base = f"wss://gateway.ai.cloudflare.com/v1/{cf_core.account_id}/{cf_core.gateway_id}"
     cf_params: dict[str, Any]
-    if cf_model.protocol == "openai":
-        cf_url = with_params(f"{cf_base}/openai", {"intent": "transcription"})
+    if cf_model.protocol == "unavailable":
+        cf_url = ""
     elif cf_model.protocol == "grok_stt":
         cf_params = {
             "model": cf_core.model,
             "websocket": "true",
             "audio_format": "pcm",
             "sample_rate": config.audio.capture_sample_rate,
-            "interim_results": "true",
         }
         if cf_core.language:
             cf_params["language"] = cf_core.language

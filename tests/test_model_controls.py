@@ -10,7 +10,6 @@ from engine.transcription.factory import TranscriptionFactory
 
 
 @pytest.mark.parametrize("model", ["gpt-transcribe", "gpt-live-transcribe"])
-@pytest.mark.parametrize("provider", ["openai", "cloudflare"])
 @pytest.mark.parametrize(
     "profile,delay,silence",
     [("fast", "low", 300), ("balanced", "medium", 500), ("accurate", "high", 800)],
@@ -19,17 +18,15 @@ from engine.transcription.factory import TranscriptionFactory
     "mic,noise", [("none", None), ("headset", "near_field"), ("laptop", "far_field")]
 )
 def test_both_transcription_models_apply_speed_and_microphone_profiles(
-    monkeypatch, model, provider, profile, delay, silence, mic, noise
+    monkeypatch, model, profile, delay, silence, mic, noise
 ):
     monkeypatch.setattr(Config, "get_openai_key", lambda self: None)
-    monkeypatch.setattr(Config, "get_cloudflare_key", lambda self: None)
     config = Config()
     config.test.enabled = True
-    config.transcription.provider = provider
+    config.transcription.provider = "openai"
     config.transcription.latency_profile = profile
     config.transcription.mic_profile = mic
     config.providers.openai.core.transcription_model = model
-    config.providers.cloudflare.core.model = f"openai/{model}"
     adapter = TranscriptionFactory.create(config, lambda text: None, lambda text: None)
     effective = adapter.effective_config
     assert effective.transcription_model == model

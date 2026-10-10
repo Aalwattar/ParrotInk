@@ -80,14 +80,11 @@ def ask_cloudflare_settings(master, config) -> dict | None:
         "Tokens are stored in Windows Credential Manager.",
         wraplength=475,
     ).grid(row=7, column=0, columnspan=2, sticky="w", pady=(4, 10))
-    byok = tk.BooleanVar(master=window, value=core.use_byok)
-    tb.Checkbutton(
-        content, text="Use provider keys stored in Cloudflare (BYOK)", variable=byok
-    ).grid(row=8, column=0, columnspan=2, sticky="w", pady=6)
     tb.Label(
         content,
-        text="For OpenAI models, disable BYOK to use the saved OpenAI key.\n"
-        "Cloudflare-hosted models use the Gateway API token.",
+        text="Cloudflare models use only your Cloudflare token.\n"
+        "Nova-3 and Flux need AI Gateway Run permission.\n"
+        "Grok also needs Account > Workers AI > Read token permission.",
         wraplength=475,
     ).grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 12))
     result = [None]
@@ -106,7 +103,6 @@ def ask_cloudflare_settings(master, config) -> dict | None:
                 "gateway_id": values["gateway_id"],
                 "model": values["model"],
                 "language": values["language"],
-                "use_byok": byok.get(),
             },
             "api_token": values["api_token"] or None,
         }

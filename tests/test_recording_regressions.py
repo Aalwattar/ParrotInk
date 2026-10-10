@@ -63,11 +63,13 @@ def test_short_click_between_samples_is_not_lost(mocker):
     monitor._stop_event = MagicMock()
     monitor._stop_event.is_set.return_value = False
     monitor._stop_event.wait.side_effect = [False, False, True]
+    mocker.patch("engine.mouse.threading.Thread")
     # The button is released at both samples; the short click changes foreground.
-    mocker.patch("engine.mouse._read_button", return_value=False)
     mocker.patch("engine.mouse._read_position", return_value=(100, 200))
     mocker.patch("engine.mouse._read_foreground", side_effect=[10, 10, 20], create=True)
     monitor._poll()
+    while not monitor._clicks.empty():
+        monitor._notify(monitor._clicks.get_nowait())
     callback.assert_called_once_with(100, 200)
 
 
@@ -112,3 +114,53 @@ async def test_click_away_blocks_late_final_text_immediately(coordinator):
     await asyncio.sleep(0)
     assert coordinator.session_cancelled
     coordinator._queue_injection.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_insertion_timeout_is_not_reported_as_transcription_failure(coordinator, caplog):
+    from concurrent.futures import Future
+
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator.pipeline.stop = AsyncMock()
+    coordinator.config.audio.provider_stop_timeout_seconds = 0.01
+    provider = MagicMock(is_running=True)
+    provider.finish_utterance = AsyncMock()
+    coordinator.connection_manager.provider = provider
+    pending = Future()
+    coordinator._pending_injections.add(pending)
+    await coordinator.stop_listening()
+    statuses = [call.args[0] for call in coordinator.ui_bridge.update_status_message.call_args_list]
+    assert "Could not insert final text" in statuses
+    assert "Final transcription failed" not in statuses
+    assert "stage=editor_insertion" in caplog.text
+    assert pending.cancelled()
+
+
+@pytest.mark.asyncio
+async def test_provider_timeout_keeps_finalization_failure_and_logs_stage(coordinator, caplog):
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator.pipeline.stop = AsyncMock()
+    provider = MagicMock(is_running=True)
+    provider.finish_utterance = AsyncMock(side_effect=TimeoutError())
+    coordinator.connection_manager.provider = provider
+    await coordinator.stop_listening()
+    coordinator.ui_bridge.update_status_message.assert_any_call("Final transcription failed")
+    assert "stage=provider_finalize" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_stop_during_editor_focus_check_does_not_create_pipeline_error(coordinator, mocker):
+    coordinator.state = AppState.LISTENING
+    coordinator.anchor = MagicMock()
+
+    async def check(*args):
+        coordinator.state = AppState.IDLE
+        coordinator.anchor = None
+        return False
+
+    mocker.patch("main.asyncio.to_thread", side_effect=check)
+    mocker.patch("main.asyncio.sleep", new=AsyncMock())
+    await coordinator._listening_monitor_loop()
+    assert coordinator.state == AppState.IDLE

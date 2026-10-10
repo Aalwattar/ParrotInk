@@ -291,7 +291,7 @@ class OpenAIProvider(BaseProvider):
         except Exception:
             logger.warning("Transcription receive connection ended unexpectedly")
         finally:
-            if not self._closing:
+            if not self._closing and not self._transport_error:
                 self._fail_transport(
                     "The transcription connection closed. Reconnect and try again."
                 )

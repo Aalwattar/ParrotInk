@@ -3,6 +3,7 @@ from ctypes import wintypes
 from typing import Literal, Optional
 
 from engine.logging import get_logger
+from engine.platform_win.editor_focus import read_focused_element
 
 logger = get_logger("Anchor")
 
@@ -14,8 +15,8 @@ user32.GetForegroundWindow.argtypes = []
 user32.GetForegroundWindow.restype = wintypes.HWND
 user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-user32.WindowFromPoint.argtypes = [wintypes.POINT]
-user32.WindowFromPoint.restype = wintypes.HWND
+user32.WindowFromPhysicalPoint.argtypes = [wintypes.POINT]
+user32.WindowFromPhysicalPoint.restype = wintypes.HWND
 user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
 user32.GetAncestor.restype = wintypes.HWND
 user32.GetParent.argtypes = [wintypes.HWND]
@@ -40,7 +41,7 @@ def window_from_point(x: int, y: int) -> int:
     point = wintypes.POINT()
     point.x = x
     point.y = y
-    return int(user32.WindowFromPoint(point) or 0)
+    return int(user32.WindowFromPhysicalPoint(point) or 0)
 
 
 def get_ancestor(hwnd: int, flags: int) -> int:
@@ -77,6 +78,7 @@ class Anchor:
 
         # For 'control' scope, we might store the specific HWND of the child control
         self.control_hwnd: Optional[int] = None
+        self.editor = None
 
     @classmethod
     def capture_current(cls, scope: Literal["control", "window"]) -> "Anchor":
@@ -90,6 +92,11 @@ class Anchor:
             if scope == "control":
                 # Get the specific child control that has focus
                 anchor.control_hwnd = cls._get_focused_control(anchor.hwnd)
+                focused = read_focused_element()
+                if focused and focused.control_type in (50004, 50030):  # Edit or document.
+                    left, top, right, bottom = focused.bounds
+                    if right > left and bottom > top:
+                        anchor.editor = focused
 
         logger.debug(
             f"Captured anchor: scope={scope}, hwnd={anchor.hwnd}, control={anchor.control_hwnd}"
@@ -133,6 +140,13 @@ class Anchor:
             return False
 
         elif self.scope == "control":
+            if self.editor:
+                focused = read_focused_element()
+                if focused and focused.runtime_id != self.editor.runtime_id:
+                    return False
+                left, top, right, bottom = (focused or self.editor).bounds
+                if not (left <= x < right and top <= y < bottom):
+                    return False
             # For control scope, we strictly check if it's the exact same control
             # or if the control hwnd we captured is the same.
             if target_hwnd == self.control_hwnd:
@@ -148,3 +162,14 @@ class Anchor:
             return False
 
         return False
+
+    def has_focus(self) -> bool:
+        foreground = get_foreground_window()
+        if not foreground or not self.hwnd:
+            return False
+        if get_ancestor(foreground, GA_ROOT) != get_ancestor(self.hwnd, GA_ROOT):
+            return False
+        if self.editor:
+            focused = read_focused_element()
+            return focused is None or focused.runtime_id == self.editor.runtime_id
+        return self.scope == "window" or self._get_focused_control(foreground) == self.control_hwnd

@@ -1,4 +1,5 @@
 from engine.anchor import Anchor
+from engine.platform_win.editor_focus import FocusedElement
 
 
 def test_anchor_initialization():
@@ -51,3 +52,28 @@ def test_anchor_match_control(mocker):
     # 2. Click on the parent window but NOT the control
     mocker.patch("engine.anchor.window_from_point", return_value=mock_hwnd)
     assert anchor.is_match(10, 10) is False
+
+
+def test_editor_click_outside_shared_window_cancels(mocker):
+    editor = FocusedElement((1, 2, 3), 50004, (10, 10, 300, 200))
+    mocker.patch("engine.anchor.get_foreground_window", return_value=123)
+    mocker.patch("engine.anchor.get_window_thread_process_id", return_value=(0, 999))
+    mocker.patch("engine.anchor.Anchor._get_focused_control", return_value=123)
+    mocker.patch("engine.anchor.window_from_point", return_value=123)
+    mocker.patch("engine.anchor.read_focused_element", return_value=editor, create=True)
+    anchor = Anchor.capture_current("control")
+    assert anchor.is_match(50, 50)
+    assert not anchor.is_match(350, 50)
+
+
+def test_editor_focus_change_cancels_even_with_cursor_over_original_field(mocker):
+    editor = FocusedElement((1, 2, 3), 50004, (10, 10, 300, 200))
+    other = FocusedElement((4, 5, 6), 50004, (400, 10, 700, 200))
+    mocker.patch("engine.anchor.get_foreground_window", return_value=123)
+    mocker.patch("engine.anchor.get_window_thread_process_id", return_value=(0, 999))
+    mocker.patch("engine.anchor.Anchor._get_focused_control", return_value=123)
+    mocker.patch("engine.anchor.window_from_point", return_value=123)
+    read = mocker.patch("engine.anchor.read_focused_element", return_value=editor, create=True)
+    anchor = Anchor.capture_current("control")
+    read.return_value = other
+    assert not anchor.is_match(50, 50)

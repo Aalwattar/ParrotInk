@@ -28,6 +28,8 @@
 # 'control' - Cancel only if you click a DIFFERENT text box or UI element.
 # 'window'  - Cancel if you click ANYWHERE outside the active application window.
 # Options: "control", "window"
+# Control scope uses the accessible editor's identity and bounds where available,
+# falling back to Windows control handles for apps without accessible editors.
 # anchor_scope = "control"
 
 # Only applies to Toggle Mode (hold_mode = false).
@@ -277,24 +279,20 @@
 # gateway_id = "default"
 
 # Supported streaming transcription models through Gateway:
-# "@cf/deepgram/nova-3" (default), "@cf/deepgram/flux",
-# "openai/gpt-live-transcribe", "openai/gpt-transcribe".
-# "xai/grok-stt" uses the unified Cloudflare streaming endpoint, Workers AI Read
-# token permission, and Gateway credits. OpenAI BYOK does not apply to Grok.
+# "@cf/deepgram/nova-3" (default), "@cf/deepgram/flux", "xai/grok-stt".
+# Nova-3/Flux need AI Gateway Run. Grok uses the unified Cloudflare streaming
+# endpoint, Workers AI Read token permission, and Gateway credits.
 # Models with different wire protocols require matching adapters in the catalog.
 # model = "@cf/deepgram/nova-3"
 
-# Optional language hint for Nova-3. OpenAI Gateway models share the OpenAI language,
-# keywords, delay, and turn settings above. Flux currently uses its model defaults.
+# Optional language hint for Nova-3 or Grok. Flux uses its model defaults.
 # language = ""
 
 # Nova-3 silence before endpointing, in milliseconds (100 to 10000).
 # endpointing_ms = 500
 
-# OpenAI Gateway models: true uses your OpenAI key stored in Cloudflare Gateway BYOK.
-# false sends your locally saved OpenAI key through Gateway. Both need the Cloudflare
-# API token. Hosted Nova-3/Flux use your Cloudflare account billing and API token.
-# use_byok = true
+# Cloudflare models use only the Cloudflare token stored in Credential Manager.
+# The old use_byok field is accepted for compatibility but no longer forwards keys.
 
 [logging]
 # Enable logging to a local file in %LOCALAPPDATA%\ParrotInk\Logs.

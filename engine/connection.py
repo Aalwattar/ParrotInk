@@ -125,10 +125,7 @@ class ConnectionManager:
                     await self.stop_provider()
                 else:
                     self._rotation_pending = True
-            uses_openai = self.config.transcription.provider == "openai" or (
-                self.config.transcription.provider == "cloudflare"
-                and self.config.providers.cloudflare.core.model.startswith("openai/")
-            )
+            uses_openai = self.config.transcription.provider == "openai"
             if self.provider and uses_openai:
                 age = time.time() - self._session_start_time
                 rotation_threshold = self.config.providers.openai.core.session_rotation_seconds

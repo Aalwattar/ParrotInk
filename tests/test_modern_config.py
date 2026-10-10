@@ -57,44 +57,32 @@ def test_openai_transcription_intent_with_existing_query():
     assert params["custom"] == ["retained"]
 
 
+@pytest.mark.parametrize("model", ["openai/gpt-live-transcribe", "openai/gpt-transcribe"])
 @pytest.mark.parametrize("byok", [True, False])
-def test_gateway_openai_reuses_adapter_and_correct_credentials(monkeypatch, byok):
+def test_unavailable_gateway_openai_fails_without_reading_provider_key(monkeypatch, model, byok):
+    from unittest.mock import Mock
+
+    key = Mock(return_value="openai-key")
     monkeypatch.setattr(Config, "get_cloudflare_key", lambda self: "cf-token")
+    monkeypatch.setattr(Config, "get_openai_key", key)
+    config = Config()
+    config.transcription.provider = "cloudflare"
+    core = config.providers.cloudflare.core
+    core.account_id = "a" * 32
+    core.model = model
+    core.use_byok = byok
+    with pytest.raises(ValueError, match="Unified Billing"):
+        TranscriptionFactory.create(config, lambda text: None, lambda text: None)
+    key.assert_not_called()
+
+
+def test_direct_openai_remains_supported(monkeypatch):
     monkeypatch.setattr(Config, "get_openai_key", lambda self: "openai-key")
     config = Config()
-    config.transcription.provider = "cloudflare"
-    core = config.providers.cloudflare.core
-    core.account_id = "a" * 32
-    core.gateway_id = "my-gateway"
-    core.model = "openai/gpt-live-transcribe"
-    core.use_byok = byok
-    core.language = "ar"
+    config.transcription.provider = "openai"
     adapter = TranscriptionFactory.create(config, lambda text: None, lambda text: None)
     assert isinstance(adapter, OpenAIProvider)
-    assert adapter.get_type() == "cloudflare"
-    effective = adapter.effective_config
-    assert effective.transcription_model == "gpt-live-transcribe"
-    assert effective.languages == ("ar",)
-    assert urlsplit(effective.url).path == f"/v1/{'a' * 32}/my-gateway/openai"
-    assert effective.headers["cf-aig-authorization"] == "Bearer cf-token"
-    assert effective.headers["cf-aig-collect-log-payload"] == "false"
-    if byok:
-        assert "Authorization" not in effective.headers
-    else:
-        assert effective.headers["Authorization"] == "Bearer openai-key"
-
-
-def test_gateway_local_key_required_without_byok(monkeypatch):
-    monkeypatch.setattr(Config, "get_cloudflare_key", lambda self: "cf-token")
-    monkeypatch.setattr(Config, "get_openai_key", lambda self: None)
-    config = Config()
-    config.transcription.provider = "cloudflare"
-    core = config.providers.cloudflare.core
-    core.account_id = "a" * 32
-    core.model = "openai/gpt-transcribe"
-    core.use_byok = False
-    with pytest.raises(ValueError, match="OpenAI key"):
-        TranscriptionFactory.create(config, lambda text: None, lambda text: None)
+    assert adapter.api_key == "openai-key"
 
 
 def test_grok_uses_unified_cloudflare_streaming_route(monkeypatch):
@@ -118,6 +106,7 @@ def test_grok_uses_unified_cloudflare_streaming_route(monkeypatch):
     assert parameters["websocket"] == ["true"]
     assert parameters["audio_format"] == ["pcm"]
     assert parameters["sample_rate"] == ["16000"]
+    assert "interim_results" not in parameters
     assert parameters["language"] == ["en"]
     assert effective.gateway_id == "speech"
 

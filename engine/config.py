@@ -279,7 +279,7 @@ class CloudflareCoreConfig(BaseModel):
     model: str = "@cf/deepgram/nova-3"
     language: str = ""
     endpointing_ms: int = Field(default=500, ge=100, le=10000)
-    use_byok: bool = True
+    use_byok: bool = True  # Compatibility with old files; no provider keys are forwarded.
 
     @field_validator("account_id", "gateway_id")
     @classmethod

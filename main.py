@@ -30,6 +30,7 @@ from engine.platform_win.instance import SingleInstance
 from engine.platform_win.paths import APP_NAME
 from engine.security import SecurityManager
 from engine.services.updates import UpdateManager, UpdateState
+from engine.transcription.catalog import get_model, get_selected_model
 from engine.ui_bridge import UIBridge
 from engine.ui_utils import show_startup_toast
 
@@ -224,10 +225,6 @@ class AppCoordinator:
         settings = config.model_dump(include={"audio", "transcription", "test"})
         provider = config.transcription.provider
         settings["provider_settings"] = getattr(config.providers, provider).model_dump()
-        if provider == "cloudflare" and config.providers.cloudflare.core.model.startswith(
-            "openai/"
-        ):
-            settings["openai_settings"] = config.providers.openai.model_dump()
         return settings
 
     async def _apply_connection_config(self, config: Config):
@@ -337,11 +334,6 @@ class AppCoordinator:
                 self.config.get_cloudflare_key()
                 and self.config.providers.cloudflare.core.account_id
                 and self.config.providers.cloudflare.core.gateway_id
-                and (
-                    not self.config.providers.cloudflare.core.model.startswith("openai/")
-                    or self.config.providers.cloudflare.core.use_byok
-                    or is_valid("openai", self.config.get_openai_key())
-                )
             ),
         }
 
@@ -450,6 +442,15 @@ class AppCoordinator:
                 if self.state != AppState.LISTENING:
                     break
 
+                anchor = self.anchor
+                if anchor is not None and not self.config.hotkeys.hold_mode:
+                    has_focus = await asyncio.to_thread(anchor.has_focus)
+                    if self.state != AppState.LISTENING:
+                        break
+                    if self.anchor is anchor and not has_focus:
+                        self._cancel_anchor_session("Editor focus left the recording target")
+                        break
+
                 # 1. Check for Pipeline Failure (e.g. provider network error)
                 if not self.pipeline.is_active:
                     logger.error("Audio pipeline stopped unexpectedly during listening.")
@@ -531,18 +532,37 @@ class AppCoordinator:
             return
 
         if self.anchor and not self.anchor.is_match(x, y):
-            logger.info(f"Click away detected at ({x}, {y}) outside anchor. Cancelling session.")
-            self.session_cancelled = True
-            for future in tuple(self._pending_injections):
-                future.cancel()
-            if self.loop:
-                asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
+            self._cancel_anchor_session("Click outside the recording target")
+
+    def _cancel_anchor_session(self, reason: str):
+        if self.session_cancelled:
+            return
+        logger.info("%s; cancelling dictation", reason)
+        self.session_cancelled = True
+        for future in tuple(self._pending_injections):
+            future.cancel()
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
     async def start_listening(self):
         if self._configuration_future and not self._configuration_future.done():
             await asyncio.wrap_future(self._configuration_future)
         if self.state not in (AppState.IDLE, AppState.ERROR):
             logger.debug(f"start_listening ignored: current state is {self.state.name}")
+            return
+
+        if (
+            self.config.transcription.provider == "cloudflare"
+            and get_model("cloudflare", self.config.providers.cloudflare.core.model).protocol
+            == "unavailable"
+        ):
+            self.set_state(AppState.ERROR)
+            self.ui_bridge.update_status_message("Model unavailable in Cloudflare")
+            self.ui_bridge.notify(
+                "Select Nova-3, Flux, or Grok STT in Cloudflare Gateway settings, "
+                "or use the direct OpenAI provider.",
+                "Cloudflare Model Unavailable",
+            )
             return
 
         # 1. API Key Check
@@ -561,7 +581,7 @@ class AppCoordinator:
                 if not core.gateway_id:
                     missing.append("gateway ID")
                 if not missing:
-                    missing.append("OpenAI API key for the selected model")
+                    missing.append("supported transcription model")
                 title = "Cloudflare Settings Incomplete"
                 msg = f"Cloudflare is missing: {', '.join(missing)}."
                 hint = "Open Settings > Configure Cloudflare Gateway."
@@ -602,7 +622,9 @@ class AppCoordinator:
         try:
             # 1. Capture anchor point
             if self.config.interaction.cancel_on_click_outside_anchor:
-                self.anchor = Anchor.capture_current(self.config.interaction.anchor_scope)
+                self.anchor = await asyncio.to_thread(
+                    Anchor.capture_current, self.config.interaction.anchor_scope
+                )
 
             self._last_voice_activity = time.time()
             self.pipeline.on_voice_activity = self._on_voice_activity
@@ -782,6 +804,8 @@ class AppCoordinator:
         self.pipeline.on_voice_activity = None
         provider = self.connection_manager.provider
         if provider and provider.is_running and not self.session_cancelled and not was_error:
+            stage = "provider_finalize"
+            started = time.monotonic()
             try:
                 async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
                     await provider.finish_utterance()
@@ -789,14 +813,30 @@ class AppCoordinator:
                 # or session can be selected.
                 pending = list(self._pending_injections)
                 if pending:
+                    stage = "editor_insertion"
                     async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
                         await asyncio.gather(*(asyncio.wrap_future(f) for f in pending))
             except Exception as exc:
                 # Record the cause without echoing server payloads or transcript text.
-                logger.error("Could not finalize the recording (%s)", type(exc).__name__)
+                logger.error(
+                    "Dictation stop failed: provider=%s model=%s stage=%s elapsed=%.2fs "
+                    "pending_insertions=%d error=%s",
+                    self._recording_provider,
+                    get_selected_model(self.config, self._recording_provider),
+                    stage,
+                    time.monotonic() - started,
+                    len(self._pending_injections),
+                    type(exc).__name__,
+                )
                 self.session_cancelled = True
+                for future in tuple(self._pending_injections):
+                    future.cancel()
                 self.set_state(AppState.ERROR)
-                self.ui_bridge.update_status_message("Final transcription failed")
+                self.ui_bridge.update_status_message(
+                    "Could not insert final text"
+                    if stage == "editor_insertion"
+                    else "Final transcription failed"
+                )
                 await self.connection_manager.stop_provider()
         if (
             self.session_cancelled

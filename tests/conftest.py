@@ -64,9 +64,13 @@ def isolate_desktop_input():
         patch("ctypes.windll.user32.UnhookWindowsHookEx", return_value=True),
         patch("ctypes.windll.user32.SendInput", return_value=1),
         patch("engine.injector.USER32.SendInput", side_effect=lambda count, *_: count),
-        patch("engine.mouse._get_button_state", return_value=0),
+        patch("engine.mouse._set_hook", return_value=123),
+        patch("engine.mouse._unhook", return_value=True),
+        patch("engine.mouse._next_hook", return_value=0),
+        patch("engine.mouse._peek_message", return_value=False),
         patch("engine.mouse._get_cursor_pos", return_value=0),
         patch("engine.mouse._get_foreground_window", return_value=0),
+        patch("engine.anchor.read_focused_element", return_value=None),
     ):
         yield
 

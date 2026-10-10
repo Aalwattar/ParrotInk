@@ -55,7 +55,7 @@ def test_catalog_menu_callbacks_bind_each_model(mocker, config):
         ("assemblyai", "universal-3-6-pro", True, True),
         ("assemblyai", "universal-streaming-english", False, True),
         ("cloudflare", "@cf/deepgram/nova-3", False, False),
-        ("cloudflare", "openai/gpt-live-transcribe", True, True),
+        ("cloudflare", "openai/gpt-live-transcribe", False, False),
     ],
 )
 def test_menu_controls_follow_model_capabilities(
@@ -172,3 +172,43 @@ def test_gateway_dialog_never_grabs_desktop_input(mocker, config):
     window.wait_visibility.assert_called_once()
     window.grab_set.assert_not_called()
     window.destroy.assert_called_once()
+
+
+@pytest.mark.parametrize("provider", ["openai", "assemblyai"])
+def test_model_menu_hides_legacy_models(mocker, config, provider):
+    from engine.ui import TrayApp
+    from engine.ui_menu import _model_menu
+
+    mocker.patch("engine.ui.pystray.Icon")
+    mocker.patch.object(TrayApp, "_ensure_indicator")
+    app = TrayApp(config, initial_provider=provider)
+    labels = [item.text for item in _model_menu(app)]
+    assert len(labels) == 2
+    assert not any("legacy" in label.lower() for label in labels)
+
+
+def test_legacy_models_remain_valid_in_config():
+    from engine.config import Config
+    from engine.config_resolver import resolve_effective_config
+
+    config = Config()
+    config.providers.openai.core.transcription_model = "gpt-4o-transcribe"
+    config.providers.assemblyai.core.speech_model = "u3-rt-pro"
+    effective = resolve_effective_config(config)
+    assert effective.openai.transcription_model == "gpt-4o-transcribe"
+    assert effective.assemblyai.speech_model == "u3-rt-pro"
+
+
+def test_cloudflare_menu_offers_only_verified_unified_billing_models(mocker, config):
+    from engine.ui import TrayApp
+    from engine.ui_menu import _model_menu
+
+    mocker.patch("engine.ui.pystray.Icon")
+    mocker.patch.object(TrayApp, "_ensure_indicator")
+    app = TrayApp(config, initial_provider="cloudflare")
+    assert [item.text for item in _model_menu(app)] == [
+        "Nova-3 (Cloudflare hosted)",
+        "Flux (Cloudflare hosted)",
+        "Grok Speech-to-Text",
+    ]
+    assert validate_gateway_settings("a" * 32, "default", "openai/gpt-live-transcribe")

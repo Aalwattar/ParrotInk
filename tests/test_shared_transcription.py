@@ -188,3 +188,16 @@ async def test_terminal_transcription_session_is_detached_in_warm_mode(coordinat
     assert coordinator.connection_manager.provider is None
     provider.stop.assert_awaited_once()
     assert coordinator.state == AppState.IDLE
+
+
+@pytest.mark.asyncio
+async def test_old_cloudflare_openai_config_reports_unavailable_before_connecting(coordinator):
+    coordinator.config.transcription.provider = "cloudflare"
+    coordinator.config.providers.cloudflare.core.account_id = "a" * 32
+    coordinator.config.providers.cloudflare.core.model = "openai/gpt-live-transcribe"
+    coordinator.state = AppState.IDLE
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    await coordinator.start_listening()
+    coordinator.connection_manager.ensure_connected.assert_not_awaited()
+    coordinator.ui_bridge.update_status_message.assert_any_call("Model unavailable in Cloudflare")
+    assert coordinator.config.providers.cloudflare.core.model == "openai/gpt-live-transcribe"

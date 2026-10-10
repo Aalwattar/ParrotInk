@@ -30,14 +30,7 @@ def _uses_modern_assemblyai(app: "TrayApp") -> bool:
 
 
 def _supports_mic_profile(app: "TrayApp") -> bool:
-    return (
-        app.current_provider == "openai"
-        or _uses_modern_assemblyai(app)
-        or (
-            app.current_provider == "cloudflare"
-            and get_active_model_name(app).startswith("openai/")
-        )
-    )
+    return app.current_provider == "openai" or _uses_modern_assemblyai(app)
 
 
 def _provider_menu(app: "TrayApp") -> pystray.Menu:
@@ -80,6 +73,7 @@ def _model_menu(app: "TrayApp") -> pystray.Menu:
                 enabled=lambda item: app.state in (AppState.IDLE, AppState.ERROR),
             )
             for spec in models_for_provider(app.current_provider)
+            if spec.modern and "(legacy)" not in spec.label
         )
     )
 
@@ -186,10 +180,7 @@ def build_tray_menu(app: "TrayApp") -> pystray.Menu:
                             radio=True,
                         ),
                     ),
-                    enabled=lambda i: (
-                        app.current_provider != "cloudflare"
-                        or get_active_model_name(app).startswith("openai/")
-                    ),
+                    enabled=lambda i: app.current_provider != "cloudflare",
                 ),
                 pystray.MenuItem(
                     "Microphone Profile",

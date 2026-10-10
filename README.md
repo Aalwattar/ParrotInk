@@ -116,30 +116,32 @@ The default model is **GPT Live Transcribe** (`gpt-live-transcribe`), which emit
 
 Both modern models use local speech detection and explicit audio commits. ParrotInk commits after the configured silence interval or when you stop dictation, then waits for the final transcript. Transcript items are tracked separately and delivered in spoken order even if the server finishes them out of order.
 
-Set `languages` for multilingual hints and use `prompt` and `keywords` for contextual vocabulary. The response speed profile maps to `delay = "low"`, `"medium"`, or `"high"`; advanced overrides allow all supported delay levels. Legacy GPT-4o transcription models remain selectable for existing configurations. Their announced retirement date is February 26, 2027. See the [OpenAI realtime transcription guide](https://developers.openai.com/api/docs/guides/realtime-transcription) and [deprecation schedule](https://developers.openai.com/api/docs/deprecations).
+Set `languages` for multilingual hints and use `prompt` and `keywords` for contextual vocabulary. The response speed profile maps to `delay = "low"`, `"medium"`, or `"high"`; advanced overrides allow all supported delay levels. Legacy GPT-4o transcription models remain supported through existing configurations but are hidden from the model menu. Their announced retirement date is February 26, 2027. See the [OpenAI realtime transcription guide](https://developers.openai.com/api/docs/guides/realtime-transcription) and [deprecation schedule](https://developers.openai.com/api/docs/deprecations).
+
+The OpenAI and AssemblyAI model menus show the two current models for each provider. Older models can still be selected in TOML. The installer bundles the configuration template for first launch; upgrades preserve your existing file, and missing settings use application defaults.
 
 ### Cloudflare AI Gateway
 
-Cloudflare is a connection route to supported speech models, including Cloudflare-hosted models and third-party OpenAI and xAI models. The app currently supports:
+Cloudflare is a connection route to supported speech models, including Cloudflare-hosted models and third-party xAI models. The app currently supports:
 
 | Model | Behavior |
 | --- | --- |
 | `@cf/deepgram/nova-3` (default) | Cloudflare-hosted streaming transcription with interim and final results. |
 | `@cf/deepgram/flux` | Cloudflare-hosted streaming transcription with turn events. |
 | `xai/grok-stt` | Grok speech-to-text through Cloudflare's unified streaming endpoint. |
-| `openai/gpt-live-transcribe` | OpenAI live transcription routed through Gateway. |
-| `openai/gpt-transcribe` | OpenAI transcription after a committed phrase, routed through Gateway. |
 
 To configure it:
 
 1. Create an AI Gateway in your [Cloudflare dashboard](https://dash.cloudflare.com/) and obtain an API token with access to the gateway and selected model service.
 2. Open **Settings > Configure Cloudflare Gateway...** from the tray. Enter your **Account ID**, **Gateway ID**, selected **Transcription model**, and **API token**. You can also set the token through **Settings > API Credentials > Set Cloudflare API Token...**.
-3. For an OpenAI model, enable **Use provider keys stored in Cloudflare (BYOK)** if you configured your OpenAI key in Gateway under the default key alias. Disable it to use the OpenAI key saved locally through **Settings > API Credentials > Set OpenAI Key...**. The Cloudflare token is required in both cases. Hosted Nova-3 and Flux use the Cloudflare account's billing and token.
+3. Give the token **Account > AI Gateway > Run** for hosted Nova-3/Flux and **Account > Workers AI > Read** for Grok. Scope it to your account. Provider API keys are never forwarded by the Cloudflare provider.
 4. Save and select **Transcription > Provider > Cloudflare AI Gateway**. Use **Transcription > Model** to change models later.
 
-The token is stored in Windows Credential Manager. Account ID, Gateway ID, model, and other nonsecret settings are saved in TOML; leaving the dialog's token field blank preserves the saved token. OpenAI Gateway models reuse the OpenAI language, keyword, delay, and turn settings.
+The token is stored in Windows Credential Manager. Account ID, Gateway ID, model, and other nonsecret settings are saved in TOML; leaving the dialog's token field blank preserves the saved token.
 
-Grok uses `api.cloudflare.com` and requires a Cloudflare token with **Account > Workers AI > Read** permission plus sufficient AI Gateway credits for third-party inference. It does not use the OpenAI BYOK setting. Each recording is finalized with `audio.done`, then the next recording opens a fresh streaming connection. Streaming model access and forwarding of interim results must be checked with your credentials. See [Cloudflare Grok STT](https://developers.cloudflare.com/ai/models/xai/grok-stt/) and the [unified API authentication requirements](https://developers.cloudflare.com/ai-gateway/usage/rest-api/).
+Grok uses `api.cloudflare.com` and requires a Cloudflare token with **Account > Workers AI > Read** permission plus sufficient AI Gateway credits for third-party inference. It uses only your Cloudflare token, without an xAI key. Each recording is finalized with `audio.done`, then the next recording opens a fresh streaming connection. Streaming model access and forwarding of interim results must be checked with your credentials. See [Cloudflare Grok STT](https://developers.cloudflare.com/ai/models/xai/grok-stt/) and the [unified API authentication requirements](https://developers.cloudflare.com/ai-gateway/usage/rest-api/).
+
+The OpenAI GPT Live Transcribe and GPT Transcribe models are not available on Cloudflare's unified model endpoint and are omitted from the Cloudflare menu. Existing configurations retain their model IDs but give an actionable error; select a supported Cloudflare model or use the direct OpenAI provider. The old `use_byok` setting remains readable for compatibility and no longer forwards provider keys.
 
 The available models are limited to the speech protocols implemented by ParrotInk. Gateway support for an arbitrary model does not make it a compatible transcription model. Gateway's chat Dynamic Routing does not perform live audio model switching; ParrotInk switches connections at phrase boundaries. See the [Cloudflare realtime WebSocket guide](https://developers.cloudflare.com/ai-gateway/usage/websockets-api/realtime-api/) and [Gateway BYOK documentation](https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/).
 
@@ -166,6 +168,10 @@ ParrotInk monitors a global hotkey via native Win32 hooks. You can switch betwee
 - **Action:** Press the hotkey **once** to start recording. You can now take your hands off the keyboard and focus entirely on your speech.
 - **Stop:** Press the hotkey again to finish.
 - **Smart Stop:** If you start typing manually on your keyboard while it's listening, ParrotInk will **automatically stop** the session.
+
+Click-away cancellation observes native mouse events without consuming them. In control scope, Windows UI Automation identifies the focused editor and its bounds when available; applications without accessible editors retain native control matching. Focus checks run off the input-hook thread. Leaving the editor cancels queued transcription so late results cannot enter another field.
+
+Stop-time errors now identify whether the provider failed to finalize or final text could not be inserted. Error logs include the provider, model, stage, elapsed time, and pending insertion count without transcript contents or credentials.
 
 ---
 

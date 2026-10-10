@@ -1,7 +1,7 @@
 """Deepgram streaming speech recognition through Cloudflare AI Gateway.
 
-OpenAI Gateway models reuse OpenAIProvider; this adapter implements the Nova
-and Flux wire protocols documented by Cloudflare and Deepgram.
+This adapter implements the Nova and Flux wire protocols documented by
+Cloudflare and Deepgram.
 """
 
 import asyncio

@@ -1,4 +1,3 @@
-from dataclasses import replace
 from typing import Callable, Optional
 
 from engine.app_types import TranscriptionError
@@ -58,27 +57,12 @@ class TranscriptionFactory:
                 return GrokProvider(
                     token, on_partial, on_final, cfg, on_status=on_status, on_error=on_error
                 )
-            if cfg.protocol == "openai":
-                headers = {
-                    "cf-aig-authorization": f"Bearer {token}",
-                    "cf-aig-collect-log-payload": "false",
-                }
-                if not core.use_byok:
-                    upstream_key = config.get_openai_key()
-                    if not upstream_key and not config.test.enabled:
-                        raise ValueError("Set an OpenAI key, or enable Gateway BYOK")
-                    headers["Authorization"] = f"Bearer {upstream_key or ''}"
-                openai_cfg = replace(
-                    effective.openai,
-                    url=cfg.url,
-                    transcription_model=cfg.model.removeprefix("openai/"),
-                    languages=tuple([core.language])
-                    if core.language
-                    else effective.openai.languages,
-                    headers=headers,
-                    provider_id="cloudflare",
+            if cfg.protocol == "unavailable":
+                raise ValueError(
+                    "This OpenAI model is unavailable through Cloudflare Unified Billing. "
+                    "Select Nova-3, Flux, or Grok STT in Gateway settings, "
+                    "or use the direct OpenAI provider."
                 )
-                return OpenAIProvider(token, on_partial, on_final, openai_cfg, on_status, on_error)
             return CloudflareProvider(
                 token, on_partial, on_final, cfg, on_status=on_status, on_error=on_error
             )

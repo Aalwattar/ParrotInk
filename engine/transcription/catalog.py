@@ -49,13 +49,18 @@ MODELS = (
     ),
     ModelSpec("@cf/deepgram/flux", "Flux (Cloudflare hosted)", "cloudflare", "deepgram_flux"),
     ModelSpec("xai/grok-stt", "Grok Speech-to-Text", "cloudflare", "grok_stt"),
-    ModelSpec("openai/gpt-live-transcribe", "OpenAI GPT Live Transcribe", "cloudflare", "openai"),
-    ModelSpec("openai/gpt-transcribe", "OpenAI GPT Transcribe", "cloudflare", "openai"),
+    # Retain old configuration IDs without offering unavailable Unified Billing routes.
+    ModelSpec(
+        "openai/gpt-live-transcribe", "OpenAI GPT Live Transcribe", "cloudflare", "unavailable"
+    ),
+    ModelSpec("openai/gpt-transcribe", "OpenAI GPT Transcribe", "cloudflare", "unavailable"),
 )
 
 
 def models_for_provider(provider: str) -> tuple[ModelSpec, ...]:
-    return tuple(model for model in MODELS if model.provider == provider)
+    return tuple(
+        model for model in MODELS if model.provider == provider and model.protocol != "unavailable"
+    )
 
 
 def get_model(provider: str, model_id: str) -> ModelSpec:
@@ -64,8 +69,8 @@ def get_model(provider: str, model_id: str) -> ModelSpec:
         "gpt-4o-mini-transcribe-2025-12-15",
     }:
         return replace(get_model(provider, "gpt-4o-mini-transcribe"), id=model_id)
-    for model in models_for_provider(provider):
-        if model.id == model_id:
+    for model in MODELS:
+        if model.provider == provider and model.id == model_id:
             return model
     raise ValueError(f"Unsupported transcription model '{model_id}' for {provider}")
 

@@ -270,3 +270,46 @@ def test_audio_spec_and_reset_preserve_pending_audio():
     p._has_audio = True
     p.reset_utterance()
     assert p._has_audio
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [401, 403])
+async def test_grok_auth_failure_explains_required_token_permission(status):
+    from websockets.datastructures import Headers
+    from websockets.exceptions import InvalidStatus
+    from websockets.http11 import Response
+
+    p = provider()
+    failure = InvalidStatus(Response(status, "Denied", Headers(), b"secret"))
+    with patch(
+        "engine.transcription.grok_provider.websockets.connect",
+        new=AsyncMock(side_effect=failure),
+    ):
+        with pytest.raises(ConnectionError, match="Workers AI.*Read") as error:
+            await p.start()
+        assert "secret" not in str(error.value)
+        assert p._failure_event.is_set()
+
+
+@pytest.mark.asyncio
+async def test_empty_done_acknowledges_already_delivered_final():
+    p = provider()
+    await p.send_audio(b"audio", 0)
+    await p._handle_event(result("complete phrase", final=True, speech_final=True))
+    await p._handle_event({"type": "transcript.done", "duration": 1})
+    p.on_final.assert_called_once_with("complete phrase")
+    p.on_error.assert_not_called()
+    assert p._done_received and not p.is_running
+
+
+@pytest.mark.asyncio
+async def test_empty_done_delivers_locked_chunks_without_repeating_earlier_phrase():
+    p = provider()
+    await p._handle_event(result("first phrase", final=True, speech_final=True))
+    await p._handle_event(result("remaining words", start=1, final=True, speech_final=False))
+    await p._handle_event({"type": "transcript.done", "duration": 2})
+    assert [call.args[0] for call in p.on_final.call_args_list] == [
+        "first phrase",
+        "remaining words",
+    ]
+    assert p._done_received

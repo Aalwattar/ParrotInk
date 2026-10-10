@@ -9,6 +9,7 @@ import json
 from typing import Callable, Optional, Union
 
 import websockets.asyncio.client as websockets
+from websockets.exceptions import InvalidStatus
 
 from engine.app_types import EffectiveCloudflareConfig, TranscriptionError
 from engine.audio.adapter import ProviderAudioSpec
@@ -84,8 +85,13 @@ class GrokProvider(BaseProvider):
                 additional_headers=None if self.effective_config.is_test else headers,
                 proxy=None if self.effective_config.is_test else True,
             )
-        except Exception:
+        except Exception as error:
             self._failure_event.set()
+            if isinstance(error, InvalidStatus) and error.response.status_code in (401, 403):
+                raise ConnectionError(
+                    "Cloudflare rejected the Grok token. Check Account > Workers AI > Read "
+                    "permission and access to the configured account."
+                ) from None
             raise ConnectionError("Could not connect to Cloudflare Grok STT") from None
         self._is_running = True
         self._receive_task = asyncio.create_task(self._receive_loop())
@@ -169,11 +175,18 @@ class GrokProvider(BaseProvider):
 
     def _emit_terminal_remainder(self, event):
         text = event.get("text", "").strip()
+        if not text and not event.get("words"):
+            # Cloudflare can send only a terminal acknowledgment after phrase finals.
+            remaining = " ".join(self._chunks[start] for start in sorted(self._chunks)).strip()
+            if remaining:
+                self.on_final(remaining)
+            self._chunks.clear()
+            return
         if not self._emitted_text:
             if text:
                 self.on_final(text)
             return
-        # transcript.done includes the complete session, not just the current
+        # A transcript.done payload includes the complete session, not just the current
         # phrase. Prefer word timestamps to retain repeated identical phrases.
         words = event.get("words")
         if words and all(isinstance(w.get("start"), (int, float)) for w in words):
