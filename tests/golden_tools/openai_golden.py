@@ -6,7 +6,7 @@ import traceback
 import wave
 from datetime import datetime
 
-import httpx
+import httpx2
 from openai import OpenAI
 
 # Add project root to sys.path
@@ -53,7 +53,7 @@ def split_wav(file_path: str) -> list[str]:
 
 def transcribe_openai(audio_path: str, format: str = "text"):
     # Robust finite timeouts: prevent indefinite hangs on upload/processing.
-    timeout = httpx.Timeout(600.0, connect=10.0, read=600.0, write=600.0)
+    timeout = httpx2.Timeout(600.0, connect=10.0, read=600.0, write=600.0)
     client = OpenAI(api_key=get_openai_key(), timeout=timeout, max_retries=5)
 
     print(f"Starting OpenAI transcription for {audio_path}...", file=sys.stderr)

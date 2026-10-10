@@ -24,7 +24,7 @@ def ask_key(master, title: str, prompt: str = "") -> Optional[str]:
     # FIX: Correctly set both size and position
     window.geometry(f"{width}x{height}+{x}+{y}")
 
-    bg_color = "#0A0A0A"
+    bg_color = "#212529"
     window.configure(background=bg_color)
 
     # Internal state
@@ -57,22 +57,18 @@ def ask_key(master, title: str, prompt: str = "") -> Optional[str]:
         header,
         text="PARROTINK // CREDENTIALS",
         font=("Segoe UI", 7, "bold"),
-        foreground="#444444",
+        foreground="#ADB5BD",
         background=bg_color,
     ).pack(side=LEFT)
 
-    close_btn = tk.Label(
+    close_btn = tb.Button(
         header,
-        text="✕",
-        background=bg_color,
-        foreground="#666666",
-        cursor="hand2",
-        font=("Segoe UI", 10),
+        command=window.destroy,
+        icon="x-lg",
+        icon_only=True,
+        bootstyle="secondary-link",
     )
     close_btn.pack(side=RIGHT)
-    close_btn.bind("<Button-1>", lambda e: window.destroy())
-    close_btn.bind("<Enter>", lambda e: close_btn.configure(foreground="#FFFFFF"))
-    close_btn.bind("<Leave>", lambda e: close_btn.configure(foreground="#666666"))
 
     # --- 3. LARGE TITLE ---
     display_title = title if "Key" in title else f"Set {title} Key"

@@ -226,8 +226,7 @@ class TrayApp:
         global _master_root
         try:
             if _master_root is None:
-                # Senior Architecture: Use 'darkly' for a luxury, monochromatic feel.
-                _master_root = tb.Window(themename="darkly")
+                _master_root = tb.Window(themename="bootstrap-dark")
                 _master_root.withdraw()
 
             self.ui_root = _master_root

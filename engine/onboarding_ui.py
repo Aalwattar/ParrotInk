@@ -23,7 +23,7 @@ def show_onboarding_blocking() -> bool:
     Returns True if 'Don't show again' was checked.
     """
     # 1. WINDOW SETUP
-    style = tb.Style(theme="superhero")
+    style = tb.Style(theme="bootstrap-dark")
     root = style.master
     root.withdraw()  # type: ignore[attr-defined]
 
@@ -129,14 +129,14 @@ def show_onboarding_blocking() -> bool:
     for title, text in steps:
         sf = tb.Frame(step_frame, bootstyle="secondary")
         sf.pack(fill=X, pady=5)
-        tb.Label(sf, text=title, font=("Segoe UI", 11, "bold"), bootstyle="inverse-secondary").pack(
+        tb.Label(sf, text=title, font=("Segoe UI", 11, "bold"), bootstyle="@secondary").pack(
             side=LEFT, padx=(0, 15)
         )
         tb.Label(
             sf,
             text=text,
             font=("Segoe UI", 10),
-            bootstyle="inverse-secondary",
+            bootstyle="@secondary",
             wraplength=400,
             justify=LEFT,
         ).pack(side=LEFT)

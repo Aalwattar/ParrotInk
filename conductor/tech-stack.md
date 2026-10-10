@@ -12,8 +12,7 @@
 - **httpx:** Used for making standard HTTP requests to API endpoints where streaming is not required.
 - **pywin32:** Provides robust, low-level access to the Windows API for creating global hotkeys and injecting text at the cursor location.
 - **pystray:** Manages the application's system tray icon and context menu.
-- **ttkbootstrap:** Provides modern, high-fidelity UI components and themes (e.g., "Superhero" dark theme) for the statistics dashboard and other dialogs, replacing standard Tkinter for a more professional look.
-- **darkdetect:** Used for detecting the system-wide light/dark mode preference, allowing the UI to adapt its theme automatically.
+- **ttkbootstrap:** Provides themed UI components using the shared `bootstrap-dark` theme for application windows and dialogs.
 - **threading:** Used to run the UI loop in a background thread, ensuring the main thread remains responsive to system signals.
 - **pydantic:** Used for robust configuration management, validation, and schema definition.
 - **pydantic-settings:** Extends pydantic for environment-based configuration and settings management.
@@ -32,10 +31,9 @@
 - **packaging:** Used for robust Semantic Versioning (SemVer) comparison between local and remote application versions.
 - **webbrowser:** (Standard Library) Used to securely open the GitHub releases page in the user's default browser.
 
-## 3. API SDKs
+## 3. Validation SDKs
 
-- **openai:** The official Python client for interacting with OpenAI's transcription services.
-- **assemblyai:** The official Python client for interacting with AssemblyAI's transcription services.
+- **openai** and **assemblyai:** Used by standalone golden-transcription and connectivity-validation tools. The live application connects to both providers through `websockets` directly, so these SDKs are development dependencies rather than runtime dependencies.
 
 ## 4. Alternatives
 
