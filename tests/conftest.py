@@ -210,6 +210,7 @@ async def coordinator(config, guard_ui_components):
         patch("engine.services.updates.UpdateManager.start"),
         patch("engine.platform_win.session.SessionMonitor.start"),
         patch("main.AppCoordinator._hook_watchdog_task_run"),
+        patch("main.Anchor.capture_current"),
     ):
         mock_bridge = MagicMock()
         coord = AppCoordinator(config, mock_bridge)

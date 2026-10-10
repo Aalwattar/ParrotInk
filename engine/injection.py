@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from engine.injector import SmartInjector, inject_text
 from engine.logging import get_logger
@@ -28,7 +28,9 @@ class InjectionController:
     def set_loop(self, loop: asyncio.AbstractEventLoop):
         self.loop = loop
 
-    async def smart_inject(self, text: str, is_final: bool = False):
+    async def smart_inject(
+        self, text: str, is_final: bool = False, can_insert: Callable[[], bool] | None = None
+    ):
         """Injects text using the stateful SmartInjector."""
         if not self.loop:
             return
@@ -36,8 +38,13 @@ class InjectionController:
         async with self.lock:
             self._is_injecting = True
             try:
-                # Note: SmartInjector handles its own delta calculation
-                await self.loop.run_in_executor(None, self.injector.inject, text, is_final)
+
+                def insert():
+                    # Check on the worker after waiting for the lock and executor.
+                    if can_insert is None or can_insert():
+                        self.injector.inject(text, is_final)
+
+                await self.loop.run_in_executor(None, insert)
             finally:
                 self._is_injecting = False
                 self.last_injection_time = time.time()

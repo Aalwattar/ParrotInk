@@ -56,7 +56,7 @@ class AudioAdapter:
         # Calculate Energy for Voice Activity Detection (Subtle HUD feedback)
         # RMS = root mean square of the signal
         energy = np.sqrt(np.mean(chunk**2))
-        self.voice_active = energy > self._energy_threshold
+        self.voice_active = bool(energy > self._energy_threshold)
 
         # 1. Resample
         if self._resampler:

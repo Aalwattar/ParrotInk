@@ -231,3 +231,50 @@ async def test_send_failure_reports_once(provider):
     await provider.send_audio(b"\x01\x00", 0.0)
     assert not provider.is_running
     provider.on_error.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_completed_final_then_local_noise_keeps_connection_without_false_error(provider):
+    provider.ws = AsyncMock()
+    provider._is_running = True
+    await provider._handle_event(
+        {
+            "type": "Turn",
+            "turn_order": 0,
+            "transcript": "Done.",
+            "end_of_turn": True,
+            "turn_is_formatted": True,
+        }
+    )
+    await provider.notify_voice_activity(True, 1.0)
+    await provider.send_audio(b"\x01\x00" * 100, 1.0)
+    await provider.finish_utterance()
+    assert provider.is_running
+    assert not provider._pending_audio
+    provider.ws.close.assert_not_awaited()
+    provider.on_final.assert_called_once_with("Done.")
+    provider.on_error.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("new_recording", [True, False])
+async def test_completed_final_cannot_hide_new_unfinished_speech(provider, new_recording):
+    provider.ws = AsyncMock()
+    provider._is_running = True
+    await provider._handle_event(
+        {
+            "type": "Turn",
+            "turn_order": 0,
+            "transcript": "Done.",
+            "end_of_turn": True,
+            "turn_is_formatted": True,
+        }
+    )
+    if new_recording:
+        provider.reset_utterance()
+    else:
+        await provider._handle_event({"type": "SpeechStarted"})
+    await provider.notify_voice_activity(True, 1.0)
+    await provider.send_audio(b"\x01\x00" * 100, 1.0)
+    with pytest.raises(TimeoutError):
+        await provider.finish_utterance()

@@ -53,6 +53,8 @@ class AssemblyAIProvider(BaseProvider):
         self._final_event = asyncio.Event()
         self._pending_audio = False
         self._pending_turns: set[int] = set()
+        self._has_final_turn = False
+        self._server_speech_pending = False
         self._completed_turns: set[int] = set()
         self._finish_lock = asyncio.Lock()
 
@@ -142,6 +144,8 @@ class AssemblyAIProvider(BaseProvider):
         self._voice_active: Optional[bool] = None
         self._pending_audio = False
         self._pending_turns.clear()
+        self._has_final_turn = False
+        self._server_speech_pending = False
         self._final_event.clear()
 
     async def finish_utterance(self):
@@ -159,7 +163,29 @@ class AssemblyAIProvider(BaseProvider):
                     timeout=min(3.0, max(0.05, self.stop_timeout * 0.5)),
                 )
             except TimeoutError:
-                logger.warning("AssemblyAI final turn timed out.")
+                if (
+                    self._is_running
+                    and not self._failure_event.is_set()
+                    and self._has_final_turn
+                    and not self._server_speech_pending
+                    and not self._pending_turns
+                    and not self.last_transcript
+                ):
+                    # No new server turn exists to acknowledge after the completed final.
+                    self._pending_audio = False
+                    logger.info("AssemblyAI final already received; retaining hot connection.")
+                    return
+                logger.error(
+                    "AssemblyAI final turn timed out: pending_audio=%s pending_turns=%d "
+                    "partial_characters=%d voice_active=%s final_received=%s "
+                    "server_speech_pending=%s",
+                    self._pending_audio,
+                    len(self._pending_turns),
+                    len(self.last_transcript),
+                    getattr(self, "_voice_active", None),
+                    self._has_final_turn,
+                    self._server_speech_pending,
+                )
                 raise TimeoutError(
                     "AssemblyAI did not finalize the current phrase in time."
                 ) from None
@@ -260,6 +286,7 @@ class AssemblyAIProvider(BaseProvider):
             return
         if msg_type == "SpeechStarted":
             self._pending_audio = True
+            self._server_speech_pending = True
             return
 
         if msg_type == "Turn" and text is not None:
@@ -286,6 +313,8 @@ class AssemblyAIProvider(BaseProvider):
                     self._completed_turns.add(turn_order)
                     self._pending_turns.discard(turn_order)
                 self._pending_audio = False
+                self._has_final_turn = True
+                self._server_speech_pending = False
                 self.last_transcript = ""
                 if not self._pending_turns:
                     self._final_event.set()
@@ -331,7 +360,12 @@ class AssemblyAIProvider(BaseProvider):
                 logger.debug(f"Ignoring AssemblyAI error during shutdown: {error_msg}")
                 return
 
-            logger.error("AssemblyAI rejected the streaming session")
+            error_code = event.get("error_code")
+            logger.error(
+                "AssemblyAI rejected the streaming session: code=%s pending_turns=%d",
+                error_code if isinstance(error_code, int) else "unknown",
+                len(self._pending_turns),
+            )
 
             if self.on_error:
                 # Map common AssemblyAI errors to user-friendly messages

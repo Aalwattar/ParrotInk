@@ -5,6 +5,21 @@ import pytest
 
 
 @pytest.mark.asyncio
+async def test_insertion_guard_runs_after_waiting_for_injection_lock(coordinator, mocker):
+    coordinator.loop = asyncio.get_running_loop()
+    inject = mocker.patch.object(coordinator.injection_controller.injector, "inject")
+    allowed = True
+    async with coordinator.injection_controller.lock:
+        task = asyncio.create_task(
+            coordinator.injection_controller.smart_inject("late text", can_insert=lambda: allowed)
+        )
+        await asyncio.sleep(0)
+        allowed = False
+    await task
+    inject.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_smart_inject_append_only(coordinator):
     coordinator.loop = asyncio.get_running_loop()
     with (

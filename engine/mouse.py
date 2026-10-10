@@ -7,6 +7,7 @@ from ctypes import wintypes
 from typing import Callable, Optional
 
 from engine.logging import get_logger
+from engine.platform_win.dpi import physical_coordinates
 from engine.platform_win.keys import HOOKPROC
 
 logger = get_logger("MouseMonitor")
@@ -51,6 +52,7 @@ class MSLLHOOKSTRUCT(ctypes.Structure):
     ]
 
 
+@physical_coordinates()
 def _read_position() -> tuple[int, int] | None:
     point = wintypes.POINT()
     if not _get_cursor_pos(ctypes.byref(point)):
@@ -144,6 +146,7 @@ class MouseMonitor:
             except queue.Empty:
                 continue
 
+    @physical_coordinates()
     def _poll(self):
         previous_foreground = None
         msg = wintypes.MSG()

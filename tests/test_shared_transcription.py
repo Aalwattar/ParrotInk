@@ -201,3 +201,63 @@ async def test_old_cloudflare_openai_config_reports_unavailable_before_connectin
     coordinator.connection_manager.ensure_connected.assert_not_awaited()
     coordinator.ui_bridge.update_status_message.assert_any_call("Model unavailable in Cloudflare")
     assert coordinator.config.providers.cloudflare.core.model == "openai/gpt-live-transcribe"
+
+
+@pytest.mark.asyncio
+async def test_noneditable_target_rejects_dictation_before_network_or_microphone(
+    coordinator, mocker
+):
+    coordinator.config.test.enabled = False
+    coordinator.config.transcription.provider = "openai"
+    coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
+    coordinator.state = AppState.IDLE
+    coordinator.input_monitor._state = 1
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    coordinator.pipeline.start = AsyncMock()
+    mocker.patch(
+        "main.Anchor.capture_current",
+        return_value=SimpleNamespace(can_dictate=False, focused_element=None),
+    )
+    await coordinator.start_listening()
+    coordinator.connection_manager.ensure_connected.assert_not_awaited()
+    coordinator.pipeline.start.assert_not_awaited()
+    assert coordinator.input_monitor._state == 0
+    assert coordinator.session_cancelled
+    assert coordinator.state == AppState.IDLE
+    coordinator.ui_bridge.update_status_message.assert_any_call("Click an editable text field")
+
+
+@pytest.mark.asyncio
+async def test_writable_target_still_starts_dictation(coordinator, mocker):
+    coordinator.config.test.enabled = False
+    coordinator.config.transcription.provider = "openai"
+    coordinator.config.interaction.sounds.enabled = False
+    coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
+    coordinator.state = AppState.IDLE
+    coordinator._loop = asyncio.get_running_loop()
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    coordinator.connection_manager.provider = ReadyProvider()
+    coordinator.pipeline.start = AsyncMock()
+    coordinator.pipeline.stop = AsyncMock()
+    mocker.patch.object(coordinator, "_start_mouse_monitor")
+    target = SimpleNamespace(can_dictate=True, has_focus=lambda: True)
+    mocker.patch("main.Anchor.capture_current", return_value=target)
+    await coordinator.start_listening()
+    coordinator.connection_manager.ensure_connected.assert_awaited_once()
+    coordinator.pipeline.start.assert_awaited_once()
+    assert coordinator.state == AppState.LISTENING
+    await coordinator.stop_listening()
+
+
+@pytest.mark.asyncio
+async def test_target_changed_during_connection_does_not_start_microphone(coordinator, mocker):
+    coordinator.state = AppState.IDLE
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    coordinator.connection_manager.provider = ReadyProvider()
+    coordinator.pipeline.start = AsyncMock()
+    target = SimpleNamespace(can_dictate=True, has_focus=lambda: False)
+    mocker.patch("main.Anchor.capture_current", return_value=target)
+    await coordinator.start_listening()
+    coordinator.pipeline.start.assert_not_awaited()
+    assert coordinator.state == AppState.IDLE
+    assert coordinator.session_cancelled

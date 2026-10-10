@@ -1,8 +1,16 @@
 import base64
 
 import numpy as np
+import pytest
 
 from engine.audio.adapter import AudioAdapter, ProviderAudioSpec
+
+
+@pytest.mark.parametrize("amplitude,expected", [(0.0, False), (0.05, True)])
+def test_voice_activity_is_a_python_boolean(amplitude, expected):
+    adapter = AudioAdapter(16000, ProviderAudioSpec(16000, wire_encoding="pcm16_bytes"))
+    adapter.process(np.full(1600, amplitude, dtype=np.float32))
+    assert adapter.voice_active is expected
 
 
 def test_audio_adapter_pcm16_bytes():

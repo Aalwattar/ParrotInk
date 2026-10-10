@@ -94,9 +94,53 @@ async def test_assemblyai_tail_silence_does_not_fail_completed_recording():
     # Capture continues after the server's final turn, sending only silence.
     await provider.notify_voice_activity(False, 1.0)
     await provider.send_audio(bytes(3200), 1.0)
+
     await provider.finish_utterance()
     assert provider.is_running
     provider.ws.send.assert_awaited_once_with(bytes(3200))
+
+
+@pytest.mark.asyncio
+async def test_assemblyai_completed_turn_with_silent_audio_keeps_hot_connection(coordinator):
+    import numpy as np
+
+    from engine.audio.adapter import AudioAdapter
+
+    coordinator.loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator.config.transcription.provider = "assemblyai"
+    coordinator._recording_provider = "assemblyai"
+    coordinator.pipeline.stop = AsyncMock()
+    provider = AssemblyAIProvider(
+        "",
+        coordinator.on_partial,
+        coordinator.on_final,
+        resolve_effective_config(coordinator.config).assemblyai,
+    )
+    provider.ws = AsyncMock()
+    provider._is_running = True
+    await provider._handle_event(
+        {
+            "type": "Turn",
+            "turn_order": 0,
+            "transcript": "Complete phrase.",
+            "end_of_turn": True,
+            "turn_is_formatted": True,
+        }
+    )
+    adapter = AudioAdapter(16000, provider.get_audio_spec())
+    audio = adapter.process(np.zeros(1600, dtype=np.float32))
+    await provider.notify_voice_activity(adapter.voice_active, 1.0)
+    await provider.send_audio(audio, 1.0)
+    coordinator.connection_manager.provider = provider
+    await coordinator.stop_listening()
+    assert coordinator.state == AppState.IDLE
+    assert coordinator.connection_manager.provider is provider
+    assert provider.is_running
+    assert provider.ws.send.call_args.args == (audio,)
+    assert ("Final transcription failed",) not in [
+        call.args for call in coordinator.ui_bridge.update_status_message.call_args_list
+    ]
 
 
 @pytest.mark.asyncio
@@ -164,3 +208,48 @@ async def test_stop_during_editor_focus_check_does_not_create_pipeline_error(coo
     mocker.patch("main.asyncio.sleep", new=AsyncMock())
     await coordinator._listening_monitor_loop()
     assert coordinator.state == AppState.IDLE
+
+
+@pytest.mark.asyncio
+async def test_final_text_after_focus_change_is_discarded_during_stop(coordinator, mocker):
+    coordinator.loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    target = MagicMock()
+    target.has_focus.return_value = False
+    coordinator.anchor = target
+    coordinator.pipeline.stop = AsyncMock()
+    inject = mocker.patch.object(coordinator.injection_controller.injector, "inject")
+    provider = MagicMock(is_running=True)
+
+    async def finish():
+        assert coordinator.anchor is target
+        coordinator.on_final("late phrase")
+
+    provider.finish_utterance = AsyncMock(side_effect=finish)
+    coordinator.connection_manager.provider = provider
+    await coordinator.stop_listening()
+    inject.assert_not_called()
+    assert coordinator.state == AppState.IDLE
+    assert coordinator.session_cancelled
+    assert coordinator.anchor is None
+
+
+@pytest.mark.asyncio
+async def test_final_text_still_inserts_into_unchanged_target(coordinator, mocker):
+    coordinator.loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator.anchor = MagicMock()
+    coordinator.anchor.has_focus.return_value = True
+    coordinator.pipeline.stop = AsyncMock()
+    inject = mocker.patch.object(coordinator.injection_controller.injector, "inject")
+    provider = MagicMock(is_running=True)
+
+    async def finish():
+        coordinator.on_final("last words")
+
+    provider.finish_utterance = AsyncMock(side_effect=finish)
+    coordinator.connection_manager.provider = provider
+    await coordinator.stop_listening()
+    inject.assert_called_once_with("last words ", True)
+    assert coordinator.state == AppState.IDLE
+    assert not coordinator.session_cancelled

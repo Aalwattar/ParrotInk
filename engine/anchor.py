@@ -79,6 +79,11 @@ class Anchor:
         # For 'control' scope, we might store the specific HWND of the child control
         self.control_hwnd: Optional[int] = None
         self.editor = None
+        self.focused_element = None
+
+    @property
+    def can_dictate(self) -> bool:
+        return bool(self.focused_element and self.focused_element.can_dictate)
 
     @classmethod
     def capture_current(cls, scope: Literal["control", "window"]) -> "Anchor":
@@ -88,12 +93,13 @@ class Anchor:
 
         if anchor.hwnd:
             _, anchor.process_id = get_window_thread_process_id(anchor.hwnd)
+            focused = read_focused_element()
+            anchor.focused_element = focused
 
             if scope == "control":
                 # Get the specific child control that has focus
                 anchor.control_hwnd = cls._get_focused_control(anchor.hwnd)
-                focused = read_focused_element()
-                if focused and focused.control_type in (50004, 50030):  # Edit or document.
+                if focused and focused.can_dictate:
                     left, top, right, bottom = focused.bounds
                     if right > left and bottom > top:
                         anchor.editor = focused
@@ -142,7 +148,9 @@ class Anchor:
         elif self.scope == "control":
             if self.editor:
                 focused = read_focused_element()
-                if focused and focused.runtime_id != self.editor.runtime_id:
+                if focused and (
+                    not focused.can_dictate or focused.runtime_id != self.editor.runtime_id
+                ):
                     return False
                 left, top, right, bottom = (focused or self.editor).bounds
                 if not (left <= x < right and top <= y < bottom):
@@ -169,7 +177,11 @@ class Anchor:
             return False
         if get_ancestor(foreground, GA_ROOT) != get_ancestor(self.hwnd, GA_ROOT):
             return False
+        focused = read_focused_element() if self.focused_element else None
+        if self.focused_element and (focused is None or not focused.can_dictate):
+            return False
         if self.editor:
-            focused = read_focused_element()
-            return focused is None or focused.runtime_id == self.editor.runtime_id
+            return bool(
+                focused and focused.can_dictate and focused.runtime_id == self.editor.runtime_id
+            )
         return self.scope == "window" or self._get_focused_control(foreground) == self.control_hwnd

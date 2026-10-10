@@ -169,9 +169,19 @@ ParrotInk monitors a global hotkey via native Win32 hooks. You can switch betwee
 - **Stop:** Press the hotkey again to finish.
 - **Smart Stop:** If you start typing manually on your keyboard while it's listening, ParrotInk will **automatically stop** the session.
 
-Click-away cancellation observes native mouse events without consuming them. In control scope, Windows UI Automation identifies the focused editor and its bounds when available; applications without accessible editors retain native control matching. Focus checks run off the input-hook thread. Leaving the editor cancels queued transcription so late results cannot enter another field.
+Dictation checks the focused local control through Windows accessibility metadata. Writable value/text patterns are accepted, including custom editors; standard Edit controls also work when read-only metadata is missing. Disabled, password, known read-only, and other unconfirmed targets are rejected. Rich editors are checked at the current selection or caret, rather than across the whole document. The target is checked again after connection setup, before microphone capture. Rejections reset the hotkey state and the HUD asks you to click an editable text field.
+
+Mouse Without Borders does not provide remote dictation or reliable active-computer detection here. A local editor can remain focused while you control another computer. Run ParrotInk on the computer with the microphone and stop dictation before switching; disable the second instance if you do not use dictation locally there.
+
+Search boxes with suggestion lists can report a selected result as focused before the first character is typed. When accessibility explicitly links an adjacent writable search box to that list, ParrotInk treats the box and its suggestions as the same target. Ordinary lists without that relationship remain subject to the editability check.
+
+Click-away cancellation observes native mouse events without consuming them. In control scope, Windows UI Automation identifies the focused editor and its bounds when available; native control matching supplements it. Focus checks run off the input-hook thread. Native clicks and accessibility bounds use physical pixels, independently of the main UI scaling. The target remains attached until finalization finishes, and queued insertions recheck it on the worker immediately before writing. Results are discarded if the target changed, including while stopping.
 
 Stop-time errors now identify whether the provider failed to finalize or final text could not be inserted. Error logs include the provider, model, stage, elapsed time, and pending insertion count without transcript contents or credentials.
+
+AssemblyAI recordings retain the hot connection after stopping. Pending speech uses `ForceEndpoint`; an already-completed turn followed by silence does not request another final. `Terminate` is reserved for closing the connection.
+
+Audio activity is normalized to a Python boolean before reaching providers, so silent chunks are not mistaken for pending speech by boolean identity checks.
 
 ---
 

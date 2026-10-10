@@ -242,8 +242,22 @@ class AppCoordinator:
             )
 
     def _queue_injection(self, text: str, is_final: bool = False):
+        target = self.anchor
+
+        def can_insert():
+            if self.session_cancelled or self.anchor is not target:
+                return False
+            if target is not None and not target.has_focus():
+                self.session_cancelled = True
+                logger.info("Discarding transcription: editor focus changed before insertion")
+                if self.is_listening:
+                    asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
+                return False
+            return True
+
         future = asyncio.run_coroutine_threadsafe(
-            self.injection_controller.smart_inject(text, is_final=is_final), self.loop
+            self.injection_controller.smart_inject(text, is_final=is_final, can_insert=can_insert),
+            self.loop,
         )
         self._pending_injections.add(future)
         future.add_done_callback(self._pending_injections.discard)
@@ -443,7 +457,11 @@ class AppCoordinator:
                     break
 
                 anchor = self.anchor
-                if anchor is not None and not self.config.hotkeys.hold_mode:
+                if (
+                    anchor is not None
+                    and self.config.interaction.cancel_on_click_outside_anchor
+                    and not self.config.hotkeys.hold_mode
+                ):
                     has_focus = await asyncio.to_thread(anchor.has_focus)
                     if self.state != AppState.LISTENING:
                         break
@@ -621,10 +639,30 @@ class AppCoordinator:
 
         try:
             # 1. Capture anchor point
-            if self.config.interaction.cancel_on_click_outside_anchor:
-                self.anchor = await asyncio.to_thread(
-                    Anchor.capture_current, self.config.interaction.anchor_scope
+            target = await asyncio.to_thread(
+                Anchor.capture_current, self.config.interaction.anchor_scope
+            )
+            if self.state != AppState.CONNECTING:
+                return
+            if not target.can_dictate:
+                self.session_cancelled = True
+                self.anchor = None
+                for future in tuple(self._pending_injections):
+                    future.cancel()
+                self.input_monitor.reset_state()
+                self.session_start_time = 0.0
+                self.set_state(AppState.IDLE)
+                self.ui_bridge.update_status_message("Click an editable text field")
+                focused = target.focused_element
+                logger.info(
+                    "Dictation rejected: control_type=%s read_only=%s enabled=%s password=%s",
+                    focused.control_type if focused else None,
+                    focused.read_only if focused else None,
+                    focused.enabled if focused else None,
+                    focused.password if focused else None,
                 )
+                return
+            self.anchor = target
 
             self._last_voice_activity = time.time()
             self.pipeline.on_voice_activity = self._on_voice_activity
@@ -639,6 +677,17 @@ class AppCoordinator:
                 # we must abort here to prevent background recording.
                 if self.state != AppState.CONNECTING:
                     logger.info("Session cancelled during connection. Aborting pipeline start.")
+                    return
+
+                has_focus = await asyncio.to_thread(target.has_focus)
+                if self.state != AppState.CONNECTING:
+                    return
+                if not has_focus:
+                    self.session_cancelled = True
+                    await self.stop_listening(silent=True)
+                    self.ui_bridge.update_status_message(
+                        "Target changed; click an editable text field"
+                    )
                     return
 
                 self.connection_manager.provider.reset_utterance()
@@ -792,7 +841,6 @@ class AppCoordinator:
         logger.debug("Stopping transcription session...")
         self.input_monitor.reset_state()
         self.mouse_monitor.stop()
-        self.anchor = None
 
         if self._inactivity_task:
             self._inactivity_task.cancel()
@@ -852,6 +900,7 @@ class AppCoordinator:
         else:
             self.connection_manager.start_idle_timer()
 
+        self.anchor = None
         if not silent:
             self._play_feedback_sound("stop")
 
