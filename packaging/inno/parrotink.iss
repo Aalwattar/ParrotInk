@@ -1,7 +1,7 @@
 ; Inno Setup Script for ParrotInk
 
 #define MyAppName "ParrotInk"
-#define MyAppVersion "0.2.42"
+#define MyAppVersion "0.2.43"
 #define MyAppPublisher "Aalwattar"
 #define MyAppURL "https://github.com/Aalwattar/ParrotInk"
 #define MyAppExeName "ParrotInk.exe"
