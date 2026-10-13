@@ -3,7 +3,7 @@ from ctypes import wintypes
 from typing import Literal, Optional
 
 from engine.logging import get_logger
-from engine.platform_win.editor_focus import read_focused_element
+from engine.platform_win.editor_focus import FocusedElement, read_focused_element
 
 logger = get_logger("Anchor")
 
@@ -78,8 +78,8 @@ class Anchor:
 
         # For 'control' scope, we might store the specific HWND of the child control
         self.control_hwnd: Optional[int] = None
-        self.editor = None
-        self.focused_element = None
+        self.editor: Optional[FocusedElement] = None
+        self.focused_element: Optional[FocusedElement] = None
 
     @property
     def can_dictate(self) -> bool:
