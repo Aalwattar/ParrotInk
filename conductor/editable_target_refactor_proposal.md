@@ -1,6 +1,6 @@
 # Windows text target detection refactor proposal
 
-Status: for review, 18 October 2026. The broader refactor described here is not implemented. The earlier tested Excel and logging fixes remain in place.
+Status: approved direction, 18 October 2026. The earlier tested Excel and logging fixes were committed and pushed first. The prototype passed the observed provider shapes; implementation and validation are tracked in [the implementation report](research/generic-text-target-implementation.md). The design and estimates below record the original proposal.
 
 ## Recommendation
 

@@ -85,8 +85,8 @@ def test_editor_focus_change_cancels_even_with_cursor_over_original_field(mocker
     "kind,enabled,password,read_only,expected",
     [
         (50004, True, False, False, True),
-        (50004, True, False, None, True),
-        (50025, True, False, False, True),
+        (50004, True, False, None, False),
+        (50025, True, False, False, False),
         (50003, True, False, False, True),
         (50003, True, False, True, False),
         (50030, True, False, False, True),
@@ -115,7 +115,8 @@ def test_target_capability_uses_editability_not_just_control_type(
 
 
 @pytest.mark.parametrize("scope", ["control", "window"])
-def test_editability_loss_stops_an_existing_target(mocker, scope):
+@pytest.mark.parametrize("read_only", [True, None])
+def test_editability_loss_stops_an_existing_target(mocker, scope, read_only):
     from dataclasses import replace
 
     writable = FocusedElement((1, 2), 50004, (10, 10, 100, 100), read_only=False)
@@ -126,5 +127,10 @@ def test_editability_loss_stops_an_existing_target(mocker, scope):
     read = mocker.patch("engine.anchor.read_focused_element", return_value=writable)
     anchor = Anchor.capture_current(scope)
     assert anchor.has_focus()
-    read.return_value = replace(writable, read_only=True)
+    read.return_value = replace(writable, read_only=read_only)
     assert not anchor.has_focus()
+    mocker.patch("engine.anchor.window_from_point", return_value=123)
+    assert not anchor.is_match(50, 50)
+    read.return_value = None
+    assert not anchor.has_focus()
+    assert not anchor.is_match(50, 50)

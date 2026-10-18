@@ -204,8 +204,15 @@ async def test_old_cloudflare_openai_config_reports_unavailable_before_connectin
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "decision,message",
+    [
+        ("not_editable", "Click an editable text field"),
+        ("unknown", "Cannot verify this field; click an editable text field"),
+    ],
+)
 async def test_noneditable_target_rejects_dictation_before_network_or_microphone(
-    coordinator, mocker
+    coordinator, mocker, decision, message
 ):
     coordinator.config.test.enabled = False
     coordinator.config.transcription.provider = "openai"
@@ -216,7 +223,11 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     coordinator.pipeline.start = AsyncMock()
     mocker.patch(
         "main.Anchor.capture_current",
-        return_value=SimpleNamespace(can_dictate=False, focused_element=None),
+        return_value=SimpleNamespace(
+            can_dictate=False,
+            focused_element=None,
+            assessment=SimpleNamespace(decision=decision, reason="test_reason"),
+        ),
     )
     await coordinator.start_listening()
     coordinator.connection_manager.ensure_connected.assert_not_awaited()
@@ -224,7 +235,7 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     assert coordinator.input_monitor._state == 0
     assert coordinator.session_cancelled
     assert coordinator.state == AppState.IDLE
-    coordinator.ui_bridge.update_status_message.assert_any_call("Click an editable text field")
+    coordinator.ui_bridge.update_status_message.assert_any_call(message)
 
 
 @pytest.mark.asyncio
