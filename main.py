@@ -652,10 +652,18 @@ class AppCoordinator:
                 self.input_monitor.reset_state()
                 self.session_start_time = 0.0
                 self.set_state(AppState.IDLE)
-                self.ui_bridge.update_status_message("Click an editable text field")
+                assessment = target.assessment
+                self.ui_bridge.update_status_message(
+                    "Cannot verify this field; click an editable text field"
+                    if assessment.decision == "unknown"
+                    else "Click an editable text field"
+                )
                 focused = target.focused_element
                 logger.info(
-                    "Dictation rejected: control_type=%s read_only=%s enabled=%s password=%s",
+                    "Dictation rejected: decision=%s reason=%s control_type=%s "
+                    "read_only=%s enabled=%s password=%s",
+                    assessment.decision,
+                    assessment.reason,
                     focused.control_type if focused else None,
                     focused.read_only if focused else None,
                     focused.enabled if focused else None,

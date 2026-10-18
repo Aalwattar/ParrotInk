@@ -4,9 +4,11 @@ import ctypes
 import uuid
 from ctypes import wintypes
 from dataclasses import dataclass
+from typing import Literal
 
 from engine.logging import get_logger
 from engine.platform_win.dpi import physical_coordinates
+from engine.platform_win.window_focus import native_focus, owns_window, user32, window_from_point
 
 logger = get_logger("EditorFocus")
 
@@ -46,10 +48,10 @@ for _name in (
     getattr(_oleaut32, _name).restype = ctypes.c_long
 
 _CLSID = (ctypes.c_ubyte * 16).from_buffer_copy(
-    uuid.UUID("ff48dba4-60ef-4201-aa87-54103eef594e").bytes_le
+    uuid.UUID("e22ad333-b25f-460c-83d0-0581107395c9").bytes_le
 )
 _IID = (ctypes.c_ubyte * 16).from_buffer_copy(
-    uuid.UUID("30cbe57d-d9d0-452a-ab13-7ac5ac4825ee").bytes_le
+    uuid.UUID("34723aff-0c9d-49d0-9896-7ab52df8cd8a").bytes_le
 )
 _VALUE_IID = (ctypes.c_ubyte * 16).from_buffer_copy(
     uuid.UUID("a94cd8b1-0844-4cd6-9d2d-640537ab39e9").bytes_le
@@ -67,19 +69,37 @@ class FocusedElement:
     enabled: bool = True
     password: bool = False
     read_only: bool | None = None
+    text_edit: bool = False
 
     @property
     def can_dictate(self) -> bool:
-        left, top, right, bottom = self.bounds
-        return (
-            self.control_type in (50003, 50004, 50025, 50029, 50030)
-            and self.enabled
-            and not self.password
-            # Some editable controls omit ValuePattern; their Edit type is still useful.
-            and (self.read_only is False or (self.control_type == 50004 and self.read_only is None))
-            and right > left
-            and bottom > top
-        )
+        return assess_target(self).decision == "editable"
+
+
+@dataclass(frozen=True)
+class TargetAssessment:
+    decision: Literal["editable", "not_editable", "unknown"]
+    reason: str
+
+
+def assess_target(target: FocusedElement | None) -> TargetAssessment:
+    if target is None or not target.runtime_id:
+        return TargetAssessment("unknown", "focus_unresolved")
+    if not target.enabled:
+        return TargetAssessment("not_editable", "disabled")
+    if target.password:
+        return TargetAssessment("not_editable", "password")
+    if target.read_only is True:
+        return TargetAssessment("not_editable", "read_only")
+    left, top, right, bottom = target.bounds
+    if right <= left or bottom <= top:
+        return TargetAssessment("unknown", "invalid_bounds")
+    # Standard text roles have documented editing contracts; custom roles need TextEdit evidence.
+    if target.control_type not in (50003, 50004, 50029, 50030) and not target.text_edit:
+        return TargetAssessment("unknown", "text_input_unverified")
+    if target.read_only is not False:
+        return TargetAssessment("unknown", "writability_unavailable")
+    return TargetAssessment("editable", "writable_text_target")
 
 
 class _VariantData(ctypes.Union):
@@ -107,6 +127,7 @@ def _call(pointer, slot, argtypes, *args):
 def _read_only(element) -> bool | None:
     pattern, selection, text_range = ctypes.c_void_p(), ctypes.c_void_p(), ctypes.c_void_p()
     value = _Variant()
+    value_read_only = None
     try:
         try:
             _call(
@@ -122,7 +143,13 @@ def _read_only(element) -> bool | None:
         if pattern:
             read_only = wintypes.BOOL()
             _call(pattern, 5, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(read_only))
-            return bool(read_only.value)
+            value_read_only = bool(read_only.value)
+            _call(pattern, 2, [])
+            pattern = ctypes.c_void_p()
+            if value_read_only:
+                return True
+        if _bool_property(element, 30040) is False:  # IsTextPatternAvailable.
+            return value_read_only
         _call(
             element,
             14,
@@ -132,7 +159,7 @@ def _read_only(element) -> bool | None:
             ctypes.byref(pattern),
         )  # TextPattern for rich/multiline editors.
         if not pattern:
-            return None
+            return value_read_only
         _call(pattern, 5, [ctypes.POINTER(ctypes.c_void_p)], ctypes.byref(selection))
         if not selection:
             return None
@@ -165,78 +192,17 @@ def _read_only(element) -> bool | None:
             _call(pattern, 2, [])
 
 
-def _focused_descendant(automation, element):
-    """WebView2 can report its host pane while an inner editor owns focus."""
-    condition, focused = ctypes.c_void_p(), ctypes.c_void_p()
+def _bool_property(element, property_id) -> bool | None:
     value = _Variant()
-    value.vt, value.data.boolean = 11, -1  # VT_BOOL, VARIANT_TRUE.
     try:
         _call(
-            automation,
-            23,
-            [ctypes.c_int, _Variant, ctypes.POINTER(ctypes.c_void_p)],
-            30008,
-            value,
-            ctypes.byref(condition),  # HasKeyboardFocus.
+            element, 10, [ctypes.c_int, ctypes.POINTER(_Variant)], property_id, ctypes.byref(value)
         )
-        if not condition:
-            return None
-        _call(
-            element,
-            5,
-            [ctypes.c_int, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)],
-            4,
-            condition,
-            ctypes.byref(focused),  # FindFirst, TreeScope_Descendants.
-        )
-        return focused
-    except OSError:
-        if focused:
-            _call(focused, 2, [])
-        return None
-    finally:
-        if condition:
-            _call(condition, 2, [])
-
-
-def _excel_editor(automation, element):
-    """Resolve Excel's native in-cell pane through its accessibility provider."""
-    value = _Variant()
-    walker, parent = ctypes.c_void_p(), ctypes.c_void_p()
-    try:
-        _call(element, 10, [ctypes.c_int, ctypes.POINTER(_Variant)], 30012, ctypes.byref(value))
-        # shortcut: EXCEL6 only; extend after verifying another native editor's provider bridge.
-        if value.vt != 8 or not value.data.record[0]:
-            return None
-        if ctypes.wstring_at(value.data.record[0]) != "EXCEL6":
-            return None
-        _call(automation, 14, [ctypes.POINTER(ctypes.c_void_p)], ctypes.byref(walker))
-        if not walker:
-            return None
-        _call(
-            walker,
-            3,
-            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)],
-            element,
-            ctypes.byref(parent),
-        )
-        if not parent:
-            return None
-        _oleaut32.VariantClear(ctypes.byref(value))
-        _call(parent, 10, [ctypes.c_int, ctypes.POINTER(_Variant)], 30012, ctypes.byref(value))
-        if value.vt != 8 or not value.data.record[0]:
-            return None
-        if ctypes.wstring_at(value.data.record[0]) != "XLDESK":
-            return None
-        return _focused_descendant(automation, parent)
+        return bool(value.data.boolean) if value.vt == 11 else None
     except OSError:
         return None
     finally:
         _oleaut32.VariantClear(ctypes.byref(value))
-        if parent:
-            _call(parent, 2, [])
-        if walker:
-            _call(walker, 2, [])
 
 
 def _search_box(automation, element, kind):
@@ -319,51 +285,26 @@ def _search_box(automation, element, kind):
             _call(reference, 2, [])
 
 
-@physical_coordinates()
-def read_focused_element() -> FocusedElement | None:
-    automation, element, runtime = ctypes.c_void_p(), ctypes.c_void_p(), ctypes.c_void_p()
-    initialized = _ole32.CoInitializeEx(None, 0)
-    if initialized < 0 and initialized != -2147417850:  # Already initialized as STA.
-        return None
+def _read_element(element) -> FocusedElement:
+    kind, enabled, password = ctypes.c_int(), wintypes.BOOL(), wintypes.BOOL()
+    rect, runtime = wintypes.RECT(), ctypes.c_void_p()
+    _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
+    _call(element, 43, [ctypes.POINTER(wintypes.RECT)], ctypes.byref(rect))
+    _call(element, 28, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(enabled))
+    _call(element, 35, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(password))
+    read_only = _read_only(element) if enabled.value and not password.value else None
+    text_edit = _bool_property(element, 30149) is True  # IsTextEditPatternAvailable.
     try:
-        result = _ole32.CoCreateInstance(_CLSID, None, 1, _IID, ctypes.byref(automation))
-        if result < 0:
-            raise OSError(f"UI Automation initialization failed ({result})")
-        _call(automation, 8, [ctypes.POINTER(ctypes.c_void_p)], ctypes.byref(element))
-        if not element:
-            return None
-        kind = ctypes.c_int()
-        rect = wintypes.RECT()
-        _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
-        if kind.value == 50033:
-            focused = _focused_descendant(automation, element)
-            if not focused:
-                focused = _excel_editor(automation, element)
-            if focused:
-                _call(element, 2, [])
-                element = focused
-                _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
-        if kind.value in (50007, 50008):
-            search = _search_box(automation, element, kind.value)
-            if search:
-                _call(element, 2, [])
-                element = search
-                _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
-        _call(element, 43, [ctypes.POINTER(wintypes.RECT)], ctypes.byref(rect))
-        enabled, password = wintypes.BOOL(), wintypes.BOOL()
-        _call(element, 28, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(enabled))
-        _call(element, 35, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(password))
-        read_only = _read_only(element) if enabled.value and not password.value else None
         _call(element, 4, [ctypes.POINTER(ctypes.c_void_p)], ctypes.byref(runtime))
         if not runtime:
-            return None
+            raise OSError("missing_runtime_id")
         lower, upper = ctypes.c_long(), ctypes.c_long()
         if _oleaut32.SafeArrayGetLBound(runtime, 1, ctypes.byref(lower)) < 0:
-            return None
+            raise OSError("invalid_runtime_id")
         if _oleaut32.SafeArrayGetUBound(runtime, 1, ctypes.byref(upper)) < 0:
-            return None
+            raise OSError("invalid_runtime_id")
         if not 0 <= upper.value - lower.value < 128:
-            return None
+            raise OSError("invalid_runtime_id")
         identity = []
         for index in range(lower.value, upper.value + 1):
             value, position = ctypes.c_int(), ctypes.c_long(index)
@@ -371,7 +312,7 @@ def read_focused_element() -> FocusedElement | None:
                 _oleaut32.SafeArrayGetElement(runtime, ctypes.byref(position), ctypes.byref(value))
                 < 0
             ):
-                return None
+                raise OSError("invalid_runtime_id")
             identity.append(value.value)
         return FocusedElement(
             tuple(identity),
@@ -380,16 +321,143 @@ def read_focused_element() -> FocusedElement | None:
             bool(enabled.value),
             bool(password.value),
             read_only,
+            text_edit,
         )
-    except OSError:
-        logger.debug("Editor accessibility unavailable; retaining native control detection")
-        return None
     finally:
         if runtime:
             _oleaut32.SafeArrayDestroy(runtime)
-        if element:
-            _call(element, 2, [])
+
+
+def _choose_target(
+    candidates: list[tuple[ctypes.c_void_p, FocusedElement]],
+) -> tuple[ctypes.c_void_p, FocusedElement] | None:
+    # Unsupported native hosts can share focus with their provider-backed editor.
+    fields = [
+        item
+        for item in candidates
+        if item[1].control_type not in (50032, 50033)
+        or item[1].read_only is not None
+        or item[1].text_edit
+        or not item[1].enabled
+        or item[1].password
+    ]
+    pool = fields or candidates
+    unique = {item[1].runtime_id: item for item in pool}
+    return next(iter(unique.values())) if len(unique) == 1 else None
+
+
+def _resolve_target(automation, snapshot) -> FocusedElement | None:
+    references = []
+    candidates: list[tuple[ctypes.c_void_p, FocusedElement]] = []
+
+    def result(pointer, slot, types, *args):
+        output = ctypes.c_void_p()
+        try:
+            _call(
+                pointer,
+                slot,
+                [*types, ctypes.POINTER(ctypes.c_void_p)],
+                *args,
+                ctypes.byref(output),
+            )
+        finally:
+            if output:
+                references.append(output)
+        return output
+
+    def inspect(scope) -> tuple[ctypes.c_void_p, FocusedElement] | None:
+        if not scope:
+            return None
+        elements = [scope]
+        # Do not search an entire top-level window to recover a missing input host.
+        handle = wintypes.HWND()
+        _call(scope, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(handle))
+        if handle.value != snapshot[0]:
+            array = result(scope, 6, [ctypes.c_int, ctypes.c_void_p], 4, condition)
+            if array:
+                count = ctypes.c_int()
+                _call(array, 3, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(count))
+                if not 0 <= count.value <= 8:
+                    raise OSError("too_many_focus_candidates")
+                elements.extend(
+                    result(array, 4, [ctypes.c_int], index) for index in range(count.value)
+                )
+        for element in elements:
+            if not element:
+                continue
+            focus = wintypes.BOOL()
+            _call(element, 26, [ctypes.POINTER(wintypes.BOOL)], ctypes.byref(focus))
+            if not focus.value:
+                continue
+            target = _read_element(element)
+            native = wintypes.HWND()
+            _call(element, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(native))
+            left, top, right, bottom = target.bounds
+            hit = window_from_point((left + right) // 2, (top + bottom) // 2)
+            owned = owns_window(snapshot[1], native.value)
+            if not native.value or owns_window(native.value, snapshot[1]):
+                owned = owned or owns_window(snapshot[1], hit)
+            if owned:
+                candidates.append((element, target))
+        return _choose_target(candidates)
+
+    try:
+        value = _Variant()
+        value.vt, value.data.boolean = 11, -1
+        condition = result(automation, 23, [ctypes.c_int, _Variant], 30008, value)
+        if not condition:
+            return None
+        focused = result(automation, 8, [])
+        inspect(focused)
+        native = result(automation, 6, [wintypes.HWND], snapshot[1])
+        selected = inspect(native)
+        if (selected is None or selected[1].read_only is None) and native:
+            walker = result(automation, 14, [])
+            parent = result(walker, 3, [ctypes.c_void_p], native) if walker else None
+            if parent:
+                handle = wintypes.HWND()
+                _call(parent, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(handle))
+                if handle.value and user32.IsChild(snapshot[0], handle.value):
+                    selected = inspect(parent)
+        if selected is None:
+            return None
+        element, target = selected
+        if target.control_type in (50007, 50008):
+            linked = _search_box(automation, element, target.control_type)
+            if linked:
+                references.append(linked)
+                target = _read_element(linked)
+        return target
+    finally:
+        for reference in reversed(references):
+            _call(reference, 2, [])
+
+
+@physical_coordinates()
+def read_focused_element() -> FocusedElement | None:
+    automation = ctypes.c_void_p()
+    initialized = _ole32.CoInitializeEx(None, 0)
+    if initialized < 0 and initialized != -2147417850:
+        return None
+    try:
+        result = _ole32.CoCreateInstance(_CLSID, None, 1, _IID, ctypes.byref(automation))
+        if result < 0 or not automation:
+            return None
+        _call(automation, 61, [wintypes.DWORD], 500)  # IUIAutomation2 connection timeout.
+        _call(automation, 63, [wintypes.DWORD], 500)  # IUIAutomation2 transaction timeout.
+        for _ in range(2):
+            before = native_focus()
+            if not all(before):
+                return None
+            target = _resolve_target(automation, before)
+            if before == native_focus():
+                return target
+        logger.debug("Editor assessment unavailable: focus_changed")
+    except OSError:
+        logger.debug("Editor assessment unavailable: provider_failure", exc_info=True)
+    finally:
         if automation:
             _call(automation, 2, [])
         if initialized >= 0:
             _ole32.CoUninitialize()
+    return None

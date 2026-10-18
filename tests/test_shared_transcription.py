@@ -204,8 +204,15 @@ async def test_old_cloudflare_openai_config_reports_unavailable_before_connectin
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "decision,message",
+    [
+        ("not_editable", "Click an editable text field"),
+        ("unknown", "Cannot verify this field; click an editable text field"),
+    ],
+)
 async def test_noneditable_target_rejects_dictation_before_network_or_microphone(
-    coordinator, mocker
+    coordinator, mocker, decision, message
 ):
     coordinator.config.test.enabled = False
     coordinator.config.transcription.provider = "openai"
@@ -216,7 +223,11 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     coordinator.pipeline.start = AsyncMock()
     mocker.patch(
         "main.Anchor.capture_current",
-        return_value=SimpleNamespace(can_dictate=False, focused_element=None),
+        return_value=SimpleNamespace(
+            can_dictate=False,
+            focused_element=None,
+            assessment=SimpleNamespace(decision=decision, reason="test_reason"),
+        ),
     )
     await coordinator.start_listening()
     coordinator.connection_manager.ensure_connected.assert_not_awaited()
@@ -224,7 +235,7 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     assert coordinator.input_monitor._state == 0
     assert coordinator.session_cancelled
     assert coordinator.state == AppState.IDLE
-    coordinator.ui_bridge.update_status_message.assert_any_call("Click an editable text field")
+    coordinator.ui_bridge.update_status_message.assert_any_call(message)
 
 
 @pytest.mark.asyncio
@@ -251,6 +262,9 @@ async def test_writable_target_still_starts_dictation(coordinator, mocker):
 
 @pytest.mark.asyncio
 async def test_target_changed_during_connection_does_not_start_microphone(coordinator, mocker):
+    coordinator.config.test.enabled = False
+    coordinator.config.transcription.provider = "openai"
+    coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
     coordinator.state = AppState.IDLE
     coordinator.connection_manager.ensure_connected = AsyncMock()
     coordinator.connection_manager.provider = ReadyProvider()
@@ -258,6 +272,7 @@ async def test_target_changed_during_connection_does_not_start_microphone(coordi
     target = SimpleNamespace(can_dictate=True, has_focus=lambda: False)
     mocker.patch("main.Anchor.capture_current", return_value=target)
     await coordinator.start_listening()
+    coordinator.connection_manager.ensure_connected.assert_awaited_once()
     coordinator.pipeline.start.assert_not_awaited()
     assert coordinator.state == AppState.IDLE
     assert coordinator.session_cancelled

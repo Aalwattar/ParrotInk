@@ -1,69 +1,24 @@
 import ctypes
-from ctypes import wintypes
 from typing import Literal, Optional
 
 from engine.logging import get_logger
-from engine.platform_win.editor_focus import FocusedElement, read_focused_element
+from engine.platform_win.editor_focus import (
+    FocusedElement,
+    TargetAssessment,
+    assess_target,
+    read_focused_element,
+)
+from engine.platform_win.window_focus import (
+    GA_ROOT,
+    GUITHREADINFO,
+    get_ancestor,
+    get_foreground_window,
+    get_window_thread_process_id,
+    user32,
+    window_from_point,
+)
 
 logger = get_logger("Anchor")
-
-# --- ctypes Definitions ---
-user32 = ctypes.WinDLL("user32", use_last_error=True)
-kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-
-user32.GetForegroundWindow.argtypes = []
-user32.GetForegroundWindow.restype = wintypes.HWND
-user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
-user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-user32.WindowFromPhysicalPoint.argtypes = [wintypes.POINT]
-user32.WindowFromPhysicalPoint.restype = wintypes.HWND
-user32.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
-user32.GetAncestor.restype = wintypes.HWND
-user32.GetParent.argtypes = [wintypes.HWND]
-user32.GetParent.restype = wintypes.HWND
-
-# Constants
-GA_ROOT = 2
-
-
-def get_foreground_window() -> int:
-    return int(user32.GetForegroundWindow() or 0)
-
-
-def get_window_thread_process_id(hwnd: int) -> tuple[int, int]:
-    """Returns (thread_id, process_id)."""
-    pid = wintypes.DWORD()
-    tid = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-    return tid, pid.value
-
-
-def window_from_point(x: int, y: int) -> int:
-    point = wintypes.POINT()
-    point.x = x
-    point.y = y
-    return int(user32.WindowFromPhysicalPoint(point) or 0)
-
-
-def get_ancestor(hwnd: int, flags: int) -> int:
-    return int(user32.GetAncestor(hwnd, flags) or 0)
-
-
-class GUITHREADINFO(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", wintypes.DWORD),
-        ("flags", wintypes.DWORD),
-        ("hwndActive", wintypes.HWND),
-        ("hwndFocus", wintypes.HWND),
-        ("hwndCapture", wintypes.HWND),
-        ("hwndMenuOwner", wintypes.HWND),
-        ("hwndMoveSize", wintypes.HWND),
-        ("hwndCaret", wintypes.HWND),
-        ("rcCaret", wintypes.RECT),
-    ]
-
-
-user32.GetGUIThreadInfo.argtypes = [wintypes.DWORD, ctypes.POINTER(GUITHREADINFO)]
-user32.GetGUIThreadInfo.restype = wintypes.BOOL
 
 
 class Anchor:
@@ -82,8 +37,12 @@ class Anchor:
         self.focused_element: Optional[FocusedElement] = None
 
     @property
+    def assessment(self) -> TargetAssessment:
+        return assess_target(self.focused_element)
+
+    @property
     def can_dictate(self) -> bool:
-        return bool(self.focused_element and self.focused_element.can_dictate)
+        return self.assessment.decision == "editable"
 
     @classmethod
     def capture_current(cls, scope: Literal["control", "window"]) -> "Anchor":
@@ -94,6 +53,8 @@ class Anchor:
         if anchor.hwnd:
             _, anchor.process_id = get_window_thread_process_id(anchor.hwnd)
             focused = read_focused_element()
+            if anchor.hwnd != get_foreground_window():
+                focused = None
             anchor.focused_element = focused
 
             if scope == "control":
@@ -140,7 +101,8 @@ class Anchor:
 
             anchor_root = get_ancestor(self.hwnd, GA_ROOT)
             if target_root == anchor_root or target_hwnd == anchor_root:
-                return True
+                focused = read_focused_element() if self.focused_element else None
+                return self.focused_element is None or bool(focused and focused.can_dictate)
 
             # If the foreground window has changed but the root is the same, it's a match
             return False
@@ -148,11 +110,13 @@ class Anchor:
         elif self.scope == "control":
             if self.editor:
                 focused = read_focused_element()
-                if focused and (
-                    not focused.can_dictate or focused.runtime_id != self.editor.runtime_id
+                if (
+                    focused is None
+                    or not focused.can_dictate
+                    or focused.runtime_id != self.editor.runtime_id
                 ):
                     return False
-                left, top, right, bottom = (focused or self.editor).bounds
+                left, top, right, bottom = focused.bounds
                 if not (left <= x < right and top <= y < bottom):
                     return False
             # For control scope, we strictly check if it's the exact same control
