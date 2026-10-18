@@ -79,11 +79,119 @@ def test_edit_control_with_missing_read_only_metadata_accepts_dictation():
     assert editor_focus.FocusedElement((1, 2), 50004, (0, 0, 100, 30)).can_dictate
 
 
+@pytest.mark.parametrize("read_only,expected", [(False, True), (True, False), (None, False)])
+def test_excel_cell_requires_explicit_writable_metadata(read_only, expected):
+    cell = editor_focus.FocusedElement(
+        (42, 90645336, 4, 221), 50029, (870, 849, 1310, 878), read_only=read_only
+    )
+    assert cell.can_dictate is expected
+
+
+@pytest.mark.parametrize(
+    "child_kind,read_only,legacy_excel,parent_class,expected",
+    [
+        (50003, False, False, "", True),
+        (50004, True, False, "", False),
+        (50000, False, False, "", False),
+        (None, None, False, "", False),
+        (50004, False, True, "XLDESK", True),
+        (50004, True, True, "XLDESK", False),
+        (50004, False, True, "XLMAIN", False),
+    ],
+)
+def test_host_pane_uses_its_focused_descendant(
+    mocker, child_kind, read_only, legacy_excel, parent_class, expected
+):
+    released = []
+    class_name = ctypes.create_unicode_buffer("EXCEL6" if legacy_excel else "WebView2Holder")
+    parent_class_name = ctypes.create_unicode_buffer(parent_class)
+
+    def call(pointer, slot, types, *args):
+        ptr = pointer.value
+        if slot == 2:
+            released.append(ptr)
+            return 0
+        output = args[-1]._obj
+        if ptr == 1 and slot == 8:
+            output.value = 3
+        elif ptr == 1 and slot == 23:
+            assert args[0] == 30008  # HasKeyboardFocus, never Name or Value.
+            assert args[1].vt == 11 and args[1].data.boolean == -1
+            output.value = 10
+        elif ptr in (3, 13) and slot == 5:
+            assert args[0] == 4 and args[1].value == 10  # Descendants only.
+            output.value = 5 if child_kind is not None and (ptr == 13 or not legacy_excel) else None
+        elif ptr in (3, 13) and slot == 10:
+            assert args[0] == 30012  # ClassName, not document text.
+            output.vt = 8
+            output.data.record[0] = ctypes.addressof(class_name if ptr == 3 else parent_class_name)
+        elif ptr == 1 and slot == 14:
+            output.value = 11
+        elif ptr == 11 and slot == 3:
+            output.value = 13
+        elif ptr in (3, 5) and slot == 21:
+            output.value = 50033 if ptr == 3 else child_kind
+        elif ptr in (3, 5) and slot in (28, 35):
+            output.value = int(slot == 28)
+        elif ptr in (3, 5) and slot == 43:
+            output.left, output.top, output.right, output.bottom = 10, 10, 300, 40
+        elif ptr in (3, 5) and slot == 4:
+            output.value = ptr
+        else:
+            pytest.fail(f"Unexpected native call {ptr}:{slot}")
+        return 0
+
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    def runtime_element(array, index, value):
+        ctypes.cast(value, ctypes.POINTER(ctypes.c_int)).contents.value = array.value
+        return 0
+
+    mocker.patch.object(editor_focus, "_call", side_effect=call)
+    mocker.patch.object(
+        editor_focus,
+        "_read_only",
+        side_effect=lambda pointer: read_only if pointer.value == 5 else None,
+    )
+    mocker.patch.object(editor_focus._ole32, "CoInitializeEx", return_value=0)
+    mocker.patch.object(editor_focus._ole32, "CoUninitialize")
+    mocker.patch.object(editor_focus._ole32, "CoCreateInstance", side_effect=create)
+    for name in ("SafeArrayGetLBound", "SafeArrayGetUBound", "SafeArrayDestroy", "VariantClear"):
+        mocker.patch.object(editor_focus._oleaut32, name, return_value=0)
+    mocker.patch.object(editor_focus._oleaut32, "SafeArrayGetElement", side_effect=runtime_element)
+
+    result = editor_focus.read_focused_element()
+
+    assert result.can_dictate is expected
+    resolved = child_kind is not None and (not legacy_excel or parent_class == "XLDESK")
+    assert result.runtime_id == ((5,) if resolved else (3,))
+    assert 10 in released
+
+
 @pytest.mark.parametrize("kind", [50007, 50008, 50020])
 def test_non_editor_does_not_accept_typing_from_inherited_text_attributes(kind):
     assert not editor_focus.FocusedElement(
         (1, 2), kind, (0, 0, 100, 30), read_only=False
     ).can_dictate
+
+
+def test_failed_descendant_query_releases_condition(mocker):
+    released = []
+
+    def call(pointer, slot, types, *args):
+        if slot == 23:
+            args[-1]._obj.value = 10
+        elif slot == 5:
+            raise OSError("Provider unavailable")
+        elif slot == 2:
+            released.append(pointer.value)
+        return 0
+
+    mocker.patch.object(editor_focus, "_call", side_effect=call)
+    assert editor_focus._focused_descendant(ctypes.c_void_p(1), ctypes.c_void_p(3)) is None
+    assert released == [10]
 
 
 @pytest.mark.parametrize(

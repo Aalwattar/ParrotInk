@@ -72,7 +72,7 @@ class FocusedElement:
     def can_dictate(self) -> bool:
         left, top, right, bottom = self.bounds
         return (
-            self.control_type in (50003, 50004, 50025, 50030)
+            self.control_type in (50003, 50004, 50025, 50029, 50030)
             and self.enabled
             and not self.password
             # Some editable controls omit ValuePattern; their Edit type is still useful.
@@ -163,6 +163,80 @@ def _read_only(element) -> bool | None:
             _call(selection, 2, [])
         if pattern:
             _call(pattern, 2, [])
+
+
+def _focused_descendant(automation, element):
+    """WebView2 can report its host pane while an inner editor owns focus."""
+    condition, focused = ctypes.c_void_p(), ctypes.c_void_p()
+    value = _Variant()
+    value.vt, value.data.boolean = 11, -1  # VT_BOOL, VARIANT_TRUE.
+    try:
+        _call(
+            automation,
+            23,
+            [ctypes.c_int, _Variant, ctypes.POINTER(ctypes.c_void_p)],
+            30008,
+            value,
+            ctypes.byref(condition),  # HasKeyboardFocus.
+        )
+        if not condition:
+            return None
+        _call(
+            element,
+            5,
+            [ctypes.c_int, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)],
+            4,
+            condition,
+            ctypes.byref(focused),  # FindFirst, TreeScope_Descendants.
+        )
+        return focused
+    except OSError:
+        if focused:
+            _call(focused, 2, [])
+        return None
+    finally:
+        if condition:
+            _call(condition, 2, [])
+
+
+def _excel_editor(automation, element):
+    """Resolve Excel's native in-cell pane through its accessibility provider."""
+    value = _Variant()
+    walker, parent = ctypes.c_void_p(), ctypes.c_void_p()
+    try:
+        _call(element, 10, [ctypes.c_int, ctypes.POINTER(_Variant)], 30012, ctypes.byref(value))
+        # shortcut: EXCEL6 only; extend after verifying another native editor's provider bridge.
+        if value.vt != 8 or not value.data.record[0]:
+            return None
+        if ctypes.wstring_at(value.data.record[0]) != "EXCEL6":
+            return None
+        _call(automation, 14, [ctypes.POINTER(ctypes.c_void_p)], ctypes.byref(walker))
+        if not walker:
+            return None
+        _call(
+            walker,
+            3,
+            [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)],
+            element,
+            ctypes.byref(parent),
+        )
+        if not parent:
+            return None
+        _oleaut32.VariantClear(ctypes.byref(value))
+        _call(parent, 10, [ctypes.c_int, ctypes.POINTER(_Variant)], 30012, ctypes.byref(value))
+        if value.vt != 8 or not value.data.record[0]:
+            return None
+        if ctypes.wstring_at(value.data.record[0]) != "XLDESK":
+            return None
+        return _focused_descendant(automation, parent)
+    except OSError:
+        return None
+    finally:
+        _oleaut32.VariantClear(ctypes.byref(value))
+        if parent:
+            _call(parent, 2, [])
+        if walker:
+            _call(walker, 2, [])
 
 
 def _search_box(automation, element, kind):
@@ -261,6 +335,14 @@ def read_focused_element() -> FocusedElement | None:
         kind = ctypes.c_int()
         rect = wintypes.RECT()
         _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
+        if kind.value == 50033:
+            focused = _focused_descendant(automation, element)
+            if not focused:
+                focused = _excel_editor(automation, element)
+            if focused:
+                _call(element, 2, [])
+                element = focused
+                _call(element, 21, [ctypes.POINTER(ctypes.c_int)], ctypes.byref(kind))
         if kind.value in (50007, 50008):
             search = _search_box(automation, element, kind.value)
             if search:

@@ -77,6 +77,7 @@ def close_logging():
     """
     import logging
 
+    shutdown_logging()
     root_logger = logging.getLogger()
     for handler in root_logger.handlers[:]:
         try:
@@ -144,6 +145,8 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
     verbose_count: 0 (none), 1 (-v), 2+ (-vv)
     """
     global _listener
+
+    shutdown_logging()
 
     # Root logger
     logger = logging.getLogger()
@@ -253,6 +256,8 @@ def shutdown_logging():
             _listener.stop()
         except Exception:
             pass
+        for handler in _listener.handlers:
+            handler.close()
         _listener = None
 
     # Clear handlers from root logger
