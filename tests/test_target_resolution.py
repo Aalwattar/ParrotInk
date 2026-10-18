@@ -102,8 +102,17 @@ def provider(mocker):
     mocker.patch.object(focus, "_call", side_effect=call)
     mocker.patch.object(focus, "_read_element", side_effect=lambda ptr: nodes[ptr.value][0])
     mocker.patch.object(focus, "window_from_point", return_value=200)
-    mocker.patch.object(focus, "owns_window", side_effect=lambda owner, hwnd: owner == hwnd)
-    mocker.patch.object(focus.user32, "IsChild", side_effect=lambda root, hwnd: hwnd in (150, 200))
+    descendants = {(100, 150), (100, 200), (150, 200)}
+    mocker.patch.object(
+        focus,
+        "owns_window",
+        side_effect=lambda owner, hwnd: bool(
+            hwnd and (owner == hwnd or (owner, hwnd) in descendants)
+        ),
+    )
+    mocker.patch.object(
+        focus.user32, "IsChild", side_effect=lambda root, hwnd: (root, hwnd) in descendants
+    )
     return nodes, children, released, settings
 
 
@@ -121,7 +130,36 @@ def test_parent_bridge_prefers_verified_editor_over_native_host(provider, mocker
 
 def test_distinct_owned_editors_remain_ambiguous_across_scopes(provider):
     # Both provider objects claim the same native host, so neither is authoritative.
+    nodes, _, _, _ = provider
+    nodes[6] = (nodes[6][0], True, 200)
     assert focus._resolve_target(ctypes.c_void_p(1), (100, 200)) is None
+
+
+def test_direct_writable_field_still_checks_competing_native_focus(provider):
+    nodes, children, _, settings = provider
+    settings["global"] = 5
+    children[5] = []
+    children[3] = [5, 6]
+    nodes[6] = (nodes[6][0], True, 200)
+    assert focus._resolve_target(ctypes.c_void_p(1), (100, 200)) is None
+
+
+def test_overlapping_bounds_cannot_override_unrelated_native_window(provider):
+    _, children, _, settings = provider
+    settings["global"] = 6
+    children[6] = []
+    children[4] = [3]
+    result = focus._resolve_target(ctypes.c_void_p(1), (100, 200))
+    assert result is None or not result.can_dictate
+
+
+def test_containing_native_window_can_use_verified_physical_hit(provider):
+    nodes, children, _, settings = provider
+    settings["global"] = 5
+    children[5] = []
+    children[3] = [5]
+    nodes[5] = (nodes[5][0], True, 100)
+    assert focus._resolve_target(ctypes.c_void_p(1), (100, 200)) == nodes[5][0]
 
 
 @pytest.mark.parametrize("read_only", [True, False, None])

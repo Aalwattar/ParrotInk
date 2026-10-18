@@ -24,3 +24,9 @@ No new dependency, setting, focus mutation, SetValue insertion, or sample keystr
 - Independent Win32/browser/read-only control families have deterministic coverage where modeled, but have not all been exercised in live applications.
 
 The policy is our documented inference from public Windows contracts, not a claim to reproduce Microsoft's private Win+H implementation. See [API evidence](windows-editable-target-refactor-evidence.md).
+
+## Release review corrections (0.2.44)
+
+The native input host is now inspected even when direct UIA focus reports a writable field. Competing fields therefore remain ambiguous across both sources. Physical bounds cannot override an explicit HWND belonging to an unrelated window; point-based recovery remains available for windowless fields and verified containing ancestors. Regression tests first reproduced both review findings, then passed after the fixes; another test preserves containing-window recovery.
+
+Full repository validation passes Ruff, Mypy (194 source files), locked dependency consistency, and 528 tests with four explicit desktop/HUD skips. The full locked suite also passes with `GITHUB_ACTIONS=true`. The recurring GitHub failure was a focus-change test depending on real provider credentials; it now mocks availability and asserts connection was reached before checking that microphone startup was prevented. Version 0.2.44 is synchronized across project metadata, lockfile, executable resources, and installer metadata.

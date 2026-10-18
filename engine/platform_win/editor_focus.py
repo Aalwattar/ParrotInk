@@ -328,7 +328,9 @@ def _read_element(element) -> FocusedElement:
             _oleaut32.SafeArrayDestroy(runtime)
 
 
-def _choose_target(candidates):
+def _choose_target(
+    candidates: list[tuple[ctypes.c_void_p, FocusedElement]],
+) -> tuple[ctypes.c_void_p, FocusedElement] | None:
     # Unsupported native hosts can share focus with their provider-backed editor.
     fields = [
         item
@@ -344,8 +346,9 @@ def _choose_target(candidates):
     return next(iter(unique.values())) if len(unique) == 1 else None
 
 
-def _resolve_target(automation, snapshot):
-    references, candidates = [], []
+def _resolve_target(automation, snapshot) -> FocusedElement | None:
+    references = []
+    candidates: list[tuple[ctypes.c_void_p, FocusedElement]] = []
 
     def result(pointer, slot, types, *args):
         output = ctypes.c_void_p()
@@ -362,7 +365,7 @@ def _resolve_target(automation, snapshot):
                 references.append(output)
         return output
 
-    def inspect(scope):
+    def inspect(scope) -> tuple[ctypes.c_void_p, FocusedElement] | None:
         if not scope:
             return None
         elements = [scope]
@@ -391,7 +394,10 @@ def _resolve_target(automation, snapshot):
             _call(element, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(native))
             left, top, right, bottom = target.bounds
             hit = window_from_point((left + right) // 2, (top + bottom) // 2)
-            if owns_window(snapshot[1], native.value) or owns_window(snapshot[1], hit):
+            owned = owns_window(snapshot[1], native.value)
+            if not native.value or owns_window(native.value, snapshot[1]):
+                owned = owned or owns_window(snapshot[1], hit)
+            if owned:
                 candidates.append((element, target))
         return _choose_target(candidates)
 
@@ -402,18 +408,17 @@ def _resolve_target(automation, snapshot):
         if not condition:
             return None
         focused = result(automation, 8, [])
-        selected = inspect(focused)
-        if selected is None or selected[1].read_only is None:
-            native = result(automation, 6, [wintypes.HWND], snapshot[1])
-            selected = inspect(native)
-            if (selected is None or selected[1].read_only is None) and native:
-                walker = result(automation, 14, [])
-                parent = result(walker, 3, [ctypes.c_void_p], native) if walker else None
-                if parent:
-                    handle = wintypes.HWND()
-                    _call(parent, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(handle))
-                    if handle.value and user32.IsChild(snapshot[0], handle.value):
-                        selected = inspect(parent)
+        inspect(focused)
+        native = result(automation, 6, [wintypes.HWND], snapshot[1])
+        selected = inspect(native)
+        if (selected is None or selected[1].read_only is None) and native:
+            walker = result(automation, 14, [])
+            parent = result(walker, 3, [ctypes.c_void_p], native) if walker else None
+            if parent:
+                handle = wintypes.HWND()
+                _call(parent, 36, [ctypes.POINTER(wintypes.HWND)], ctypes.byref(handle))
+                if handle.value and user32.IsChild(snapshot[0], handle.value):
+                    selected = inspect(parent)
         if selected is None:
             return None
         element, target = selected

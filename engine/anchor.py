@@ -2,7 +2,12 @@ import ctypes
 from typing import Literal, Optional
 
 from engine.logging import get_logger
-from engine.platform_win.editor_focus import FocusedElement, assess_target, read_focused_element
+from engine.platform_win.editor_focus import (
+    FocusedElement,
+    TargetAssessment,
+    assess_target,
+    read_focused_element,
+)
 from engine.platform_win.window_focus import (
     GA_ROOT,
     GUITHREADINFO,
@@ -32,7 +37,7 @@ class Anchor:
         self.focused_element: Optional[FocusedElement] = None
 
     @property
-    def assessment(self):
+    def assessment(self) -> TargetAssessment:
         return assess_target(self.focused_element)
 
     @property

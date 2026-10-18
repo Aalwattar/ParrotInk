@@ -76,5 +76,5 @@ def native_focus() -> tuple[int, int]:
     return foreground, focus
 
 
-def owns_window(focus: int, candidate: int) -> bool:
+def owns_window(focus: int, candidate: int | None) -> bool:
     return bool(candidate and (candidate == focus or user32.IsChild(focus, candidate)))

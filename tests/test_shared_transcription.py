@@ -262,6 +262,9 @@ async def test_writable_target_still_starts_dictation(coordinator, mocker):
 
 @pytest.mark.asyncio
 async def test_target_changed_during_connection_does_not_start_microphone(coordinator, mocker):
+    coordinator.config.test.enabled = False
+    coordinator.config.transcription.provider = "openai"
+    coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
     coordinator.state = AppState.IDLE
     coordinator.connection_manager.ensure_connected = AsyncMock()
     coordinator.connection_manager.provider = ReadyProvider()
@@ -269,6 +272,7 @@ async def test_target_changed_during_connection_does_not_start_microphone(coordi
     target = SimpleNamespace(can_dictate=True, has_focus=lambda: False)
     mocker.patch("main.Anchor.capture_current", return_value=target)
     await coordinator.start_listening()
+    coordinator.connection_manager.ensure_connected.assert_awaited_once()
     coordinator.pipeline.start.assert_not_awaited()
     assert coordinator.state == AppState.IDLE
     assert coordinator.session_cancelled
