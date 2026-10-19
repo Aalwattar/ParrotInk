@@ -54,6 +54,9 @@ user32.UnhookWindowsHookEx.restype = wintypes.BOOL
 user32.GetKeyNameTextW.argtypes = [wintypes.LONG, wintypes.LPWSTR, ctypes.c_int]
 user32.GetKeyNameTextW.restype = ctypes.c_int
 
+user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+user32.GetAsyncKeyState.restype = ctypes.c_short
+
 user32.SendInput.argtypes = [wintypes.UINT, ctypes.POINTER(INPUT), ctypes.c_int]
 user32.SendInput.restype = wintypes.UINT
 user32.PostThreadMessageW.argtypes = [
@@ -222,23 +225,31 @@ class Win32InputMonitor:
             self._pressed_keys.add(vk)
         elif is_up:
             self._pressed_keys.discard(vk)
-        if base_vk in MODIFIER_VKS.values():
+        if is_down and base_vk == self._hotkey_vk and self._state == STATE_IDLE:
+            # Earlier modifier events have reached Windows; the current key has not.
+            # A missed key-up must never let a cached modifier authorize a shortcut.
+            self._pressed_keys.difference_update(
+                key
+                for key in tuple(self._pressed_keys)
+                if MODIFIER_BASE.get(key, key) in MODIFIER_VKS.values()
+                and not user32.GetAsyncKeyState(key) & 0x8000
+            )
+        if base_vk in MODIFIER_VKS.values() or (is_down and base_vk == self._hotkey_vk):
             self._pressed_modifiers = {
                 MODIFIER_BASE.get(key, key)
                 for key in self._pressed_keys
                 if MODIFIER_BASE.get(key, key) in MODIFIER_VKS.values()
             }
-        if repeated:
-            if base_vk == self._hotkey_vk or self._state == STATE_DICTATING:
-                return 1
-            return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
-
         # 3. Chord Detection
         combo_fired = (
             is_down
             and base_vk == self._hotkey_vk
             and self._modifier_vks.issubset(self._pressed_modifiers)
         )
+        if repeated:
+            if combo_fired or self._state == STATE_DICTATING:
+                return 1
+            return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
 
         # 4. State Machine Logic
         if not self._hold_mode:  # TOGGLE MODE

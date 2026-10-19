@@ -25,7 +25,10 @@ from engine.platform_win.keys import (
 def monitor():
     monitor = Win32InputMonitor(MagicMock(), MagicMock())
     monitor.set_hotkey("ctrl+alt+v")
-    with patch("engine.interaction.user32.CallNextHookEx", return_value=0):
+    with (
+        patch("engine.interaction.user32.CallNextHookEx", return_value=0),
+        patch("engine.interaction.user32.GetAsyncKeyState", return_value=0x8000),
+    ):
         yield monitor
 
 
@@ -80,6 +83,69 @@ def test_repeats_require_release_even_after_session_cleanup(monitor):
     send(monitor, 0x56, WM_KEYUP)
     send(monitor, 0x56)
     assert drain(monitor) == ["start"]
+
+
+@pytest.mark.parametrize(
+    "shortcut,modifier",
+    [("ctrl+alt+v", 0xA4), ("ctrl+win+v", 0x5B), ("ctrl+win+v", 0x5C)],
+)
+@pytest.mark.parametrize("injected", [False, True])
+@pytest.mark.parametrize("previous_session", [False, True])
+def test_missed_modifier_release_cannot_turn_paste_into_hotkey(
+    monitor, shortcut, modifier, injected, previous_session
+):
+    monitor.set_hotkey(shortcut)
+    send(monitor, modifier, injected=injected)
+    if previous_session:
+        send(monitor, 0xA2, injected=injected)
+        send(monitor, 0x56, injected=injected)
+        assert drain(monitor) == ["start"]
+        send(monitor, 0x56, WM_KEYUP, injected=injected)
+        send(monitor, 0xA2, WM_KEYUP, injected=injected)
+        monitor.reset_state()
+        monitor._last_toggle_ts = 0
+
+    # Windows has released the modifier, but its key-up never reached our hook.
+    with patch(
+        "engine.interaction.user32.GetAsyncKeyState",
+        side_effect=lambda vk: 0x8000 if vk in (0x11, 0xA2) else 0,
+    ):
+        send(monitor, 0xA2, injected=injected)
+        assert send(monitor, 0x56, injected=injected) == 0
+        assert drain(monitor) == []
+        assert modifier not in monitor._pressed_keys
+        assert send(monitor, 0x56, injected=injected) == 0
+
+    # A fresh, complete chord must still work after stale state is discarded.
+    send(monitor, 0x56, WM_KEYUP, injected=injected)
+    send(monitor, modifier, injected=injected)
+    send(monitor, 0x56, injected=injected)
+    assert drain(monitor) == ["start"]
+
+
+def test_plain_paste_repeats_pass_through(monitor):
+    send(monitor, 0xA2)
+    assert send(monitor, 0x56) == 0
+    assert send(monitor, 0x56) == 0
+    assert drain(monitor) == []
+
+
+@pytest.mark.parametrize("hold", [False, True])
+def test_synthetic_modifier_release_does_not_break_active_hotkey(monitor, hold):
+    monitor.set_hotkey("ctrl+alt+v", hold_mode=hold)
+    for vk in (0xA2, 0xA4, 0x56):
+        send(monitor, vk)
+    assert drain(monitor) == ["start"]
+    # Starting dictation releases modifiers in Windows, even while physically held.
+    with patch("engine.interaction.user32.GetAsyncKeyState", return_value=0):
+        send(monitor, 0x56)
+        assert monitor._pressed_modifiers == {0x11, 0x12}
+        send(monitor, 0x56, WM_KEYUP)
+        if hold:
+            assert drain(monitor) == ["stop"]
+        else:
+            send(monitor, 0x56)
+            assert drain(monitor) == ["start"]
 
 
 def test_either_control_key_can_remain_held(monitor):
