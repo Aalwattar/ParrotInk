@@ -17,7 +17,6 @@ from engine.hotkeys import MODIFIER_BASE, MODIFIER_VKS, key_name, parse_hotkey
 from engine.logging import get_logger
 
 from .platform_win.keys import (
-    HOOK_PROBE_TAG,
     HOOKPROC,
     INPUT,
     KBDLLHOOKSTRUCT,
@@ -26,7 +25,6 @@ from .platform_win.keys import (
     LLKHF_EXTENDED,
     LLKHF_INJECTED,
     PARROTINK_INPUT_TAG,
-    VK_NONAME,
     WH_KEYBOARD_LL,
     WM_KEYDOWN,
     WM_KEYUP,
@@ -92,7 +90,6 @@ class Win32InputMonitor:
         self._hold_mode = False
         self._is_running = False
         self._state = STATE_IDLE
-        self._last_event_ts = time.time()
         self._last_toggle_ts = 0.0  # Cooldown for toggle mode
         self._toggle_cooldown = TOGGLE_DEBOUNCE_COOLDOWN
 
@@ -102,7 +99,6 @@ class Win32InputMonitor:
         self._thread_id: Optional[int] = None
         self._stop_event = threading.Event()
         self._ready = threading.Event()
-        self._probe_seen = threading.Event()
         self._callback_thread: Optional[threading.Thread] = None
 
         # Keyboard State
@@ -177,25 +173,6 @@ class Win32InputMonitor:
         """Retrieves a human-readable name for a VK code."""
         return key_name(vk) or f"key_{vk}"
 
-    def check_health(self, timeout: float = 1.0) -> bool | None:
-        """Probe delivery, not the stale handle. None means Windows blocked input."""
-        if not self._is_running:
-            return None
-        if not self._hook:
-            return False
-        self._probe_seen.clear()
-        # A key-up for VK_NONAME produces no typed character or held key.
-        # The live hook suppresses this tagged probe before it reaches an app.
-        inp = INPUT(
-            type=1,
-            union=InputUnion(
-                ki=KEYBDINPUT(wVk=VK_NONAME, dwFlags=KEYEVENTF_KEYUP, dwExtraInfo=HOOK_PROBE_TAG)
-            ),
-        )
-        if user32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(inp)) != 1:
-            return None
-        return self._probe_seen.wait(timeout)
-
     def _ll_keyboard_handler(self, n_code, w_param, l_param):
         """Native Keyboard Hook Procedure."""
         if n_code < 0:
@@ -207,12 +184,6 @@ class Win32InputMonitor:
         is_injected = bool(flags & LLKHF_INJECTED)
         is_down = w_param in (WM_KEYDOWN, WM_SYSKEYDOWN)
         is_up = w_param in (WM_KEYUP, WM_SYSKEYUP)
-
-        self._last_event_ts = time.time()
-
-        if is_injected and kb.dwExtraInfo == HOOK_PROBE_TAG:
-            self._probe_seen.set()
-            return 1
 
         # Only our own generated input is ignored. Shared keyboards use injected input too.
         if is_injected and kb.dwExtraInfo == PARROTINK_INPUT_TAG:

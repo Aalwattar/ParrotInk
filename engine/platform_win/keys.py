@@ -29,8 +29,6 @@ LLKHF_EXTENDED = 0x01
 
 # Identify our generated input without rejecting keyboard sharing tools.
 PARROTINK_INPUT_TAG = 0x50494E4B
-HOOK_PROBE_TAG = 0x50495052
-VK_NONAME = 0xFC
 
 # Define ULONG_PTR for 64-bit compatibility
 IS_64_BIT = ctypes.sizeof(ctypes.c_void_p) == 8

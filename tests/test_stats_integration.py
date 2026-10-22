@@ -45,7 +45,6 @@ async def test_stats_integration_emits_on_stop(mock_config):
         patch("main.InjectionController"),
         patch("engine.services.updates.UpdateManager.start"),
         patch("engine.platform_win.session.SessionMonitor.start"),
-        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
         coordinator = AppCoordinator(mock_config, bridge)
         coordinator.set_state(AppState.LISTENING)
@@ -77,7 +76,6 @@ async def test_stats_word_counting(mock_config):
         patch("main.InjectionController"),
         patch("engine.services.updates.UpdateManager.start"),
         patch("engine.platform_win.session.SessionMonitor.start"),
-        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
         pipeline.return_value.stop = AsyncMock()
         connection_manager.return_value.stop_provider = AsyncMock()

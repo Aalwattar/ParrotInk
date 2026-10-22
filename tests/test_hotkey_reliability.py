@@ -1,6 +1,5 @@
 import asyncio
 import ctypes
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,7 +9,6 @@ from engine.hotkeys import KEY_VKS, MODIFIER_BASE, MODIFIER_VKS, key_name, parse
 from engine.injector import inject_backspaces, inject_text
 from engine.interaction import STATE_DICTATING, STATE_IDLE, Win32InputMonitor
 from engine.platform_win.keys import (
-    HOOK_PROBE_TAG,
     INPUT,
     KBDLLHOOKSTRUCT,
     KEYEVENTF_KEYUP,
@@ -234,51 +232,33 @@ def test_modifier_release_is_tagged(monitor):
     assert tags == [PARROTINK_INPUT_TAG] * 2
 
 
-def test_health_checks_delivery_and_suppresses_probe(monitor):
-    monitor._is_running = True
-    monitor._hook = 123
-    results = []
-
-    def deliver(count, pointer, size):
-        event = ctypes.cast(pointer, ctypes.POINTER(INPUT)).contents.union.ki
-        assert event.dwExtraInfo == HOOK_PROBE_TAG
-        assert event.dwFlags == KEYEVENTF_KEYUP
-        results.append(send(monitor, event.wVk, WM_KEYUP, event.dwExtraInfo, True))
-        return 1
-
-    with patch("engine.interaction.user32.SendInput", side_effect=deliver):
-        assert monitor.check_health(timeout=0) is True
-    assert results == [1]
-    assert drain(monitor) == []
-    assert monitor._state == STATE_IDLE
-    with patch("engine.interaction.user32.SendInput", return_value=1):
-        assert monitor.check_health(timeout=0) is False  # Stale nonzero handle.
-    with patch("engine.interaction.user32.SendInput", return_value=0):
-        assert monitor.check_health(timeout=0) is None  # Secure desktop/UIPI.
-    monitor._is_running = False
-
-
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "healthy,running,restarts",
-    [
-        (True, True, 0),
-        (False, True, 1),
-        (None, True, 0),
-        (False, False, 0),
-    ],
-)
-async def test_watchdog_only_recovers_failed_live_listener(healthy, running, restarts):
-    from main import AppCoordinator
-
-    input_monitor = MagicMock(is_running=running)
-    input_monitor.check_health.return_value = healthy
-    coordinator = SimpleNamespace(input_monitor=input_monitor)
-    with patch("main.asyncio.sleep", side_effect=[None, asyncio.CancelledError()]):
-        await AppCoordinator._hook_watchdog_task_run(coordinator)
-    assert input_monitor.restart.call_count == restarts
-    if restarts:
-        input_monitor.restart.assert_called_once_with(preserve_state=True)
+async def test_idle_input_monitoring_never_generates_input(coordinator):
+    idle_tasks = []
+    idle_loop = MagicMock()
+    idle_loop.create_task.side_effect = lambda task: idle_tasks.append(task) or MagicMock()
+    coordinator.input_monitor._is_running = True
+    coordinator.input_monitor._hook = 123
+    with (
+        patch("main.asyncio.sleep", side_effect=[None, None, asyncio.CancelledError()]),
+        patch("engine.interaction.user32.SendInput", return_value=0) as send_input,
+        patch("engine.injector.USER32.SendInput", return_value=0) as inject_input,
+        patch("engine.interaction.user32.keybd_event") as keybd_event,
+        patch("engine.interaction.user32.mouse_event") as mouse_event,
+    ):
+        try:
+            coordinator.loop = idle_loop
+            # Advance background monitoring past two polling intervals without user input.
+            for task in idle_tasks:
+                await task
+        finally:
+            coordinator.loop = None
+            for task in idle_tasks:
+                task.close()
+        send_input.assert_not_called()
+        inject_input.assert_not_called()
+        keybd_event.assert_not_called()
+        mouse_event.assert_not_called()
 
 
 def test_recovery_preserves_dictation_state(monitor):

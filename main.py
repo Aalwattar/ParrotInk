@@ -17,7 +17,6 @@ from engine.connection import ConnectionManager
 from engine.constants import (
     COOLDOWN_INJECTION,
     COOLDOWN_MANUAL_STOP,
-    HOOK_WATCHDOG_INTERVAL,
     INTENT_LOCKOUT_DURATION,
 )
 from engine.credential_ui import ask_key
@@ -107,7 +106,6 @@ class AppCoordinator:
         from engine.platform_win.session import SessionMonitor
 
         self.session_monitor = SessionMonitor(on_unlock=self._on_unlock)
-        self._hook_watchdog_task: Optional[asyncio.Task] = None
 
         # Track provider changes for silent transitions
         self._last_provider = config.transcription.provider
@@ -155,8 +153,6 @@ class AppCoordinator:
             self.injection_controller.set_loop(value)
             # Start v2 reliability monitors
             self.session_monitor.start()
-            if not self._hook_watchdog_task or self._hook_watchdog_task.done():
-                self._hook_watchdog_task = value.create_task(self._hook_watchdog_task_run())
 
     @property
     def provider(self):
@@ -934,20 +930,6 @@ class AppCoordinator:
         logger.info("Session Unlock detected. Refreshing hotkey hooks...")
         self.input_monitor.restart()
 
-    async def _hook_watchdog_task_run(self):
-        """Infrastructure Watchdog: Ensures the native hook is still alive."""
-        interval = HOOK_WATCHDOG_INTERVAL
-        try:
-            while True:
-                await asyncio.sleep(interval)
-                # A retained handle does not prove Windows is still delivering events.
-                healthy = await asyncio.to_thread(self.input_monitor.check_health)
-                if healthy is False and self.input_monitor.is_running:
-                    logger.warning("Watchdog detected dead hook. Restarting interaction layer...")
-                    self.input_monitor.restart(preserve_state=True)
-        except asyncio.CancelledError:
-            pass
-
     async def shutdown(self, reason: Optional[str] = None):
         """Orchestrated shutdown."""
         async with self._shutdown_lock:
@@ -959,8 +941,6 @@ class AppCoordinator:
 
             # Stop v2 monitors
             self.session_monitor.stop()
-            if self._hook_watchdog_task:
-                self._hook_watchdog_task.cancel()
             if self._retry_mic_task:
                 self._retry_mic_task.cancel()
 

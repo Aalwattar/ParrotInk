@@ -40,7 +40,6 @@ async def test_hold_mode_interruption_bug(mock_config):
         patch("main.InjectionController"),
         patch("engine.platform_win.session.SessionMonitor"),
         patch("engine.services.updates.UpdateManager.start"),
-        patch("main.AppCoordinator._hook_watchdog_task_run"),
     ):
         connection_manager.return_value.stop_provider = AsyncMock()
         coordinator = AppCoordinator(mock_config)
