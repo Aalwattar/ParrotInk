@@ -42,7 +42,6 @@ async def test_stats_integration_emits_on_stop(mock_config):
         patch("main.ConnectionManager", return_value=mock_conn),
         patch("main.InputMonitor"),
         patch("main.MouseMonitor"),
-        patch("main.InjectionController"),
         patch("engine.services.updates.UpdateManager.start"),
         patch("engine.platform_win.session.SessionMonitor.start"),
     ):
@@ -73,7 +72,6 @@ async def test_stats_word_counting(mock_config):
         patch("main.ConnectionManager") as connection_manager,
         patch("main.InputMonitor"),
         patch("main.MouseMonitor"),
-        patch("main.InjectionController"),
         patch("engine.services.updates.UpdateManager.start"),
         patch("engine.platform_win.session.SessionMonitor.start"),
     ):

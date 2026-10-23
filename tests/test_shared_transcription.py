@@ -153,7 +153,7 @@ async def test_finalization_failure_closes_session_and_preserves_error(coordinat
     coordinator.connection_manager.provider = provider
     await coordinator.stop_listening()
     assert coordinator.state == AppState.ERROR
-    assert coordinator.session_cancelled
+    assert coordinator.injection_controller.cancelled
     assert coordinator.connection_manager.provider is None
     provider.stop.assert_awaited_once()
 
@@ -233,7 +233,7 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     coordinator.connection_manager.ensure_connected.assert_not_awaited()
     coordinator.pipeline.start.assert_not_awaited()
     assert coordinator.input_monitor._state == 0
-    assert coordinator.session_cancelled
+    assert coordinator.injection_controller.cancelled
     assert coordinator.state == AppState.IDLE
     coordinator.ui_bridge.update_status_message.assert_any_call(message)
 
@@ -275,4 +275,4 @@ async def test_target_changed_during_connection_does_not_start_microphone(coordi
     coordinator.connection_manager.ensure_connected.assert_awaited_once()
     coordinator.pipeline.start.assert_not_awaited()
     assert coordinator.state == AppState.IDLE
-    assert coordinator.session_cancelled
+    assert coordinator.injection_controller.cancelled

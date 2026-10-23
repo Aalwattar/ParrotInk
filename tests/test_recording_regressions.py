@@ -17,7 +17,7 @@ async def test_completed_cloudflare_recording_does_not_show_finalization_failure
     coordinator._loop = asyncio.get_running_loop()
     coordinator.pipeline.stop = AsyncMock()
     coordinator.injection_controller = InjectionController()
-    coordinator.injection_controller.set_loop(coordinator._loop)
+    coordinator.injection_controller.loop = coordinator._loop
     coordinator.state = AppState.LISTENING
     cfg = EffectiveCloudflareConfig(
         url="ws://localhost",
@@ -147,23 +147,21 @@ async def test_assemblyai_completed_turn_with_silent_audio_keeps_hot_connection(
 async def test_click_away_blocks_late_final_text_immediately(coordinator):
     coordinator._loop = asyncio.get_running_loop()
     coordinator.state = AppState.LISTENING
-    coordinator.anchor = MagicMock()
-    coordinator.anchor.is_match.return_value = False
+    coordinator.injection_controller.begin(MagicMock())
+    coordinator.injection_controller.target.is_match.return_value = False
     coordinator.config.hotkeys.hold_mode = False
     coordinator.config.interaction.cancel_on_click_outside_anchor = True
     coordinator.stop_listening = AsyncMock()
-    coordinator._queue_injection = MagicMock()
+    coordinator.injection_controller.queue = MagicMock()
     coordinator._on_mouse_click(100, 200)
     coordinator.on_final("late phrase")
     await asyncio.sleep(0)
-    assert coordinator.session_cancelled
-    coordinator._queue_injection.assert_not_called()
+    assert coordinator.injection_controller.cancelled
+    coordinator.injection_controller.queue.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_insertion_timeout_is_not_reported_as_transcription_failure(coordinator, caplog):
-    from concurrent.futures import Future
-
     coordinator._loop = asyncio.get_running_loop()
     coordinator.state = AppState.LISTENING
     coordinator.pipeline.stop = AsyncMock()
@@ -171,14 +169,17 @@ async def test_insertion_timeout_is_not_reported_as_transcription_failure(coordi
     provider = MagicMock(is_running=True)
     provider.finish_utterance = AsyncMock()
     coordinator.connection_manager.provider = provider
-    pending = Future()
-    coordinator._pending_injections.add(pending)
+    coordinator.loop = asyncio.get_running_loop()
+    await coordinator.injection_controller.lock.acquire()
+    coordinator.injection_controller.queue("pending text")
     await coordinator.stop_listening()
     statuses = [call.args[0] for call in coordinator.ui_bridge.update_status_message.call_args_list]
     assert "Could not insert final text" in statuses
     assert "Final transcription failed" not in statuses
     assert "stage=editor_insertion" in caplog.text
-    assert pending.cancelled()
+    coordinator.injection_controller.lock.release()
+    assert coordinator.injection_controller.cancelled
+    await coordinator.injection_controller.drain()
 
 
 @pytest.mark.asyncio
@@ -197,11 +198,11 @@ async def test_provider_timeout_keeps_finalization_failure_and_logs_stage(coordi
 @pytest.mark.asyncio
 async def test_stop_during_editor_focus_check_does_not_create_pipeline_error(coordinator, mocker):
     coordinator.state = AppState.LISTENING
-    coordinator.anchor = MagicMock()
+    coordinator.injection_controller.begin(MagicMock())
 
     async def check(*args):
         coordinator.state = AppState.IDLE
-        coordinator.anchor = None
+        coordinator.injection_controller.release()
         return False
 
     mocker.patch("main.asyncio.to_thread", side_effect=check)
@@ -216,13 +217,13 @@ async def test_final_text_after_focus_change_is_discarded_during_stop(coordinato
     coordinator.state = AppState.LISTENING
     target = MagicMock()
     target.has_focus.return_value = False
-    coordinator.anchor = target
+    coordinator.injection_controller.begin(target)
     coordinator.pipeline.stop = AsyncMock()
     inject = mocker.patch.object(coordinator.injection_controller.injector, "inject")
     provider = MagicMock(is_running=True)
 
     async def finish():
-        assert coordinator.anchor is target
+        assert coordinator.injection_controller.target is target
         coordinator.on_final("late phrase")
 
     provider.finish_utterance = AsyncMock(side_effect=finish)
@@ -230,16 +231,16 @@ async def test_final_text_after_focus_change_is_discarded_during_stop(coordinato
     await coordinator.stop_listening()
     inject.assert_not_called()
     assert coordinator.state == AppState.IDLE
-    assert coordinator.session_cancelled
-    assert coordinator.anchor is None
+    assert coordinator.injection_controller.cancelled
+    assert coordinator.injection_controller.target is None
 
 
 @pytest.mark.asyncio
 async def test_final_text_still_inserts_into_unchanged_target(coordinator, mocker):
     coordinator.loop = asyncio.get_running_loop()
     coordinator.state = AppState.LISTENING
-    coordinator.anchor = MagicMock()
-    coordinator.anchor.has_focus.return_value = True
+    coordinator.injection_controller.begin(MagicMock())
+    coordinator.injection_controller.target.has_focus.return_value = True
     coordinator.pipeline.stop = AsyncMock()
     inject = mocker.patch.object(coordinator.injection_controller.injector, "inject")
     provider = MagicMock(is_running=True)
@@ -250,6 +251,6 @@ async def test_final_text_still_inserts_into_unchanged_target(coordinator, mocke
     provider.finish_utterance = AsyncMock(side_effect=finish)
     coordinator.connection_manager.provider = provider
     await coordinator.stop_listening()
-    inject.assert_called_once_with("last words ", True)
+    inject.assert_called_once_with("last words", True)
     assert coordinator.state == AppState.IDLE
-    assert not coordinator.session_cancelled
+    assert not coordinator.injection_controller.cancelled

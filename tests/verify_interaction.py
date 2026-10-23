@@ -30,7 +30,7 @@ async def test_manual_stop_toggle_mode(coordinator):
         # Give it a tiny bit of time for the coroutine to be scheduled
         await asyncio.sleep(0.1)
 
-        assert coordinator.session_cancelled is True
+        assert coordinator.injection_controller.cancelled is True
         assert mock_stop.called
 
 

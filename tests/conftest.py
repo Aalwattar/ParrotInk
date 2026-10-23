@@ -213,5 +213,6 @@ async def coordinator(config, guard_ui_components):
     ):
         mock_bridge = MagicMock()
         coord = AppCoordinator(config, mock_bridge)
+        coord.injection_controller.begin(None)
         yield coord
         await coord.shutdown()

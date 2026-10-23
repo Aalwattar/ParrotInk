@@ -69,7 +69,6 @@ class AppCoordinator:
         self._configuration_lock = asyncio.Lock()
         self._stop_lock = asyncio.Lock()
         self._configuration_future: Optional[Future[None]] = None
-        self._pending_injections: set[Future[None]] = set()
         self._recording_provider = config.transcription.provider
         self._last_connection_settings = self._connection_settings(config)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -87,9 +86,6 @@ class AppCoordinator:
 
         # Mouse monitoring for click-away
         self.mouse_monitor = MouseMonitor(on_click_event=self._on_mouse_click)
-        self.anchor: Optional[Anchor] = None
-
-        self.session_cancelled = False
         self.start_time = 0
         self._last_manual_stop_time = 0.0
         self._last_voice_activity = 0.0
@@ -100,7 +96,9 @@ class AppCoordinator:
         self.session_word_count = 0
 
         # Injection safety
-        self.injection_controller = InjectionController()
+        self.injection_controller = InjectionController(
+            on_target_lost=self._on_insertion_target_lost
+        )
 
         # v2 Reliability Architecture
         from engine.platform_win.session import SessionMonitor
@@ -150,7 +148,7 @@ class AppCoordinator:
     def loop(self, value):
         self._loop = value
         if value:
-            self.injection_controller.set_loop(value)
+            self.injection_controller.loop = value
             # Start v2 reliability monitors
             self.session_monitor.start()
 
@@ -237,26 +235,9 @@ class AppCoordinator:
                 config.audio.capture_sample_rate * config.audio.chunk_ms // 1000
             )
 
-    def _queue_injection(self, text: str, is_final: bool = False):
-        target = self.anchor
-
-        def can_insert():
-            if self.session_cancelled or self.anchor is not target:
-                return False
-            if target is not None and not target.has_focus():
-                self.session_cancelled = True
-                logger.info("Discarding transcription: editor focus changed before insertion")
-                if self.is_listening:
-                    asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
-                return False
-            return True
-
-        future = asyncio.run_coroutine_threadsafe(
-            self.injection_controller.smart_inject(text, is_final=is_final, can_insert=can_insert),
-            self.loop,
-        )
-        self._pending_injections.add(future)
-        future.add_done_callback(self._pending_injections.discard)
+    def _on_insertion_target_lost(self):
+        if self.is_listening and self.loop:
+            asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
 
     @property
     def is_shutting_down(self) -> bool:
@@ -409,7 +390,7 @@ class AppCoordinator:
 
     def _on_manual_stop(self, key=None):
         """Callback for when a manual key press is detected during listening."""
-        if not self.is_listening or self.session_cancelled:
+        if not self.is_listening or self.injection_controller.cancelled:
             return
 
         now = time.time()
@@ -452,7 +433,7 @@ class AppCoordinator:
                 if self.state != AppState.LISTENING:
                     break
 
-                anchor = self.anchor
+                anchor = self.injection_controller.target
                 if (
                     anchor is not None
                     and self.config.interaction.cancel_on_click_outside_anchor
@@ -461,7 +442,7 @@ class AppCoordinator:
                     has_focus = await asyncio.to_thread(anchor.has_focus)
                     if self.state != AppState.LISTENING:
                         break
-                    if self.anchor is anchor and not has_focus:
+                    if self.injection_controller.target is anchor and not has_focus:
                         self._cancel_anchor_session("Editor focus left the recording target")
                         break
 
@@ -491,7 +472,7 @@ class AppCoordinator:
             logger.error(f"Error in listening monitor loop: {e}")
 
     def on_partial(self, text: str):
-        if self.session_cancelled:
+        if self.injection_controller.cancelled:
             return
 
         text = text.strip()
@@ -504,26 +485,25 @@ class AppCoordinator:
         # 2. Inject into target application (Only if enabled in config)
         if self.config.transcription.partial_results:
             if self.loop and self.injection_controller:
-                self._queue_injection(text)
+                self.injection_controller.queue(text)
 
     def on_final(self, text: str):
-        if self.session_cancelled:
+        if self.injection_controller.cancelled:
             logger.debug(f"Session cancelled. Discarding final text: {text}")
             return
 
-        text = text.strip()
-        if not text:
+        if not text.strip():
             return
 
         # Update statistics
         self.session_word_count += len(text.split())
 
         # Forward to floating indicator
-        self.ui_bridge.update_final_text(text)
+        self.ui_bridge.update_final_text(text.strip())
 
-        # Ensure final text is fully synchronized and add a trailing space
+        # Preserve the formatter's turn separators; the injector owns final spacing.
         if self.loop and self.injection_controller:
-            self._queue_injection(text + " ", is_final=True)
+            self.injection_controller.queue(text, is_final=True)
 
     def _play_feedback_sound(self, sound_type: Literal["start", "stop"]):
         """Plays the configured sound feedback if enabled."""
@@ -536,7 +516,7 @@ class AppCoordinator:
 
     def _on_mouse_click(self, x: int, y: int):
         """Callback for mouse clicks to detect click-away."""
-        if not self.is_listening or self.session_cancelled:
+        if not self.is_listening or self.injection_controller.cancelled:
             return
 
         if self.config.hotkeys.hold_mode:
@@ -545,16 +525,14 @@ class AppCoordinator:
         if not self.config.interaction.cancel_on_click_outside_anchor:
             return
 
-        if self.anchor and not self.anchor.is_match(x, y):
+        if self.injection_controller.target and not self.injection_controller.target.is_match(x, y):
             self._cancel_anchor_session("Click outside the recording target")
 
     def _cancel_anchor_session(self, reason: str):
-        if self.session_cancelled:
+        if self.injection_controller.cancelled:
             return
         logger.info("%s; cancelling dictation", reason)
-        self.session_cancelled = True
-        for future in tuple(self._pending_injections):
-            future.cancel()
+        self.injection_controller.cancel()
         if self.loop:
             asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
@@ -622,7 +600,6 @@ class AppCoordinator:
                 self.ui_bridge.show_hardware_error_popup()
                 return
 
-        self.session_cancelled = False
         self._recording_provider = self.config.transcription.provider
         self.start_time = time.time()
         self.session_start_time = self.start_time
@@ -641,10 +618,8 @@ class AppCoordinator:
             if self.state != AppState.CONNECTING:
                 return
             if not target.can_dictate:
-                self.session_cancelled = True
-                self.anchor = None
-                for future in tuple(self._pending_injections):
-                    future.cancel()
+                self.injection_controller.cancel()
+                self.injection_controller.release()
                 self.input_monitor.reset_state()
                 self.session_start_time = 0.0
                 self.set_state(AppState.IDLE)
@@ -666,7 +641,7 @@ class AppCoordinator:
                     focused.password if focused else None,
                 )
                 return
-            self.anchor = target
+            self.injection_controller.begin(target)
 
             self._last_voice_activity = time.time()
             self.pipeline.on_voice_activity = self._on_voice_activity
@@ -687,7 +662,7 @@ class AppCoordinator:
                 if self.state != AppState.CONNECTING:
                     return
                 if not has_focus:
-                    self.session_cancelled = True
+                    self.injection_controller.cancel()
                     await self.stop_listening(silent=True)
                     self.ui_bridge.update_status_message(
                         "Target changed; click an editable text field"
@@ -855,7 +830,12 @@ class AppCoordinator:
         await self.pipeline.stop()
         self.pipeline.on_voice_activity = None
         provider = self.connection_manager.provider
-        if provider and provider.is_running and not self.session_cancelled and not was_error:
+        if (
+            provider
+            and provider.is_running
+            and not self.injection_controller.cancelled
+            and not was_error
+        ):
             stage = "provider_finalize"
             started = time.monotonic()
             try:
@@ -863,11 +843,9 @@ class AppCoordinator:
                     await provider.finish_utterance()
                 # Final callbacks queue cursor writes; drain them before a new anchor
                 # or session can be selected.
-                pending = list(self._pending_injections)
-                if pending:
-                    stage = "editor_insertion"
-                    async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
-                        await asyncio.gather(*(asyncio.wrap_future(f) for f in pending))
+                stage = "editor_insertion"
+                async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
+                    await self.injection_controller.drain()
             except Exception as exc:
                 # Record the cause without echoing server payloads or transcript text.
                 logger.error(
@@ -877,12 +855,10 @@ class AppCoordinator:
                     get_selected_model(self.config, self._recording_provider),
                     stage,
                     time.monotonic() - started,
-                    len(self._pending_injections),
+                    self.injection_controller.pending_count,
                     type(exc).__name__,
                 )
-                self.session_cancelled = True
-                for future in tuple(self._pending_injections):
-                    future.cancel()
+                self.injection_controller.cancel()
                 self.set_state(AppState.ERROR)
                 self.ui_bridge.update_status_message(
                     "Could not insert final text"
@@ -891,7 +867,7 @@ class AppCoordinator:
                 )
                 await self.connection_manager.stop_provider()
         if (
-            self.session_cancelled
+            self.injection_controller.cancelled
             or was_error
             or self.state == AppState.ERROR
             or self.config.audio.connection_mode == "on_demand"
@@ -904,7 +880,7 @@ class AppCoordinator:
         else:
             self.connection_manager.start_idle_timer()
 
-        self.anchor = None
+        self.injection_controller.release()
         if not silent:
             self._play_feedback_sound("stop")
 
@@ -954,7 +930,7 @@ class AppCoordinator:
 
                     # 2. Stop connection and pipeline
                     await self.pipeline.stop()
-                    self.session_cancelled = True
+                    self.injection_controller.cancel()
                     await self.connection_manager.stop_provider()
                     self.streamer.stop()
 
