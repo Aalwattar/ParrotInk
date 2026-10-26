@@ -1,6 +1,6 @@
 [project]
 name = "parrotink"
-version = "0.2.46"
+version = "0.2.47"
 description = "Real-time voice-to-text application for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -26,13 +26,14 @@ dependencies = [
     "httpx==0.28.1",
     "pydantic==2.14.0",
     "pystray==0.19.5",
+    "pillow>=13.0.0,<14",
     "keyring==25.7.0",
     "pywin32==312; sys_platform == 'win32'",
     "platformdirs==4.12.4",
     "soxr>=1.0.0",
     "skia-python==144.0.post2",
     "win11toast",
-    "ttkbootstrap==2.2.3",
+    "ttkbootstrap==2.2.4",
     "packaging>=26.0",
     "tomlkit>=0.14.0",
 ]
