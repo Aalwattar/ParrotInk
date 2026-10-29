@@ -235,3 +235,53 @@ def test_focus_race_retries_once_and_never_returns_stale_target(mocker, snapshot
     assert result == (target() if stable else None)
     assert resolve.call_count == expected_calls
     uninitialize.assert_called_once()
+
+
+@pytest.mark.parametrize("failures", [1, 2])
+def test_provider_failure_retries_once_with_fresh_focus(mocker, failures):
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    mocker.patch.object(focus._ole32, "CoInitializeEx", return_value=0)
+    uninitialize = mocker.patch.object(focus._ole32, "CoUninitialize")
+    mocker.patch.object(focus._ole32, "CoCreateInstance", side_effect=create)
+    native_call = mocker.patch.object(focus, "_call")
+    mocker.patch.object(focus, "native_focus", side_effect=[(100, 200), (100, 300), (100, 300)])
+    resolve = mocker.patch.object(
+        focus, "_resolve_target", side_effect=[OSError("provider_failed")] * failures + [target()]
+    )
+    assert focus.read_focused_element() == (target() if failures == 1 else None)
+    assert resolve.call_count == 2
+    assert [call.args[1] for call in resolve.call_args_list] == [(100, 200), (100, 300)]
+    assert native_call.call_args.args[1] == 2  # Release automation even after failure.
+    uninitialize.assert_called_once()
+
+
+def test_ambiguous_target_has_diagnostic_without_retry(provider, mocker):
+    nodes, _, _, _ = provider
+    nodes[6] = (nodes[6][0], True, 200)
+    log = mocker.patch.object(focus.logger, "debug")
+    assert focus._resolve_target(ctypes.c_void_p(1), (100, 200)) is None
+    assert any("ambiguous_focus" in str(call) for call in log.call_args_list)
+
+
+@pytest.mark.parametrize("resolved", [None, target(read_only=True), target(password=True)])
+def test_stable_unverified_or_blocked_target_is_not_retried(mocker, resolved):
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    mocker.patch.object(focus._ole32, "CoInitializeEx", return_value=0)
+    mocker.patch.object(focus._ole32, "CoUninitialize")
+    mocker.patch.object(focus._ole32, "CoCreateInstance", side_effect=create)
+    mocker.patch.object(focus, "_call")
+    mocker.patch.object(focus, "native_focus", return_value=(100, 200))
+    resolve = mocker.patch.object(focus, "_resolve_target", return_value=resolved)
+    log = mocker.patch.object(focus.logger, "debug")
+    mocker.patch.object(focus.time, "perf_counter", side_effect=[1.0, 1.25])
+    assert focus.read_focused_element() == resolved
+    resolve.assert_called_once()
+    log.assert_called_with(
+        "Editor assessment: reason=%s elapsed_ms=%.1f", focus.assess_target(resolved).reason, 250.0
+    )

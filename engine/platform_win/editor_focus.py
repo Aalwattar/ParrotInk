@@ -1,6 +1,7 @@
 """Read editor identity and bounds through Windows UI Automation."""
 
 import ctypes
+import time
 import uuid
 from ctypes import wintypes
 from dataclasses import dataclass
@@ -406,6 +407,7 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
         value.vt, value.data.boolean = 11, -1
         condition = result(automation, 23, [ctypes.c_int, _Variant], 30008, value)
         if not condition:
+            logger.debug("Editor resolution unavailable: focus_condition_unavailable")
             return None
         focused = result(automation, 8, [])
         inspect(focused)
@@ -420,6 +422,10 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
                 if handle.value and user32.IsChild(snapshot[0], handle.value):
                     selected = inspect(parent)
         if selected is None:
+            logger.debug(
+                "Editor resolution unavailable: %s",
+                "ambiguous_focus" if candidates else "no_owned_focus_candidate",
+            )
             return None
         element, target = selected
         if target.control_type in (50007, 50008):
@@ -435,11 +441,14 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
 
 @physical_coordinates()
 def read_focused_element() -> FocusedElement | None:
+    started = time.perf_counter()
+    reason = "com_initialization_failed"
     automation = ctypes.c_void_p()
     initialized = _ole32.CoInitializeEx(None, 0)
-    if initialized < 0 and initialized != -2147417850:
-        return None
     try:
+        if initialized < 0 and initialized != -2147417850:
+            return None
+        reason = "automation_creation_failed"
         result = _ole32.CoCreateInstance(_CLSID, None, 1, _IID, ctypes.byref(automation))
         if result < 0 or not automation:
             return None
@@ -448,16 +457,29 @@ def read_focused_element() -> FocusedElement | None:
         for _ in range(2):
             before = native_focus()
             if not all(before):
+                reason = "native_focus_unavailable"
                 return None
-            target = _resolve_target(automation, before)
+            try:
+                target = _resolve_target(automation, before)
+            except OSError:
+                reason = "provider_failure"
+                logger.debug("Editor resolution unavailable: provider_failure", exc_info=True)
+                continue
             if before == native_focus():
+                reason = assess_target(target).reason
                 return target
-        logger.debug("Editor assessment unavailable: focus_changed")
+            reason = "focus_changed"
     except OSError:
+        reason = "provider_failure"
         logger.debug("Editor assessment unavailable: provider_failure", exc_info=True)
     finally:
         if automation:
             _call(automation, 2, [])
         if initialized >= 0:
             _ole32.CoUninitialize()
+        logger.debug(
+            "Editor assessment: reason=%s elapsed_ms=%.1f",
+            reason,
+            (time.perf_counter() - started) * 1000,
+        )
     return None

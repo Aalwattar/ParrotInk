@@ -97,7 +97,8 @@ class AppCoordinator:
 
         # Injection safety
         self.injection_controller = InjectionController(
-            on_target_lost=self._on_insertion_target_lost
+            on_target_lost=self._on_insertion_target_lost,
+            on_insertion_failed=self._on_insertion_failed,
         )
 
         # v2 Reliability Architecture
@@ -238,6 +239,15 @@ class AppCoordinator:
     def _on_insertion_target_lost(self):
         if self.is_listening and self.loop:
             asyncio.run_coroutine_threadsafe(self.stop_listening(silent=True), self.loop)
+
+    def _on_insertion_failed(self):
+        if self.is_shutting_down:
+            return
+        logger.error("Text insertion failed; cancelling dictation")
+        self.ui_bridge.update_status_message("Could not insert text; restart dictation")
+        self.set_state(AppState.ERROR)
+        if self.loop:
+            self.loop.create_task(self.stop_listening(silent=True))
 
     @property
     def is_shutting_down(self) -> bool:

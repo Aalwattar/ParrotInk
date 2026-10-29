@@ -17,7 +17,11 @@ class InjectionController:
     Handles locking and suppression windows to avoid feedback loops.
     """
 
-    def __init__(self, on_target_lost: Callable[[], None] | None = None):
+    def __init__(
+        self,
+        on_target_lost: Callable[[], None] | None = None,
+        on_insertion_failed: Callable[[], None] | None = None,
+    ):
         self.lock = asyncio.Lock()
         self.injector = SmartInjector()
         self._is_injecting: bool = False
@@ -31,6 +35,7 @@ class InjectionController:
         self._pending_lock = threading.Lock()
         self._worker_lock = threading.Lock()
         self._on_target_lost = on_target_lost
+        self._on_insertion_failed = on_insertion_failed
 
     @property
     def target(self) -> Anchor | None:
@@ -75,7 +80,7 @@ class InjectionController:
         def can_insert():
             if self.cancelled or self._session is not session:
                 return False
-            focused = target is None or target.has_focus()
+            focused = target is None or target.has_focus(same_editor=True)
             # Focus acquisition can block while cancellation or a new session arrives.
             if self.cancelled or self._session is not session:
                 return False
@@ -124,6 +129,7 @@ class InjectionController:
         if not self.loop:
             return
 
+        session = self._session
         async with self.lock:
             self._is_injecting = True
             try:
@@ -133,7 +139,20 @@ class InjectionController:
                     # Cancelling an asyncio wait cannot stop an already-running worker.
                     with self._worker_lock:
                         if can_insert is None or can_insert():
-                            self.injector.inject(text, is_final)
+                            try:
+                                self.injector.inject(text, is_final)
+                            except Exception as error:
+                                # A partial write leaves the document state unknown.
+                                if self._session is session:
+                                    self._error = error
+                                    self._cancelled = True
+
+                                    def notify_failure():
+                                        if self._session is session and self._on_insertion_failed:
+                                            self._on_insertion_failed()
+
+                                    self.loop.call_soon_threadsafe(notify_failure)
+                                raise
 
                 await self.loop.run_in_executor(None, insert)
             finally:

@@ -1,4 +1,5 @@
 import ctypes
+import struct
 import time
 
 from engine.logging import get_logger
@@ -37,14 +38,14 @@ def inject_text(text: str):
     start_time = time.perf_counter()
 
     inputs = []
-    for char in text:
-        if char == "\n":
+    # Windows accepts UTF-16 code units, including both halves of surrogate pairs.
+    for (codepoint,) in struct.iter_unpack("<H", text.encode("utf-16-le")):
+        if codepoint == ord("\n"):
             # PHYSICAL ENTER: Use VK_RETURN for maximum compatibility.
             ki_down = KEYBDINPUT(VK_RETURN, 0, 0, 0, PARROTINK_INPUT_TAG)
             ki_up = KEYBDINPUT(VK_RETURN, 0, KEYEVENTF_KEYUP, 0, PARROTINK_INPUT_TAG)
         else:
             # Standard Unicode injection
-            codepoint = ord(char)
             ki_down = KEYBDINPUT(0, codepoint, KEYEVENTF_UNICODE, 0, PARROTINK_INPUT_TAG)
             ki_up = KEYBDINPUT(
                 0, codepoint, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, PARROTINK_INPUT_TAG
@@ -72,19 +73,18 @@ def inject_text(text: str):
 
     if sent != n_inputs:
         err = ctypes.get_last_error()
-        logger.warning(
-            "SendInput sent fewer events than expected",
-            extra={"expected": n_inputs, "sent": sent, "error": err},
-        )
+        raise OSError(err, f"SendInput inserted {sent} of {n_inputs} text events")
 
     duration_ms = (time.perf_counter() - start_time) * 1000
-    logger.debug(f"Injection of '{text[:10]}...' took {duration_ms:.2f}ms")
+    logger.debug("Injection of %d characters took %.2fms", len(text), duration_ms)
 
 
 def inject_backspaces(count: int):
     """Inject N physical backspaces with verification."""
     if count <= 0:
         return
+    if count > BACKSPACE_SAFETY_CAP:
+        raise OSError("Correction exceeds backspace safety limit")
 
     inputs = []
     for _ in range(count):
@@ -106,10 +106,7 @@ def inject_backspaces(count: int):
 
     if sent != n_inputs:
         err = ctypes.get_last_error()
-        logger.warning(
-            "SendInput failed to inject all backspaces",
-            extra={"expected": n_inputs, "sent": sent, "error": err},
-        )
+        raise OSError(err, f"SendInput inserted {sent} of {n_inputs} backspace events")
 
 
 class SmartInjector:
@@ -158,7 +155,7 @@ class SmartInjector:
         new_text = text[common_len:]
 
         if backspaces > 0:
-            inject_backspaces(min(backspaces, BACKSPACE_SAFETY_CAP))
+            inject_backspaces(backspaces)
 
         if new_text:
             inject_text(new_text)

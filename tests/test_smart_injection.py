@@ -4,7 +4,62 @@ from unittest.mock import patch
 
 import pytest
 
+from engine.app_types import AppState
+from engine.injection import InjectionController
 from engine.transcription.speaker_manager import SpeakerManager
+
+
+@pytest.mark.asyncio
+async def test_insertion_failure_blocks_queued_corrections(mocker):
+    failed = mocker.Mock()
+    output = InjectionController(on_insertion_failed=failed)
+    output.loop = asyncio.get_running_loop()
+    output.begin(None)
+    insert = mocker.patch.object(output.injector, "inject", side_effect=OSError("write failed"))
+    output.queue("first")
+    output.queue("correction")
+    with pytest.raises(OSError, match="write failed"):
+        await output.drain()
+    assert output.cancelled
+    insert.assert_called_once_with("first", False)
+    failed.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_queued_insertion_requires_original_editor(mocker):
+    output = InjectionController()
+    output.loop = asyncio.get_running_loop()
+    target = mocker.Mock()
+    target.has_focus.side_effect = lambda **kwargs: not kwargs.get("same_editor", False)
+    output.begin(target)
+    insert = mocker.patch.object(output.injector, "inject")
+    output.queue("text")
+    await output.drain()
+    insert.assert_not_called()
+    assert output.cancelled
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shutting_down", [False, True])
+async def test_insertion_failure_notifies_and_stops_unless_shutting_down(
+    coordinator, mocker, shutting_down
+):
+    coordinator.loop = asyncio.get_running_loop()
+    stop = mocker.patch.object(coordinator, "stop_listening", new_callable=mocker.AsyncMock)
+    coordinator.state = AppState.SHUTTING_DOWN if shutting_down else AppState.LISTENING
+    coordinator._on_insertion_failed()
+    await asyncio.sleep(0)
+    if shutting_down:
+        assert coordinator.state == AppState.SHUTTING_DOWN
+        stop.assert_not_called()
+        coordinator.ui_bridge.update_status_message.assert_not_called()
+    else:
+        assert coordinator.state == AppState.ERROR
+        stop.assert_awaited_once_with(silent=True)
+        coordinator.ui_bridge.update_status_message.assert_called_with(
+            "Could not insert text; restart dictation"
+        )
+    coordinator.state = AppState.IDLE
 
 
 @pytest.mark.asyncio
@@ -13,7 +68,7 @@ async def test_cancelled_worker_cannot_insert_after_target_is_reused(coordinator
     coordinator.loop = asyncio.get_running_loop()
     entered, resume = threading.Event(), threading.Event()
 
-    def delayed_focus():
+    def delayed_focus(**kwargs):
         entered.set()
         assert resume.wait(2)
         return True
@@ -44,7 +99,7 @@ async def test_new_insertion_session_does_not_backspace_previous_target(coordina
     backspace = mocker.patch("engine.injector.inject_backspaces")
     output.queue("old partial")
     await output.drain()
-    output.begin(mocker.Mock(has_focus=lambda: True))
+    output.begin(mocker.Mock(has_focus=lambda **kwargs: True))
     output.queue("new final", is_final=True)
     await output.drain()
     backspace.assert_not_called()

@@ -134,3 +134,25 @@ def test_editability_loss_stops_an_existing_target(mocker, scope, read_only):
     read.return_value = None
     assert not anchor.has_focus()
     assert not anchor.is_match(50, 50)
+
+
+def test_window_scope_insertion_requires_original_editor(mocker):
+    original = FocusedElement((1,), 50004, (10, 10, 100, 100), read_only=False)
+    other = FocusedElement((2,), 50004, (110, 10, 200, 100), read_only=False)
+    mocker.patch("engine.anchor.get_foreground_window", return_value=123)
+    mocker.patch("engine.anchor.get_window_thread_process_id", return_value=(0, 999))
+    mocker.patch("engine.anchor.get_ancestor", side_effect=lambda h, flags: h)
+    mocker.patch("engine.anchor.window_from_point", return_value=123)
+    read = mocker.patch("engine.anchor.read_focused_element", return_value=original)
+    anchor = Anchor.capture_current("window")
+    assert anchor.has_focus(same_editor=True)
+
+    read.return_value = other
+    assert anchor.has_focus()
+    assert anchor.is_match(150, 50)
+    assert not anchor.has_focus(same_editor=True)
+
+    read.return_value = original
+    assert anchor.has_focus(same_editor=True)
+    read.return_value = None
+    assert not anchor.has_focus(same_editor=True)

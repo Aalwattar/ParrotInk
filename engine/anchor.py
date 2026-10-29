@@ -135,7 +135,7 @@ class Anchor:
 
         return False
 
-    def has_focus(self) -> bool:
+    def has_focus(self, *, same_editor: bool = False) -> bool:
         foreground = get_foreground_window()
         if not foreground or not self.hwnd:
             return False
@@ -143,6 +143,12 @@ class Anchor:
             return False
         focused = read_focused_element() if self.focused_element else None
         if self.focused_element and (focused is None or not focused.can_dictate):
+            return False
+        if same_editor and (
+            focused is None
+            or self.focused_element is None
+            or focused.runtime_id != self.focused_element.runtime_id
+        ):
             return False
         if self.editor:
             return bool(
