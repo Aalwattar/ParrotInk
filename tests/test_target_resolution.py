@@ -268,7 +268,7 @@ def test_ambiguous_target_has_diagnostic_without_retry(provider, mocker):
     assert any("ambiguous_focus" in str(call) for call in log.call_args_list)
 
 
-@pytest.mark.parametrize("resolved", [None, target(read_only=True), target(password=True)])
+@pytest.mark.parametrize("resolved", [target(read_only=True), target(password=True)])
 def test_stable_unverified_or_blocked_target_is_not_retried(mocker, resolved):
     def create(*args):
         args[-1]._obj.value = 1
@@ -287,6 +287,26 @@ def test_stable_unverified_or_blocked_target_is_not_retried(mocker, resolved):
     log.assert_called_with(
         "Editor assessment: reason=%s elapsed_ms=%.1f", focus.assess_target(resolved).reason, 250.0
     )
+
+
+@pytest.mark.parametrize("initial", [None, target(read_only=None)])
+@pytest.mark.parametrize(
+    "recovered", [target(), None, target(read_only=True), target(password=True)]
+)
+def test_unknown_target_gets_one_fresh_assessment(mocker, initial, recovered):
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    mocker.patch.object(focus._ole32, "CoInitializeEx", return_value=0)
+    mocker.patch.object(focus._ole32, "CoUninitialize")
+    mocker.patch.object(focus._ole32, "CoCreateInstance", side_effect=create)
+    mocker.patch.object(focus, "_call")
+    native = mocker.patch.object(focus, "native_focus", return_value=(100, 200))
+    resolve = mocker.patch.object(focus, "_resolve_target", side_effect=[initial, recovered])
+    assert focus.read_focused_element() == recovered
+    assert resolve.call_count == 2
+    assert native.call_count == 4
 
 
 @pytest.mark.parametrize(
@@ -310,5 +330,5 @@ def test_resolution_reason_survives_into_timed_summary(mocker, reason):
     log = mocker.patch.object(focus.logger, "debug")
     mocker.patch.object(focus.time, "perf_counter", side_effect=[1.0, 1.25])
     assert focus.read_focused_element() is None
-    resolver.assert_called_once()
+    assert resolver.call_count == 2
     log.assert_called_with("Editor assessment: reason=%s elapsed_ms=%.1f", reason, 250.0)

@@ -463,7 +463,7 @@ def read_focused_element() -> FocusedElement | None:
             return None
         _call(automation, 61, [wintypes.DWORD], 500)  # IUIAutomation2 connection timeout.
         _call(automation, 63, [wintypes.DWORD], 500)  # IUIAutomation2 transaction timeout.
-        for _ in range(2):
+        for attempt in range(2):
             before = native_focus()
             if not all(before):
                 reason = "native_focus_unavailable"
@@ -476,8 +476,12 @@ def read_focused_element() -> FocusedElement | None:
                 logger.debug("Editor resolution unavailable: provider_failure", exc_info=True)
                 continue
             if before == native_focus():
+                assessment = assess_target(target)
                 if target is not None:
-                    reason = assess_target(target).reason
+                    reason = assessment.reason
+                if assessment.decision == "unknown" and attempt == 0:
+                    logger.debug("Reassessing unknown editor: reason=%s", reason)
+                    continue
                 return target
             reason = "focus_changed"
     except OSError:

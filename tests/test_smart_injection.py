@@ -4,9 +4,51 @@ from unittest.mock import patch
 
 import pytest
 
+from engine.anchor import Anchor
 from engine.app_types import AppState
 from engine.injection import InjectionController
+from engine.platform_win import editor_focus as focus
 from engine.transcription.speaker_manager import SpeakerManager
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("recovery", ["original", "other", "unresolved", "blocked"])
+async def test_reassessed_target_is_checked_before_queued_insertion(mocker, recovery):
+    original = focus.FocusedElement((1,), 50004, (0, 0, 100, 100), read_only=False)
+    recovered = {
+        "original": original,
+        "other": focus.FocusedElement((2,), 50004, (0, 0, 100, 100), read_only=False),
+        "unresolved": None,
+        "blocked": focus.FocusedElement((1,), 50004, (0, 0, 100, 100), read_only=True),
+    }[recovery]
+
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    mocker.patch.object(focus._ole32, "CoInitializeEx", return_value=0)
+    mocker.patch.object(focus._ole32, "CoUninitialize")
+    mocker.patch.object(focus._ole32, "CoCreateInstance", side_effect=create)
+    mocker.patch.object(focus, "_call")
+    mocker.patch.object(focus, "native_focus", return_value=(100, 200))
+    resolve = mocker.patch.object(focus, "_resolve_target", side_effect=[None, recovered])
+    mocker.patch("engine.anchor.read_focused_element", side_effect=focus.read_focused_element)
+    mocker.patch("engine.anchor.get_foreground_window", return_value=100)
+    mocker.patch("engine.anchor.get_ancestor", side_effect=lambda hwnd, _: hwnd)
+    anchor = Anchor("window")
+    anchor.hwnd, anchor.focused_element = 100, original
+    output = InjectionController()
+    output.loop = asyncio.get_running_loop()
+    output.begin(anchor)
+    insert = mocker.patch.object(output.injector, "inject")
+    output.queue("text")
+    await output.drain()
+    assert resolve.call_count == 2
+    assert output.cancelled is (recovery != "original")
+    if recovery == "original":
+        insert.assert_called_once_with("text", False)
+    else:
+        insert.assert_not_called()
 
 
 @pytest.mark.asyncio

@@ -101,20 +101,15 @@ class Anchor:
 
             anchor_root = get_ancestor(self.hwnd, GA_ROOT)
             if target_root == anchor_root or target_hwnd == anchor_root:
-                focused = read_focused_element() if self.focused_element else None
-                return self.focused_element is None or bool(focused and focused.can_dictate)
+                return self.focused_element is None or self._matching_editor() is not None
 
             # If the foreground window has changed but the root is the same, it's a match
             return False
 
         elif self.scope == "control":
             if self.editor:
-                focused = read_focused_element()
-                if (
-                    focused is None
-                    or not focused.can_dictate
-                    or focused.runtime_id != self.editor.runtime_id
-                ):
+                focused = self._matching_editor(same_editor=True)
+                if focused is None:
                     return False
                 left, top, right, bottom = focused.bounds
                 if not (left <= x < right and top <= y < bottom):
@@ -135,23 +130,25 @@ class Anchor:
 
         return False
 
+    def _matching_editor(self, *, same_editor: bool = False) -> FocusedElement | None:
+        focused = read_focused_element() if self.focused_element else None
+        if focused is None or not focused.can_dictate:
+            return None
+        original = self.editor or (self.focused_element if same_editor else None)
+        if original is not None and focused.runtime_id != original.runtime_id:
+            return None
+        return focused
+
     def has_focus(self, *, same_editor: bool = False) -> bool:
         foreground = get_foreground_window()
         if not foreground or not self.hwnd:
             return False
         if get_ancestor(foreground, GA_ROOT) != get_ancestor(self.hwnd, GA_ROOT):
             return False
-        focused = read_focused_element() if self.focused_element else None
-        if self.focused_element and (focused is None or not focused.can_dictate):
-            return False
-        if same_editor and (
-            focused is None
-            or self.focused_element is None
-            or focused.runtime_id != self.focused_element.runtime_id
-        ):
+        if (self.focused_element or same_editor) and self._matching_editor(
+            same_editor=same_editor
+        ) is None:
             return False
         if self.editor:
-            return bool(
-                focused and focused.can_dictate and focused.runtime_id == self.editor.runtime_id
-            )
+            return True
         return self.scope == "window" or self._get_focused_control(foreground) == self.control_hwnd
