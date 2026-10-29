@@ -5,7 +5,7 @@ import time
 import uuid
 from ctypes import wintypes
 from dataclasses import dataclass
-from typing import Literal
+from typing import Callable, Literal
 
 from engine.logging import get_logger
 from engine.platform_win.dpi import physical_coordinates
@@ -347,9 +347,16 @@ def _choose_target(
     return next(iter(unique.values())) if len(unique) == 1 else None
 
 
-def _resolve_target(automation, snapshot) -> FocusedElement | None:
+def _resolve_target(
+    automation, snapshot, report_reason: Callable[[str], None] | None = None
+) -> FocusedElement | None:
     references = []
     candidates: list[tuple[ctypes.c_void_p, FocusedElement]] = []
+
+    def unresolved(reason):
+        logger.debug("Editor resolution unavailable: %s", reason)
+        if report_reason:
+            report_reason(reason)
 
     def result(pointer, slot, types, *args):
         output = ctypes.c_void_p()
@@ -407,7 +414,7 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
         value.vt, value.data.boolean = 11, -1
         condition = result(automation, 23, [ctypes.c_int, _Variant], 30008, value)
         if not condition:
-            logger.debug("Editor resolution unavailable: focus_condition_unavailable")
+            unresolved("focus_condition_unavailable")
             return None
         focused = result(automation, 8, [])
         inspect(focused)
@@ -422,10 +429,7 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
                 if handle.value and user32.IsChild(snapshot[0], handle.value):
                     selected = inspect(parent)
         if selected is None:
-            logger.debug(
-                "Editor resolution unavailable: %s",
-                "ambiguous_focus" if candidates else "no_owned_focus_candidate",
-            )
+            unresolved("ambiguous_focus" if candidates else "no_owned_focus_candidate")
             return None
         element, target = selected
         if target.control_type in (50007, 50008):
@@ -443,6 +447,11 @@ def _resolve_target(automation, snapshot) -> FocusedElement | None:
 def read_focused_element() -> FocusedElement | None:
     started = time.perf_counter()
     reason = "com_initialization_failed"
+
+    def report_reason(detail):
+        nonlocal reason
+        reason = detail
+
     automation = ctypes.c_void_p()
     initialized = _ole32.CoInitializeEx(None, 0)
     try:
@@ -460,13 +469,15 @@ def read_focused_element() -> FocusedElement | None:
                 reason = "native_focus_unavailable"
                 return None
             try:
-                target = _resolve_target(automation, before)
+                reason = "focus_unresolved"
+                target = _resolve_target(automation, before, report_reason)
             except OSError:
                 reason = "provider_failure"
                 logger.debug("Editor resolution unavailable: provider_failure", exc_info=True)
                 continue
             if before == native_focus():
-                reason = assess_target(target).reason
+                if target is not None:
+                    reason = assess_target(target).reason
                 return target
             reason = "focus_changed"
     except OSError:

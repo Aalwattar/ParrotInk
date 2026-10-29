@@ -262,7 +262,9 @@ def test_ambiguous_target_has_diagnostic_without_retry(provider, mocker):
     nodes, _, _, _ = provider
     nodes[6] = (nodes[6][0], True, 200)
     log = mocker.patch.object(focus.logger, "debug")
-    assert focus._resolve_target(ctypes.c_void_p(1), (100, 200)) is None
+    reasons = []
+    assert focus._resolve_target(ctypes.c_void_p(1), (100, 200), reasons.append) is None
+    assert reasons == ["ambiguous_focus"]
     assert any("ambiguous_focus" in str(call) for call in log.call_args_list)
 
 
@@ -285,3 +287,28 @@ def test_stable_unverified_or_blocked_target_is_not_retried(mocker, resolved):
     log.assert_called_with(
         "Editor assessment: reason=%s elapsed_ms=%.1f", focus.assess_target(resolved).reason, 250.0
     )
+
+
+@pytest.mark.parametrize(
+    "reason", ["ambiguous_focus", "no_owned_focus_candidate", "focus_condition_unavailable"]
+)
+def test_resolution_reason_survives_into_timed_summary(mocker, reason):
+    def create(*args):
+        args[-1]._obj.value = 1
+        return 0
+
+    def resolve(automation, snapshot, report_reason):
+        report_reason(reason)
+        return None
+
+    mocker.patch.object(focus._ole32, "CoInitializeEx", return_value=0)
+    mocker.patch.object(focus._ole32, "CoUninitialize")
+    mocker.patch.object(focus._ole32, "CoCreateInstance", side_effect=create)
+    mocker.patch.object(focus, "_call")
+    mocker.patch.object(focus, "native_focus", return_value=(100, 200))
+    resolver = mocker.patch.object(focus, "_resolve_target", side_effect=resolve)
+    log = mocker.patch.object(focus.logger, "debug")
+    mocker.patch.object(focus.time, "perf_counter", side_effect=[1.0, 1.25])
+    assert focus.read_focused_element() is None
+    resolver.assert_called_once()
+    log.assert_called_with("Editor assessment: reason=%s elapsed_ms=%.1f", reason, 250.0)
