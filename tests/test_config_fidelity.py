@@ -49,3 +49,26 @@ def test_documented_example_matches_defaults_when_uncommented():
     uncommented = re.sub(r"^# ([A-Za-z_]+\s*=.*)$", r"\1", text, flags=re.MULTILINE)
     configured = Config(**tomlkit.parse(uncommented))
     assert configured.model_dump() == Config().model_dump()
+
+
+def test_legacy_aliases_round_trip_with_comments(tmp_path):
+    path = tmp_path / "config.toml"
+    path.write_text('''# Legacy config
+[transcription]
+active_provider = "assemblyai" # provider comment
+[providers.openai.tier1]
+language = "fr" # language comment
+[providers.openai.tier2]
+prompt = "hello"
+[providers.assemblyai.tier1]
+language_code = "es"
+[providers.assemblyai.tier2]
+format_text = true
+''', encoding="utf-8")
+    config = Config.from_file(path)
+    config.save(path, blocking=True)
+    assert Config.from_file(path).model_dump() == config.model_dump()
+    saved = path.read_text(encoding="utf-8")
+    assert "active_provider" not in saved
+    assert "tier1" not in saved and "tier2" not in saved
+    assert "# provider comment" in saved and "# language comment" in saved

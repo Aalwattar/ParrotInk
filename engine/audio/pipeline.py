@@ -19,6 +19,7 @@ class AudioPipeline:
         self.streamer = streamer
         self._audio_task: Optional[asyncio.Task] = None
         self._is_running = False
+        self._generation = 0
         self.on_voice_activity: Optional[Callable[[bool], None]] = None
 
     @property
@@ -33,7 +34,16 @@ class AudioPipeline:
             return
 
         self._is_running = True
-        await self.streamer.start(loop=loop)
+        self._generation += 1
+        generation = self._generation
+        try:
+            await self.streamer.start(loop=loop)
+        except BaseException:
+            if generation == self._generation:
+                self._is_running = False
+            raise
+        if generation != self._generation:
+            return
 
         # Guard against zero sample rate just in case, though streamer handles it
         if getattr(self.streamer, "sample_rate", 16000) != adapter.capture_rate_hz:
@@ -47,17 +57,34 @@ class AudioPipeline:
         logger.debug("Audio pipeline started.")
 
     async def stop(self):
-        """Stops capture and cancels the processing pipe."""
+        """Stops capture and drains queued audio before returning."""
         self._is_running = False
-        self.streamer.stop()
-
-        if self._audio_task:
-            self._audio_task.cancel()
+        self._generation += 1
+        task = self._audio_task
+        try:
             try:
-                await self._audio_task
-            except asyncio.CancelledError:
-                pass
+                self.streamer.stop()
+            except BaseException:
+                if task:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                raise
+
+            if task:
+                try:
+                    await asyncio.wait_for(task, timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        "Timed out draining captured audio; remaining audio was dropped."
+                    )
+                    raise
+        finally:
             self._audio_task = None
+            if task:
+                await self.streamer.finish_stop()
 
         logger.debug("Audio pipeline stopped.")
 
@@ -66,10 +93,6 @@ class AudioPipeline:
         last_voice_active = False
         try:
             async for chunk, capture_time in self.streamer.async_generator():
-                # Strict gating: only process if we are still marked as running
-                if not self._is_running:
-                    continue
-
                 # Safely log status changes if they happened in the driver thread
                 if self.streamer.last_status:
                     logger.warning(f"Audio status warning: {self.streamer.last_status}")
@@ -82,7 +105,7 @@ class AudioPipeline:
                 await provider.notify_voice_activity(adapter.voice_active, capture_time)
 
                 # Update Voice Activity Signal (Debounced for the HUD)
-                if self.on_voice_activity and adapter.voice_active != last_voice_active:
+                if self.on_voice_activity and (adapter.voice_active or last_voice_active):
                     self.on_voice_activity(adapter.voice_active)
                     last_voice_active = adapter.voice_active
 
@@ -97,8 +120,8 @@ class AudioPipeline:
             # We don't want to crash the whole app if the pipe fails,
 
             # but we should log it prominently.
-            if self._is_running:
-                logger.error(f"Critical error in audio pipeline: {e}")
-                logger.debug("Pipeline traceback: ", exc_info=True)
+            logger.error(f"Critical error in audio pipeline: {e}")
+            logger.debug("Pipeline traceback: ", exc_info=True)
+            raise
         finally:
             self._is_running = False

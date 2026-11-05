@@ -21,8 +21,11 @@ jobs:
     name: "Lint, Type Check & Test"
     runs-on: windows-latest
     timeout-minutes: 15
+    outputs:
+      sha: ${{ steps.checkout.outputs.commit }}
     steps:
       - name: Checkout master
+        id: checkout
         uses: actions/checkout@v4
         with:
           ref: master
@@ -60,10 +63,10 @@ jobs:
       pull-requests: read
 
     steps:
-      - name: Checkout master
+      - name: Checkout tested commit
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: ${{ needs.test.outputs.sha }}
           fetch-depth: 0
 
       - name: Set up Python 3.12

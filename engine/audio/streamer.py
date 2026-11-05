@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import time
 from typing import AsyncGenerator, Optional, Tuple, cast
 
@@ -66,6 +67,9 @@ class AudioStreamer:
         )
         self.is_running = False
         self._stream: sd.InputStream | None = None
+        self._start_cancel = threading.Event()
+        self._stream_lock = threading.Lock()
+        self._sentinel_task: asyncio.Task | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._drop_count = 0
         self._last_drop_log = 0.0
@@ -93,12 +97,14 @@ class AudioStreamer:
         except Exception as e:
             logger.warning(f"Failed to refresh audio device cache: {e}")
 
-    def _callback(self, indata: np.ndarray, frames: int, time_info, status):
+    def _callback(self, indata: np.ndarray, frames: int, time_info, status, generation=None):
         """This is called (from a separate thread) for each audio block."""
         if status:
             # Store status instead of logging it to avoid thread contention
             self.last_status = status
 
+        if generation is None:
+            generation = self._start_cancel
         capture_time = time.perf_counter()
 
         # Apply boundary invariants immediately
@@ -116,7 +122,7 @@ class AudioStreamer:
             return
 
         if self._loop and self._loop.is_running():
-            self._loop.call_soon_threadsafe(self._push_to_queue, chunk, capture_time)
+            self._loop.call_soon_threadsafe(self._push_capture, chunk, capture_time, generation)
         else:
             self._drop_count += 1
             now = time.time()
@@ -126,6 +132,10 @@ class AudioStreamer:
                     f"Dropped so far: {self._drop_count}"
                 )
                 self._last_drop_log = now
+
+    def _push_capture(self, chunk, capture_time, generation):
+        if generation is self._start_cancel:
+            self._push_to_queue(chunk, capture_time)
 
     def _push_to_queue(self, chunk: np.ndarray, capture_time: float):
         """Internal helper to push data into the async queue with 'Drop Oldest' policy."""
@@ -195,7 +205,7 @@ class AudioStreamer:
 
         return None
 
-    def _try_open_stream(self, sample_rate: int) -> sd.InputStream:
+    def _try_open_stream(self, sample_rate: int, generation: threading.Event) -> sd.InputStream:
         """Helper to try mono, then stereo capture at a given sample rate."""
         chunk_size_adjusted = int(self.chunk_size * (sample_rate / self.sample_rate))
 
@@ -247,7 +257,9 @@ class AudioStreamer:
                     device=device_index,
                     dtype=DEFAULT_DTYPE,
                     blocksize=chunk_size_adjusted,
-                    callback=self._callback,
+                    callback=lambda indata, frames, time_info, status: self._callback(
+                        indata, frames, time_info, status, generation
+                    ),
                     extra_settings=extra_settings,
                 )
                 return stream
@@ -269,7 +281,9 @@ class AudioStreamer:
                         device=device_index,
                         dtype=DEFAULT_DTYPE,
                         blocksize=chunk_size_adjusted,
-                        callback=self._callback,
+                        callback=lambda indata, frames, time_info, status: self._callback(
+                            indata, frames, time_info, status, generation
+                        ),
                         extra_settings=extra_settings,
                     )
                     logger.info(f"Stereo capture fallback at {sample_rate}Hz successful.")
@@ -288,6 +302,10 @@ class AudioStreamer:
             return
 
         self._loop = loop or asyncio.get_event_loop()
+        if self._sentinel_task:
+            self._sentinel_task.cancel()
+            self._sentinel_task = None
+        cancelled = self._start_cancel = threading.Event()
 
         # Clear any stale audio
         while not self.async_q.empty():
@@ -307,13 +325,19 @@ class AudioStreamer:
                 rates_to_try.extend([44100, 48000])
 
             last_error = None
+            stream = None
             for rate in rates_to_try:
                 try:
                     # Guard against ZeroDivisionError just in case
                     if self.sample_rate == 0:
                         self.sample_rate = rate
 
-                    self._stream = self._try_open_stream(rate)
+                    if cancelled.is_set():
+                        return
+                    stream = self._try_open_stream(rate, cancelled)
+                    if cancelled.is_set():
+                        stream.close()
+                        return
                     if rate != self.sample_rate:
                         self.chunk_size = int(self.chunk_size * (rate / self.sample_rate))
                         self.sample_rate = rate
@@ -322,16 +346,36 @@ class AudioStreamer:
                     logger.info(f"Failed to open audio stream at {rate}Hz: {e}")
                     last_error = e
 
-            if self._stream is None:
+            if stream is None:
                 err_msg = str(last_error) if last_error else "Unknown error"
                 logger.error(f"All audio capture fallbacks failed. Last error: {err_msg}")
                 raise AudioHardwareError(f"Could not open audio device. Error: {err_msg}")
 
-            self._stream.start()
+            if cancelled.is_set():
+                stream.close()
+                return
+            try:
+                stream.start()
+            except BaseException:
+                stream.close()
+                raise
+            with self._stream_lock:
+                if cancelled.is_set():
+                    stream.stop()
+                    stream.close()
+                else:
+                    self._stream = stream
+                    self.is_running = True
 
         # Run the blocking open/start in an executor
-        await self._loop.run_in_executor(None, _open_and_start)
-        self.is_running = True
+        try:
+            await self._loop.run_in_executor(None, _open_and_start)
+        except asyncio.CancelledError:
+            if cancelled is self._start_cancel:
+                self.stop()
+            else:
+                cancelled.set()
+            raise
 
         if self._stream:
             logger.info(
@@ -341,26 +385,44 @@ class AudioStreamer:
 
     def stop(self):
         """Stops the audio capture stream."""
-        if not self.is_running:
-            return
+        self._start_cancel.set()
+        with self._stream_lock:
+            stream, self._stream = self._stream, None
+            self.is_running = False
+        try:
+            if stream:
+                try:
+                    stream.stop()
+                finally:
+                    stream.close()
+        finally:
+            # Unblock any waiting consumers, including when the device fails to close.
+            if self._loop:
+                queue = self.async_q
+                generation = self._start_cancel
 
-        if self._stream:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+                def signal_stop():
+                    if generation is self._start_cancel:
+                        self._sentinel_task = asyncio.create_task(queue.put((None, 0.0)))
 
-        self.is_running = False
-
-        # Unblock any waiting consumers
-        if self._loop:
-            self._loop.call_soon_threadsafe(self.async_q.put_nowait, (None, 0.0))
-
-        self._loop = None
+                self._loop.call_soon_threadsafe(signal_stop)
+            self._loop = None
         logger.info("Audio capture stopped.")
+
+    async def finish_stop(self):
+        """Remove a pending end marker after the consumer has stopped."""
+        await asyncio.sleep(0)
+        task, self._sentinel_task = self._sentinel_task, None
+        if task and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
         """Yields (audio_chunk, timestamp) tuples asynchronously."""
-        while self.is_running:
+        while True:
             try:
                 # Use await to avoid busy-waiting
                 item = await self.async_q.get()
@@ -371,4 +433,6 @@ class AudioStreamer:
 
                 yield item
             except asyncio.CancelledError:
-                break
+                if self._sentinel_task and not self._sentinel_task.done():
+                    self._sentinel_task.cancel()
+                raise

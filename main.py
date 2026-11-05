@@ -68,6 +68,8 @@ class AppCoordinator:
         self.state = AppState.IDLE
         self._configuration_lock = asyncio.Lock()
         self._stop_lock = asyncio.Lock()
+        self._session_token = None
+        self._voice_active = False
         self._configuration_future: Optional[Future[None]] = None
         self._recording_provider = config.transcription.provider
         self._last_connection_settings = self._connection_settings(config)
@@ -423,6 +425,7 @@ class AppCoordinator:
         # If we are in Toggle mode, ANY key press (other than hotkey) should stop the session.
         if not self.config.hotkeys.hold_mode:
             logger.info(f"Manual stop triggered by key: {key}")
+            self.injection_controller.cancel()
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
@@ -430,7 +433,9 @@ class AppCoordinator:
         """Callback from AudioPipeline when voice activity is detected."""
         if active:
             self._last_voice_activity = time.time()
-        self.ui_bridge.update_voice_activity(active)
+        if active != self._voice_active:
+            self._voice_active = active
+            self.ui_bridge.update_voice_activity(active)
 
     async def _listening_monitor_loop(self):
         """Background task that monitors pipeline health and inactivity."""
@@ -499,7 +504,7 @@ class AppCoordinator:
 
     def on_final(self, text: str):
         if self.injection_controller.cancelled:
-            logger.debug(f"Session cancelled. Discarding final text: {text}")
+            logger.debug("Session cancelled. Discarding final text.")
             return
 
         if not text.strip():
@@ -610,6 +615,7 @@ class AppCoordinator:
                 self.ui_bridge.show_hardware_error_popup()
                 return
 
+        token = self._session_token = object()
         self._recording_provider = self.config.transcription.provider
         self.start_time = time.time()
         self.session_start_time = self.start_time
@@ -625,7 +631,7 @@ class AppCoordinator:
             target = await asyncio.to_thread(
                 Anchor.capture_current, self.config.interaction.anchor_scope
             )
-            if self.state != AppState.CONNECTING:
+            if self.state != AppState.CONNECTING or self._session_token is not token:
                 return
             if not target.can_dictate:
                 self.injection_controller.cancel()
@@ -664,12 +670,12 @@ class AppCoordinator:
                 # Senior Architecture: Ghost Session Guard
                 # If stop_listening was called while we were awaiting connection,
                 # we must abort here to prevent background recording.
-                if self.state != AppState.CONNECTING:
+                if self.state != AppState.CONNECTING or self._session_token is not token:
                     logger.info("Session cancelled during connection. Aborting pipeline start.")
                     return
 
                 has_focus = await asyncio.to_thread(target.has_focus)
-                if self.state != AppState.CONNECTING:
+                if self.state != AppState.CONNECTING or self._session_token is not token:
                     return
                 if not has_focus:
                     self.injection_controller.cancel()
@@ -687,6 +693,8 @@ class AppCoordinator:
                     provider=self.connection_manager.provider,
                     loop=self.loop,
                 )
+            if self.state != AppState.CONNECTING or self._session_token is not token:
+                return
             self._play_feedback_sound("start")
 
             # 4. Start mouse monitoring
@@ -701,6 +709,8 @@ class AppCoordinator:
             self.set_state(AppState.LISTENING)
 
         except AudioHardwareError as e:
+            if self._session_token is not token:
+                return
             logger.error(f"Hardware error: {e}")
             self.set_state(AppState.ERROR)
             self._handle_audio_failure(e)
@@ -710,6 +720,8 @@ class AppCoordinator:
                 await self.stop_listening()
 
         except Exception as e:
+            if self._session_token is not token:
+                return
             logger.error(f"Error starting session: {e}")
             self.set_state(AppState.ERROR)
             # Force cleanup
@@ -823,6 +835,7 @@ class AppCoordinator:
         if self.state == AppState.IDLE:
             return
 
+        self._session_token = None
         was_error = self.state == AppState.ERROR
         if not was_error and not self.is_shutting_down:
             self.set_state(AppState.STOPPING)
@@ -837,8 +850,15 @@ class AppCoordinator:
 
         # Do NOT call stop_provider() here!
         # ConnectionManager handles keeping the connection "warm" or rotating it.
-        await self.pipeline.stop()
+        try:
+            await self.pipeline.stop()
+        except Exception as exc:
+            logger.error("Audio drain failed during dictation stop: %s", type(exc).__name__)
+            self.injection_controller.cancel()
+            self.set_state(AppState.ERROR)
+            self.ui_bridge.update_status_message("Final transcription failed")
         self.pipeline.on_voice_activity = None
+        self._voice_active = False
         provider = self.connection_manager.provider
         if (
             provider

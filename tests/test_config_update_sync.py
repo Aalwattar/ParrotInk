@@ -36,3 +36,34 @@ def test_config_update_and_save_deep_merge(tmp_path):
     reloaded = load_config(config_file)
     assert reloaded.interaction.sounds.enabled is True
     assert reloaded.hotkeys.hotkey == "ctrl+shift+x"
+
+
+def test_background_saves_follow_update_order(tmp_path, monkeypatch):
+    import os
+    import threading
+
+    path = tmp_path / "config.toml"
+    config = Config()
+    first_write = threading.Event()
+    release_write = threading.Event()
+    replace = os.replace
+    calls = []
+
+    def delayed_replace(source, destination):
+        calls.append(source)
+        if len(calls) == 1:
+            first_write.set()
+            assert release_write.wait(5)
+        replace(source, destination)
+
+    monkeypatch.setattr(os, "replace", delayed_replace)
+    config.update_and_save({"hotkeys": {"hotkey": "first"}}, path)
+    assert first_write.wait(5)
+    second = threading.Thread(target=lambda: config.update_and_save(
+        {"hotkeys": {"hotkey": "second"}}, path, blocking=True
+    ))
+    second.start()
+    release_write.set()
+    second.join(5)
+    assert not second.is_alive()
+    assert Config.from_file(path).hotkeys.hotkey == "second"

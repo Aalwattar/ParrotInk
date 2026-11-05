@@ -2,6 +2,7 @@ import os
 import threading
 from pathlib import Path
 from typing import List, Literal, Optional
+from uuid import uuid4
 
 import tomlkit
 from pydantic import (
@@ -330,7 +331,8 @@ class Config(BaseModel):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
 
     _observers: List = PrivateAttr(default_factory=list)
-    _update_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
+    _update_lock: threading.RLock = PrivateAttr(default_factory=threading.RLock)
+    _save_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
 
     def register_observer(self, callback):
         if callback not in self._observers:
@@ -381,8 +383,10 @@ class Config(BaseModel):
             for field in type(self).model_fields:
                 setattr(self, field, getattr(new_cfg, field))
 
-        # 5. Save and Notify
-        self.save(path, blocking=blocking)
+            # Save in the same order as validated updates.
+            self.save(path, blocking=blocking)
+
+        # 5. Notify
         self._notify_observers()
 
     def get_openai_key(self) -> Optional[str]:
@@ -426,11 +430,13 @@ class Config(BaseModel):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Get the current data to write
-        data = self.model_dump(exclude_none=True)
+        # Reserve the write before taking the snapshot so writes cannot overtake updates.
+        with self._update_lock:
+            self._save_lock.acquire()
+            data = self.model_dump(exclude_none=True)
 
         def perform_write():
-            temp_path = path.with_suffix(path.suffix + ".tmp")
+            temp_path = path.with_suffix(path.suffix + f".{uuid4().hex}.tmp")
             try:
                 # Senior Architecture: Style-preserving round-trip
                 if path.exists():
@@ -521,6 +527,18 @@ class Config(BaseModel):
 
                     return changed
 
+                # Rename legacy keys before updating, retaining their TOML items and comments.
+                transcription = doc.get("transcription", {})
+                if "active_provider" in transcription:
+                    transcription["provider"] = transcription.item("active_provider")
+                    del transcription["active_provider"]
+                for provider in ("openai", "assemblyai"):
+                    section = doc.get("providers", {}).get(provider, {})
+                    for old, new in (("tier1", "core"), ("tier2", "advanced")):
+                        if old in section:
+                            section[new] = section.item(old)
+                            del section[old]
+
                 update_toml_doc(doc, data, type(self))
 
                 # Add a helpful header if it's a new file
@@ -546,11 +564,17 @@ class Config(BaseModel):
                         pass
                 if blocking:
                     raise
+            finally:
+                self._save_lock.release()
 
         if blocking:
             perform_write()
         else:
-            threading.Thread(target=perform_write, daemon=True).start()
+            try:
+                threading.Thread(target=perform_write, daemon=False).start()
+            except Exception:
+                self._save_lock.release()
+                raise
 
     @classmethod
     def from_file(cls, path: Path | str) -> "Config":

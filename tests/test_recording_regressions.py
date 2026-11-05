@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from engine.app_types import AppState, EffectiveCloudflareConfig
+from engine.app_types import AppState, AudioHardwareError, EffectiveCloudflareConfig
 from engine.config import Config
 from engine.config_resolver import resolve_effective_config
 from engine.injection import InjectionController
@@ -254,3 +254,91 @@ async def test_final_text_still_inserts_into_unchanged_target(coordinator, mocke
     inject.assert_called_once_with("last words", True)
     assert coordinator.state == AppState.IDLE
     assert not coordinator.injection_controller.cancelled
+
+@pytest.mark.asyncio
+async def test_manual_typing_cancels_final_before_stop(coordinator):
+    coordinator.loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator.start_time = 0
+    coordinator.config.hotkeys.hold_mode = False
+    coordinator.injection_controller.begin(MagicMock())
+    coordinator.stop_listening = AsyncMock()
+    coordinator.injection_controller.queue = MagicMock()
+    coordinator._on_manual_stop("x")
+    coordinator.on_final("car")
+    await asyncio.sleep(0)
+    assert coordinator.injection_controller.cancelled
+    coordinator.injection_controller.queue.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_stop_during_pipeline_start_does_not_restore_listening(coordinator, mocker):
+    coordinator.loop = asyncio.get_running_loop()
+    target = MagicMock(can_dictate=True)
+    target.has_focus.return_value = True
+    mocker.patch("main.Anchor.capture_current", return_value=target)
+    coordinator.get_provider_availability = MagicMock(
+        return_value={coordinator.config.transcription.provider: True}
+    )
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    coordinator.connection_manager.provider = MagicMock(is_running=False)
+    entered = asyncio.Event()
+    resume = asyncio.Event()
+
+    async def start(**kwargs):
+        entered.set()
+        await resume.wait()
+
+    coordinator.pipeline.start = start
+    coordinator.pipeline.stop = AsyncMock()
+    task = asyncio.create_task(coordinator.start_listening())
+    await entered.wait()
+    await coordinator.stop_listening()
+    resume.set()
+    await task
+    assert coordinator.state == AppState.IDLE
+
+
+@pytest.mark.asyncio
+async def test_pipeline_drain_timeout_reports_failure(coordinator):
+    coordinator.state = AppState.LISTENING
+    coordinator.pipeline.stop = AsyncMock(side_effect=[TimeoutError(), None])
+    coordinator.connection_manager.stop_provider = AsyncMock()
+    await coordinator.stop_listening()
+    assert coordinator.state == AppState.ERROR
+    coordinator.ui_bridge.update_status_message.assert_any_call("Final transcription failed")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [AudioHardwareError("mic"), RuntimeError("start")])
+async def test_stale_start_failure_does_not_stop_new_session(coordinator, mocker, error):
+    coordinator.loop = asyncio.get_running_loop()
+    target = MagicMock(can_dictate=True)
+    target.has_focus.return_value = True
+    mocker.patch("main.Anchor.capture_current", return_value=target)
+    coordinator.get_provider_availability = MagicMock(
+        return_value={coordinator.config.transcription.provider: True}
+    )
+    coordinator.connection_manager.ensure_connected = AsyncMock()
+    coordinator.connection_manager.provider = MagicMock(is_running=False)
+    entered = asyncio.Event()
+    resume = asyncio.Event()
+
+    async def start(**kwargs):
+        entered.set()
+        await resume.wait()
+        raise error
+
+    coordinator.pipeline.start = start
+    coordinator.pipeline.stop = AsyncMock()
+    task = asyncio.create_task(coordinator.start_listening())
+    await entered.wait()
+    await coordinator.stop_listening()
+    coordinator._session_token = object()
+    coordinator.state = AppState.LISTENING
+    coordinator.stop_listening = AsyncMock()
+    resume.set()
+    await task
+    await asyncio.sleep(0)
+    assert coordinator.state == AppState.LISTENING
+    coordinator.stop_listening.assert_not_awaited()

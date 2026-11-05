@@ -50,3 +50,40 @@ async def test_stop_provider_concurrency_guard():
     await asyncio.gather(cm.stop_provider(), cm.stop_provider())
 
     assert stop_call_count == 1
+
+@pytest.mark.asyncio
+async def test_idle_timer_cleans_provider_and_adapter():
+    cfg = Config()
+    cfg.audio.connection_mode = "warm"
+    cm = ConnectionManager(cfg, MagicMock(), MagicMock(), MagicMock())
+    provider = MagicMock()
+    async def stop():
+        await asyncio.sleep(0)
+
+    provider.stop = AsyncMock(side_effect=stop)
+    adapter = MagicMock()
+    cm.provider, cm.audio_adapter = provider, adapter
+    cm._last_activity_time = 0
+    cm._idle_timer_task = asyncio.create_task(cm._idle_timer_check())
+    await cm._idle_timer_task
+    provider.stop.assert_awaited_once()
+    adapter.close.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_changed_credentials_replace_stopped_provider(mocker):
+    cfg = Config()
+    cm = ConnectionManager(cfg, MagicMock(), MagicMock(), MagicMock())
+    old = MagicMock(is_running=False)
+    old.stop = AsyncMock()
+    cm.provider = old
+    cm.audio_adapter = MagicMock()
+    new = MagicMock(is_running=True)
+    new.start = AsyncMock()
+    new.wait_for_ready = AsyncMock()
+    mocker.patch("engine.connection.TranscriptionFactory.create", return_value=new)
+    mocker.patch("engine.connection.AudioAdapter")
+    cm._credentials_changed = True
+    await cm.ensure_connected(is_listening=True)
+    assert cm.provider is new
+    old.stop.assert_awaited_once()

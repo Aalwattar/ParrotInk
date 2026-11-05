@@ -56,6 +56,7 @@ class ConnectionManager:
         self._state_lock = asyncio.Lock()
         self._connect_task: Optional[asyncio.Task] = None
         self._generation = 0
+        self._credentials_changed = False
 
     @property
     def speaker_manager(self) -> SpeakerManager:
@@ -116,6 +117,10 @@ class ConnectionManager:
                 f"ensure_connected: Skipping connect (mode={mode}, is_listening={is_listening})"
             )
             return
+
+        if self._credentials_changed:
+            self._credentials_changed = False
+            await self.stop_provider()
 
         # Pre-check rotation/type-mismatch (may trigger an immediate stop_provider)
         if self.provider and self.provider.is_running:
@@ -306,7 +311,8 @@ class ConnectionManager:
             self.audio_adapter = None
 
             if self._idle_timer_task:
-                self._idle_timer_task.cancel()
+                if self._idle_timer_task is not asyncio.current_task():
+                    self._idle_timer_task.cancel()
                 self._idle_timer_task = None
 
         # Cancel in-flight connect outside the lock.
@@ -316,14 +322,14 @@ class ConnectionManager:
                 await connect_task
 
         # Stop provider outside the lock.
-        if provider:
-            with contextlib.suppress(Exception):
-                async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
-                    await provider.stop()
-
-        # Cleanup audio adapter
-        if adapter:
-            adapter.close()
+        try:
+            if provider:
+                with contextlib.suppress(Exception):
+                    async with asyncio.timeout(self.config.audio.connection_timeout_seconds):
+                        await provider.stop()
+        finally:
+            if adapter:
+                adapter.close()
 
     def start_idle_timer(self):
         """Starts the idle timeout timer if configured."""

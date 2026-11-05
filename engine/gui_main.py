@@ -115,6 +115,12 @@ async def main_gui(cli_args, config=None):
         def apply():
             SecurityManager.set_key(account_id, key)
             logger.info(f"API Key updated for: {account_id}")
+            provider = coordinator.connection_manager.provider
+            if provider and account_id == (
+                "cloudflare_api_token" if provider.get_type() == "cloudflare"
+                else f"{provider.get_type()}_api_key"
+            ):
+                coordinator.connection_manager._credentials_changed = True
 
             # Senior Architecture: Dynamic Auto-Selection
             coordinator._ensure_valid_provider()
@@ -165,6 +171,13 @@ async def main_gui(cli_args, config=None):
             def apply():
                 try:
                     save_cloudflare_settings(config, settings)
+                    provider = coordinator.connection_manager.provider
+                    if (
+                        settings.get("api_token")
+                        and provider
+                        and provider.get_type() == "cloudflare"
+                    ):
+                        coordinator.connection_manager._credentials_changed = True
                     coordinator._ensure_valid_provider()
                     ui_bridge.update_availability(coordinator.get_provider_availability())
                     ui_bridge.update_provider(config.transcription.provider)
