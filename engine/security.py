@@ -73,8 +73,8 @@ class SecurityManager:
                 return False
 
             if host in {"localhost", "127.0.0.1"}:
-                return is_test and (scheme in {"ws", "wss"})
+                return is_test and (scheme in {"ws", "wss", "http", "https"})
 
-            return scheme == "wss"
+            return scheme in {"wss", "https"}
         except Exception:
             return False

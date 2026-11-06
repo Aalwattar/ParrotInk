@@ -231,6 +231,11 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
     cf_params: dict[str, Any]
     if cf_model.protocol == "unavailable":
         cf_url = ""
+    elif cf_model.protocol == "openrouter_stt":
+        cf_url = (
+            f"https://gateway.ai.cloudflare.com/v1/{cf_core.account_id}"
+            f"/{cf_core.gateway_id}/openrouter/audio/transcriptions"
+        )
     elif cf_model.protocol == "grok_stt":
         cf_params = {
             "model": cf_core.model,
@@ -260,6 +265,8 @@ def resolve_effective_config(config: Config) -> EffectiveConfig:
         cf_url = with_params(f"{cf_base}/workers-ai", cf_params)
     if config.test.enabled:
         cf_url = config.test.cloudflare_mock_url
+        if cf_model.protocol == "openrouter_stt":
+            cf_url = cf_url.replace("ws://", "http://", 1).replace("wss://", "https://", 1)
     resolved_cf = EffectiveCloudflareConfig(
         url=cf_url,
         model=cf_core.model,

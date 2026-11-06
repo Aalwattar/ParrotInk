@@ -242,11 +242,14 @@ class Win32InputMonitor:
                 return user32.CallNextHookEx(self._hook, n_code, w_param, l_param)
 
             else:  # STATE_DICTATING
-                # Any KeyDown stops dictation (including modifiers)
+                # Wait for the main key before treating a hotkey chord as manual typing.
                 if is_down:
                     # 1. If it's the hotkey combo, trigger toggle stop (via start event)
                     if combo_fired:
                         self._event_queue.put("start")
+                        return 1
+
+                    if base_vk in self._modifier_vks:
                         return 1
 
                     # 2. If 'any key' is enabled, notify the coordinator

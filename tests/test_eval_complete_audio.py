@@ -34,7 +34,11 @@ def eval_args(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_eval_replays_complete_audio_and_drains_last_turn(eval_args, capsys):
+@pytest.mark.parametrize("recorded_audio", [False, True])
+async def test_eval_replays_complete_audio_and_drains_last_turn(eval_args, capsys, recorded_audio):
+    if recorded_audio:
+        eval_args.provider = "cloudflare"
+        eval_args.model = "microsoft/mai-transcribe-2"
     provider = SimpleNamespace(
         get_audio_spec=lambda: ProviderAudioSpec(16000),
         start=AsyncMock(),
@@ -71,6 +75,7 @@ async def test_eval_replays_complete_audio_and_drains_last_turn(eval_args, capsy
 
     result = json.loads(capsys.readouterr().out.strip())
     assert result["status"] == "ok"
+    assert result["realtime"] is not recorded_audio
     assert result["final_text"] == "First turn. Last turn."
     assert result["time_to_first_final_s"] is not None
     provider.wait_for_ready.assert_awaited_once()

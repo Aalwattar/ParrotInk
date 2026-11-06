@@ -199,7 +199,7 @@ def test_legacy_models_remain_valid_in_config():
     assert effective.assemblyai.speech_model == "u3-rt-pro"
 
 
-def test_cloudflare_menu_offers_only_verified_unified_billing_models(mocker, config):
+def test_cloudflare_menu_offers_supported_transcription_models(mocker, config):
     from engine.ui import TrayApp
     from engine.ui_menu import _model_menu
 
@@ -210,5 +210,6 @@ def test_cloudflare_menu_offers_only_verified_unified_billing_models(mocker, con
         "Nova-3 (Cloudflare hosted)",
         "Flux (Cloudflare hosted)",
         "Grok Speech-to-Text",
+        "MAI-Transcribe 2 (after recording)",
     ]
     assert validate_gateway_settings("a" * 32, "default", "openai/gpt-live-transcribe")

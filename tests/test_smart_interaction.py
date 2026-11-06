@@ -7,14 +7,14 @@ from engine.app_types import AppState
 
 
 @pytest.mark.asyncio
-async def test_manual_key_press_stops_listening_and_cancels_injection(coordinator):
+async def test_explicit_cancellation_discards_injection(coordinator):
     coordinator.state = AppState.LISTENING
     coordinator.injection_controller.begin(None)
     coordinator.loop = asyncio.get_running_loop()
     # Bypass cooldown
     coordinator.start_time = time.time() - 1.0
 
-    # Simulate a manual key press event from InputMonitor
+    # Explicit cancellation (such as leaving the target) still discards late text.
     coordinator.injection_controller.cancel()
     await coordinator.stop_listening()
 

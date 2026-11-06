@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import ssl
 import skia
 import glob
 import warnings
@@ -19,6 +20,10 @@ hiddenimports += collect_submodules("keyring")
 hiddenimports += ["keyring.backends.Windows"]
 
 datas = []
+# This Python runtime's ssl.py loads this companion file when creating any TLS context.
+runtime_ca = os.path.join(os.path.dirname(ssl.__file__), "codex-rejected-cas.pem")
+if os.path.isfile(runtime_ca):
+    datas += [(runtime_ca, ".")]
 datas += collect_data_files("pystray")
 datas += collect_data_files("PIL")
 

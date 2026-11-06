@@ -183,6 +183,28 @@ async def test_insertion_timeout_is_not_reported_as_transcription_failure(coordi
 
 
 @pytest.mark.asyncio
+async def test_recorded_audio_gets_longer_finalization_but_not_insertion_timeout(
+    coordinator, mocker
+):
+    coordinator.loop = asyncio.get_running_loop()
+    coordinator.state = AppState.LISTENING
+    coordinator._recording_provider = "cloudflare"
+    coordinator.config.transcription.provider = "cloudflare"
+    coordinator.config.providers.cloudflare.core.model = "microsoft/mai-transcribe-2"
+    coordinator.config.audio.provider_stop_timeout_seconds = 0.01
+    coordinator.pipeline.stop = AsyncMock()
+    provider = MagicMock(is_running=True)
+    provider.finish_utterance = AsyncMock()
+    coordinator.connection_manager.provider = provider
+    timeout = mocker.spy(asyncio, "timeout")
+    await coordinator.stop_listening()
+    provider.finish_utterance.assert_awaited_once()
+    assert timeout.call_args_list[0].args == (60.0,)
+    assert timeout.call_args_list[1].args == (0.01,)
+    assert coordinator.state == AppState.IDLE
+
+
+@pytest.mark.asyncio
 async def test_provider_timeout_keeps_finalization_failure_and_logs_stage(coordinator, caplog):
     coordinator._loop = asyncio.get_running_loop()
     coordinator.state = AppState.LISTENING
@@ -255,20 +277,23 @@ async def test_final_text_still_inserts_into_unchanged_target(coordinator, mocke
     assert coordinator.state == AppState.IDLE
     assert not coordinator.injection_controller.cancelled
 
+
 @pytest.mark.asyncio
-async def test_manual_typing_cancels_final_before_stop(coordinator):
+async def test_any_key_stop_preserves_final_transcript(coordinator):
     coordinator.loop = asyncio.get_running_loop()
     coordinator.state = AppState.LISTENING
     coordinator.start_time = 0
     coordinator.config.hotkeys.hold_mode = False
     coordinator.injection_controller.begin(MagicMock())
-    coordinator.stop_listening = AsyncMock()
+    stopped = asyncio.Event()
+    coordinator.stop_listening = AsyncMock(side_effect=stopped.set)
     coordinator.injection_controller.queue = MagicMock()
     coordinator._on_manual_stop("x")
     coordinator.on_final("car")
-    await asyncio.sleep(0)
-    assert coordinator.injection_controller.cancelled
-    coordinator.injection_controller.queue.assert_not_called()
+    await asyncio.wait_for(stopped.wait(), timeout=1)
+    assert not coordinator.injection_controller.cancelled
+    coordinator.stop_listening.assert_awaited_once()
+    coordinator.injection_controller.queue.assert_called_once_with("car", is_final=True)
 
 
 @pytest.mark.asyncio

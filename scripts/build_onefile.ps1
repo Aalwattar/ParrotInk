@@ -52,6 +52,8 @@ uv run pyinstaller --clean --noconfirm $SPEC_FILE
 
 $exePath = "dist/$APP_NAME.exe"
 if (Test-Path $exePath) {
+    uv run python scripts/verify_frozen_ssl.py $exePath
+    if ($LASTEXITCODE -ne 0) { throw "Bundled SSL verification failed." }
     Write-Host "`nBuild Successful!" -ForegroundColor Green
     Write-Host "Artifact location: $exePath" -ForegroundColor Green
 } else {

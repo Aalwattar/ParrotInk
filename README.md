@@ -122,6 +122,14 @@ The OpenAI and AssemblyAI model menus show the two current models for each provi
 
 ### Cloudflare AI Gateway
 
+For MAI-Transcribe 2, save a funded OpenRouter key in your gateway's **Provider Keys**
+under the **default** alias, then select MAI from the model menu. The app uses your
+existing Cloudflare token. OpenRouter currently requires at least $0.50 in balance
+for audio requests; that is a minimum balance, not the cost of each request.
+Audio stays in memory until you stop, then is submitted once. Recordings are limited
+to 16 MiB of PCM (about 8 minutes at 16 kHz). Transcription may take up to 60 seconds
+(or the configured provider stop timeout, if longer). Cancelled recordings are discarded.
+
 Cloudflare is a connection route to supported speech models, including Cloudflare-hosted models and third-party xAI models. The app currently supports:
 
 | Model | Behavior |
@@ -129,6 +137,7 @@ Cloudflare is a connection route to supported speech models, including Cloudflar
 | `@cf/deepgram/nova-3` (default) | Cloudflare-hosted streaming transcription with interim and final results. |
 | `@cf/deepgram/flux` | Cloudflare-hosted streaming transcription with turn events. |
 | `xai/grok-stt` | Grok speech-to-text through Cloudflare's unified streaming endpoint. |
+| `microsoft/mai-transcribe-2` | OpenRouter transcription after recording stops; no live partial text. |
 
 To configure it:
 

@@ -15,7 +15,7 @@ def validate_gateway_settings(account_id: str, gateway_id: str, model: str) -> s
     if not re.fullmatch(r"[A-Za-z0-9_-]+", gateway_id):
         return "Enter a gateway ID using letters, numbers, hyphens, or underscores."
     if model not in {spec.id for spec in models_for_provider("cloudflare")}:
-        return "Select a supported streaming transcription model."
+        return "Select a supported transcription model."
     return None
 
 
@@ -84,7 +84,9 @@ def ask_cloudflare_settings(master, config) -> dict | None:
         content,
         text="Cloudflare models use only your Cloudflare token.\n"
         "Nova-3 and Flux need AI Gateway Run permission.\n"
-        "Grok also needs Account > Workers AI > Read token permission.",
+        "Grok also needs Account > Workers AI > Read token permission.\n"
+        "MAI returns text after recording stops and needs a funded OpenRouter key\n"
+        "saved in this gateway's Provider Keys (default alias).",
         wraplength=475,
     ).grid(row=9, column=0, columnspan=2, sticky="w", pady=(0, 12))
     result = [None]

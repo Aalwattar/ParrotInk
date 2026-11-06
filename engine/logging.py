@@ -210,6 +210,18 @@ def configure_logging(config, verbose_count: int = 0, quiet: bool = False):
             file_handler.setLevel(file_level)
             fmt = "%(asctime)s [%(levelname)s] [%(name)s] %(message)s"
             file_handler.setFormatter(SanitizingFormatter(fmt))
+            # Always record the effective setting, even when only errors are requested.
+            file_handler.handle(
+                logging.LogRecord(
+                    "Logging",
+                    logging.INFO,
+                    __file__,
+                    0,
+                    "File logging initialized: level=%s",
+                    (config.logging.file_level,),
+                    None,
+                )
+            )
             handlers.append(file_handler)
         except Exception as e:
             print(f"Failed to initialize file logging at {file_path}: {e}")

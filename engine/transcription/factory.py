@@ -9,6 +9,7 @@ from .base import BaseProvider
 from .cloudflare_provider import CloudflareProvider
 from .grok_provider import GrokProvider
 from .openai_provider import OpenAIProvider
+from .openrouter_provider import OpenRouterProvider
 from .speaker_manager import SpeakerManager
 
 
@@ -53,6 +54,10 @@ class TranscriptionFactory:
             if not config.test.enabled and not core.account_id:
                 raise ValueError("Configure your Cloudflare account ID in Gateway settings")
             token = config.get_cloudflare_key() or ""
+            if cfg.protocol == "openrouter_stt":
+                return OpenRouterProvider(
+                    token, on_partial, on_final, cfg, on_status=on_status, on_error=on_error
+                )
             if cfg.protocol == "grok_stt":
                 return GrokProvider(
                     token, on_partial, on_final, cfg, on_status=on_status, on_error=on_error

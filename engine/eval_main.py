@@ -13,6 +13,7 @@ from engine.audio.adapter import AudioAdapter
 from engine.audio.replay import WavReplayer
 from engine.config import load_config
 from engine.logging import configure_logging, get_logger
+from engine.transcription.catalog import get_model, get_selected_model
 from engine.transcription.factory import TranscriptionFactory
 
 logger = get_logger("Eval")
@@ -134,8 +135,12 @@ class EvalCoordinator:
                     return
                 # Provider finalization drains every committed turn. An early final
                 # measures latency; it must never truncate the rest of the recording.
+                model = get_model(
+                    self.provider_name, get_selected_model(self.config, self.provider_name)
+                )
                 has_finish_hook = await asyncio.wait_for(
-                    self._call_hook(provider, "finish_utterance"), timeout=5.0
+                    self._call_hook(provider, "finish_utterance"),
+                    timeout=max(5.0, model.finalization_timeout),
                 )
                 if not has_finish_hook:
                     try:
@@ -164,7 +169,7 @@ class EvalCoordinator:
                 "audio_file": str(self.audio_path),
                 "config_file": str(getattr(self.cli_args, "config", "default")),
                 "chunk_ms": self.config.audio.chunk_ms,
-                "realtime": True,
+                "realtime": model.protocol != "openrouter_stt",
                 "time_to_first_partial_s": self.time_to_first_partial,
                 "time_to_first_final_s": self.time_to_first_final,
                 "final_text": self.final_text,

@@ -278,14 +278,18 @@
 # ID of an existing AI Gateway in that account.
 # gateway_id = "default"
 
-# Supported streaming transcription models through Gateway:
-# "@cf/deepgram/nova-3" (default), "@cf/deepgram/flux", "xai/grok-stt".
+# Supported transcription models through Gateway:
+# "@cf/deepgram/nova-3" (default), "@cf/deepgram/flux", "xai/grok-stt",
+# "microsoft/mai-transcribe-2" (returns text after recording stops).
+# MAI needs a funded OpenRouter key saved in Gateway Provider Keys (default alias).
+# Recordings stay in memory, limited to 16 MiB PCM (about 8 minutes at 16 kHz).
+# MAI allows at least 60 seconds for finalization; it has no live partial results.
 # Nova-3/Flux need AI Gateway Run. Grok uses the unified Cloudflare streaming
 # endpoint, Workers AI Read token permission, and Gateway credits.
 # Models with different wire protocols require matching adapters in the catalog.
 # model = "@cf/deepgram/nova-3"
 
-# Optional language hint for Nova-3 or Grok. Flux uses its model defaults.
+# Optional language hint for Nova-3, Grok, or MAI. Flux uses its model defaults.
 # language = ""
 
 # Nova-3 silence before endpointing, in milliseconds (100 to 10000).
@@ -300,11 +304,11 @@
 # file_enabled = true
 
 # Detail level for the log file.
-# "error"   - Only log critical failures (Recommended for production).
+# "error"   - Only log failures.
 # "info"    - Log major application events.
 # "verbose" - Log everything for deep debugging.
 # Options: "error", "info", "verbose"
-# file_level = "error"
+# file_level = "info"
 
 # Maximum size of a single log file in bytes. Default is 5MB.
 # file_max_bytes = 5242880

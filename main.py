@@ -425,7 +425,6 @@ class AppCoordinator:
         # If we are in Toggle mode, ANY key press (other than hotkey) should stop the session.
         if not self.config.hotkeys.hold_mode:
             logger.info(f"Manual stop triggered by key: {key}")
-            self.injection_controller.cancel()
             if self.loop:
                 asyncio.run_coroutine_threadsafe(self.stop_listening(), self.loop)
 
@@ -618,6 +617,11 @@ class AppCoordinator:
         token = self._session_token = object()
         self._recording_provider = self.config.transcription.provider
         self.start_time = time.time()
+        logger.info(
+            "Recording requested: provider=%s model=%s",
+            self._recording_provider,
+            get_selected_model(self.config, self._recording_provider),
+        )
         self.session_start_time = self.start_time
         self.session_word_count = 0
 
@@ -707,6 +711,11 @@ class AppCoordinator:
             self._inactivity_task = asyncio.create_task(self._listening_monitor_loop())
 
             self.set_state(AppState.LISTENING)
+            model = get_model(
+                self._recording_provider, get_selected_model(self.config, self._recording_provider)
+            )
+            if model.protocol == "openrouter_stt":
+                self.ui_bridge.update_status_message("Recording; stop to transcribe")
 
         except AudioHardwareError as e:
             if self._session_token is not token:
@@ -860,6 +869,13 @@ class AppCoordinator:
         self.pipeline.on_voice_activity = None
         self._voice_active = False
         provider = self.connection_manager.provider
+        logger.info(
+            "Recording stopped: provider=%s cancelled=%s was_error=%s provider_running=%s",
+            self._recording_provider,
+            self.injection_controller.cancelled,
+            was_error,
+            bool(provider and provider.is_running),
+        )
         if (
             provider
             and provider.is_running
@@ -869,7 +885,13 @@ class AppCoordinator:
             stage = "provider_finalize"
             started = time.monotonic()
             try:
-                async with asyncio.timeout(self.config.audio.provider_stop_timeout_seconds):
+                model = get_model(
+                    self._recording_provider,
+                    get_selected_model(self.config, self._recording_provider),
+                )
+                async with asyncio.timeout(
+                    max(self.config.audio.provider_stop_timeout_seconds, model.finalization_timeout)
+                ):
                     await provider.finish_utterance()
                 # Final callbacks queue cursor writes; drain them before a new anchor
                 # or session can be selected.

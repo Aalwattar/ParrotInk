@@ -135,7 +135,7 @@ class LoggingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     file_enabled: bool = True
     file_path: Optional[str] = None
-    file_level: Literal["error", "info", "verbose"] = "error"
+    file_level: Literal["error", "info", "verbose"] = "info"
     file_max_bytes: int = Field(default=5242880, ge=1024)  # Default 5MB
     file_backup_count: int = Field(default=5, ge=0, le=50)
 

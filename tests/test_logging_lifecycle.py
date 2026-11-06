@@ -44,3 +44,11 @@ def test_reconfiguration_stops_previous_worker_and_releases_file(active_logging)
     assert previous._thread is None
     assert previous.handlers[0].stream is None
     assert "Before reconfiguration" in path.read_text(encoding="utf-8")
+
+
+def test_error_only_log_still_records_effective_setting(active_logging):
+    config, path, _ = active_logging
+    config.logging.file_level = "error"
+    app_logging.configure_logging(config, quiet=True)
+    app_logging.shutdown_logging()
+    assert "File logging initialized: level=error" in path.read_text(encoding="utf-8")

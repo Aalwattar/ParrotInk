@@ -12,6 +12,7 @@ class ModelSpec:
     protocol: str
     modern: bool = True
     diarization: bool = False
+    finalization_timeout: float = 0.0
 
 
 PROVIDER_LABELS = {
@@ -49,6 +50,13 @@ MODELS = (
     ),
     ModelSpec("@cf/deepgram/flux", "Flux (Cloudflare hosted)", "cloudflare", "deepgram_flux"),
     ModelSpec("xai/grok-stt", "Grok Speech-to-Text", "cloudflare", "grok_stt"),
+    ModelSpec(
+        "microsoft/mai-transcribe-2",
+        "MAI-Transcribe 2 (after recording)",
+        "cloudflare",
+        "openrouter_stt",
+        finalization_timeout=60.0,
+    ),
     # Retain old configuration IDs without offering unavailable Unified Billing routes.
     ModelSpec(
         "openai/gpt-live-transcribe", "OpenAI GPT Live Transcribe", "cloudflare", "unavailable"

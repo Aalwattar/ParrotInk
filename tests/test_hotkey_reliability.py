@@ -70,6 +70,26 @@ def test_own_input_does_not_start_or_stop_dictation(monitor):
     assert drain(monitor) == ["any_key:a"]
 
 
+def test_toggle_stop_chord_does_not_cancel_buffered_recording(monitor):
+    monitor.enable_any_key_monitoring(True)
+    for vk in (0xA2, 0xA4, 0x56):
+        send(monitor, vk)
+    assert drain(monitor) == ["start"]
+    for vk in (0x56, 0xA4, 0xA2):
+        send(monitor, vk, WM_KEYUP)
+    for vk in (0xA2, 0xA4, 0x56):
+        send(monitor, vk)
+    assert drain(monitor) == ["start"]
+
+
+def test_other_shortcut_still_triggers_any_key_stop(monitor):
+    monitor._state = STATE_DICTATING
+    monitor.enable_any_key_monitoring(True)
+    send(monitor, 0xA2)
+    send(monitor, 0x43)
+    assert drain(monitor) == ["any_key:c"]
+
+
 def test_repeats_require_release_even_after_session_cleanup(monitor):
     for vk in (0xA2, 0xA4, 0x56, 0x56):
         send(monitor, vk)
