@@ -71,6 +71,7 @@ class AudioStreamer:
         self._stream_lock = threading.Lock()
         self._sentinel_task: asyncio.Task | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._buffering = False
         self._drop_count = 0
         self._last_drop_log = 0.0
         self.last_status = None
@@ -138,8 +139,11 @@ class AudioStreamer:
             self._push_to_queue(chunk, capture_time)
 
     def _push_to_queue(self, chunk: np.ndarray, capture_time: float):
-        """Internal helper to push data into the async queue with 'Drop Oldest' policy."""
+        """Preserve the opening during setup and favor recent audio during live delivery."""
         if self.async_q.full():
+            if self._buffering:
+                self._drop_count += 1
+                return
             try:
                 self.async_q.get_nowait()
                 self._drop_count += 1
@@ -296,11 +300,14 @@ class AudioStreamer:
             raise last_exception
         raise AudioHardwareError("Unknown audio capture failure")
 
-    async def start(self, loop: asyncio.AbstractEventLoop | None = None):
+    async def start(
+        self, loop: asyncio.AbstractEventLoop | None = None, *, buffering: bool = False
+    ):
         """Starts the audio capture stream with robust fallbacks."""
         if self.is_running:
             return
 
+        self._buffering = buffering
         self._loop = loop or asyncio.get_event_loop()
         if self._sentinel_task:
             self._sentinel_task.cancel()
@@ -383,6 +390,15 @@ class AudioStreamer:
                 f"(channels={self._stream.channels})"
             )
 
+    def begin_delivery(self):
+        if self._buffering and self._drop_count:
+            raise BufferError("Connection took too long to retain the full recording")
+        # Isolate the opening from the live queue's drop-oldest policy during catch-up.
+        opening = self.async_q
+        self.async_q = asyncio.Queue(maxsize=opening.maxsize)
+        self._buffering = False
+        return self.async_generator(opening)
+
     def stop(self):
         """Stops the audio capture stream."""
         self._start_cancel.set()
@@ -397,7 +413,14 @@ class AudioStreamer:
                     stream.close()
         finally:
             # Unblock any waiting consumers, including when the device fails to close.
-            if self._loop:
+            if self._buffering:
+                # Invalidate callbacks already scheduled by the device thread.
+                self._start_cancel = threading.Event()
+                self._start_cancel.set()
+                self._buffering = False
+                while not self.async_q.empty():
+                    self.async_q.get_nowait()
+            elif self._loop:
                 queue = self.async_q
                 generation = self._start_cancel
 
@@ -420,8 +443,10 @@ class AudioStreamer:
             except asyncio.CancelledError:
                 pass
 
-    async def async_generator(self) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
+    async def async_generator(self, opening=None) -> AsyncGenerator[Tuple[np.ndarray, float], None]:
         """Yields (audio_chunk, timestamp) tuples asynchronously."""
+        while opening is not None and not opening.empty():
+            yield opening.get_nowait()
         while True:
             try:
                 # Use await to avoid busy-waiting

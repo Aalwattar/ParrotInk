@@ -25,7 +25,7 @@ logger = get_logger("Config")
 
 CORE_MODEL_INVARIANTS = {
     "openai": "gpt-live-transcribe",
-    "assemblyai": "universal-3-6-pro",
+    "assemblyai": "assemblyai-stt-3-7-realtime-agent",
 }
 
 LATENCY_PROFILES = {
@@ -206,7 +206,7 @@ class AssemblyAICoreConfig(BaseModel):
     # ISO code (e.g., 'en', 'es'). If empty, enables auto-detection on V3 models.
     language_code: str = ""
     vad_threshold: float = 0.4
-    speech_model: str = "universal-3-6-pro"
+    speech_model: str = "assemblyai-stt-3-7-realtime-agent"
     prompt: str = ""
     inactivity_timeout_seconds: int = 0
     mode: Literal["balanced", "min_latency", "max_accuracy"] = "balanced"

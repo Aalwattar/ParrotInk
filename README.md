@@ -101,7 +101,7 @@ ParrotInk supports direct OpenAI and AssemblyAI connections and Cloudflare AI Ga
 
 ### AssemblyAI
 
-The default model is **Universal 3.6 Pro Realtime** (`universal-3-6-pro`). It supports native multilingual recognition, vocabulary and conversation context, acoustic focus, and speaker labels.
+The default model is **AssemblyAI STT 3.7 Realtime Agent** (`assemblyai-stt-3-7-realtime-agent`). It supports native multilingual recognition, vocabulary and conversation context, acoustic focus, and speaker labels.
 
 - Use the response speed profile for `min_latency`, `balanced`, or `max_accuracy` operation.
 - Set `language_codes` for expected languages, or leave it empty for multilingual recognition.

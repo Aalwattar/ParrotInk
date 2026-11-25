@@ -60,7 +60,7 @@ class AppCoordinator:
             config,
             self.on_partial,
             self.on_final,
-            self.set_state,
+            self._on_connection_state,
             on_status_cb=self.ui_bridge.update_status_message,
             on_error_cb=self._on_provider_error,
         )
@@ -254,6 +254,12 @@ class AppCoordinator:
     @property
     def is_shutting_down(self) -> bool:
         return self.state == AppState.SHUTTING_DOWN
+
+    def _on_connection_state(self, state: AppState):
+        # A warm handshake can finish while dictation is still opening the microphone.
+        if state == AppState.IDLE and self.is_connecting and self._session_token is not None:
+            return
+        self.set_state(state)
 
     def _on_provider_error(self, error: TranscriptionError):
         """Callback from connection manager when a fatal provider error occurs."""
@@ -642,6 +648,7 @@ class AppCoordinator:
                 self.injection_controller.release()
                 self.input_monitor.reset_state()
                 self.session_start_time = 0.0
+                self._session_token = None
                 self.set_state(AppState.IDLE)
                 assessment = target.assessment
                 self.ui_bridge.update_status_message(
@@ -666,10 +673,16 @@ class AppCoordinator:
             self._last_voice_activity = time.time()
             self.pipeline.on_voice_activity = self._on_voice_activity
 
-            # 2. Initiate connection (Ensure we have provider and adapter ready)
-            # Use a timeout for the overall start operation
+            # Keep microphone frames local until both the provider and original editor are ready.
             async with asyncio.timeout(self.config.audio.connection_timeout_seconds + 10.0):
+                await self.streamer.start(loop=self.loop, buffering=True)
+                if self.state != AppState.CONNECTING or self._session_token is not token:
+                    return
                 await self.connection_manager.ensure_connected(is_listening=True)
+
+                if self._session_token is token and self.state == AppState.ERROR:
+                    await self.stop_listening(silent=True)
+                    return
 
                 # Senior Architecture: Ghost Session Guard
                 # If stop_listening was called while we were awaiting connection,
@@ -678,10 +691,10 @@ class AppCoordinator:
                     logger.info("Session cancelled during connection. Aborting pipeline start.")
                     return
 
-                has_focus = await asyncio.to_thread(target.has_focus)
+                has_focus = await asyncio.to_thread(target.has_focus, same_editor=True)
                 if self.state != AppState.CONNECTING or self._session_token is not token:
                     return
-                if not has_focus:
+                if not has_focus or self.injection_controller.cancelled:
                     self.injection_controller.cancel()
                     await self.stop_listening(silent=True)
                     self.ui_bridge.update_status_message(
@@ -692,10 +705,9 @@ class AppCoordinator:
                 self.connection_manager.provider.reset_utterance()
 
                 # 3. Start pipeline with the resolved connection components
-                await self.pipeline.start(
+                self.pipeline.start_delivery(
                     adapter=self.connection_manager.audio_adapter,
                     provider=self.connection_manager.provider,
-                    loop=self.loop,
                 )
             if self.state != AppState.CONNECTING or self._session_token is not token:
                 return
@@ -717,27 +729,29 @@ class AppCoordinator:
             if model.protocol == "openrouter_stt":
                 self.ui_bridge.update_status_message("Recording; stop to transcribe")
 
+        except asyncio.CancelledError:
+            if self._session_token is token:
+                self.injection_controller.cancel()
+                await self.stop_listening(silent=True)
+            raise
+
         except AudioHardwareError as e:
             if self._session_token is not token:
                 return
             logger.error(f"Hardware error: {e}")
             self.set_state(AppState.ERROR)
             self._handle_audio_failure(e)
-            if self.loop:
-                self.loop.create_task(self.stop_listening())
-            else:
-                await self.stop_listening()
+            await self.stop_listening()
 
         except Exception as e:
             if self._session_token is not token:
                 return
             logger.error(f"Error starting session: {e}")
             self.set_state(AppState.ERROR)
+            if isinstance(e, BufferError):
+                self.ui_bridge.update_status_message(str(e))
             # Force cleanup
-            if self.loop:
-                self.loop.create_task(self.stop_listening())
-            else:
-                await self.stop_listening()
+            await self.stop_listening()
 
     def _start_mouse_monitor(self):
         if (
@@ -844,6 +858,8 @@ class AppCoordinator:
         if self.state == AppState.IDLE:
             return
 
+        if self.state == AppState.CONNECTING:
+            self.injection_controller.cancel()
         self._session_token = None
         was_error = self.state == AppState.ERROR
         if not was_error and not self.is_shutting_down:

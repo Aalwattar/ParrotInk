@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -33,6 +34,17 @@ class ReadyStreamingSocket:
         return await self.events.get()
 
 
+@contextmanager
+def mock_streaming_connection():
+    with (
+        patch.object(Config, "get_openai_key", return_value="test"),
+        patch.object(Config, "get_assemblyai_key", return_value="test"),
+        patch("websockets.connect", new_callable=AsyncMock) as connect,
+    ):
+        connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
+        yield
+
+
 async def connect_and_ready(cm: ConnectionManager, is_listening: bool = False):
     """Connect through the actual acknowledgement and persistent receive loop."""
     await asyncio.wait_for(cm.ensure_connected(is_listening=is_listening), timeout=2.0)
@@ -54,10 +66,7 @@ async def test_ensure_connected_idempotency():
         set_state_cb=set_state,
     )
 
-    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        # Mock successful connection
-        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
-
+    with mock_streaming_connection():
         # First connection
         await connect_and_ready(cm)
         provider1 = cm.provider
@@ -88,9 +97,7 @@ async def test_openai_rotation_guard():
         set_state_cb=set_state,
     )
 
-    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
-
+    with mock_streaming_connection():
         await connect_and_ready(cm)
         provider1 = cm.provider
 
@@ -121,9 +128,7 @@ async def test_provider_switching():
         set_state_cb=set_state,
     )
 
-    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
-
+    with mock_streaming_connection():
         await connect_and_ready(cm)
         assert cm.provider.get_type() == "openai"
 

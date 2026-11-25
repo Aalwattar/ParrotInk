@@ -26,8 +26,18 @@ MODELS = (
     ModelSpec("gpt-transcribe", "GPT Transcribe", "openai", "openai"),
     ModelSpec("gpt-4o-mini-transcribe", "GPT-4o Mini (legacy)", "openai", "openai", False),
     ModelSpec("gpt-4o-transcribe", "GPT-4o Transcribe (legacy)", "openai", "openai", False),
+    ModelSpec(
+        "assemblyai-stt-3-7-realtime-agent",
+        "STT 3.7 Realtime Agent",
+        "assemblyai",
+        "assemblyai",
+        True,
+        True,
+    ),
     ModelSpec("universal-3-6-pro", "Universal 3.6 Pro", "assemblyai", "assemblyai", True, True),
-    ModelSpec("universal-3-5-pro", "Universal 3.5 Pro", "assemblyai", "assemblyai", True, True),
+    ModelSpec(
+        "universal-3-5-pro", "Universal 3.5 Pro (legacy)", "assemblyai", "assemblyai", True, True
+    ),
     ModelSpec("u3-rt-pro", "Universal 3 Pro (legacy)", "assemblyai", "assemblyai", True, True),
     ModelSpec(
         "universal-streaming-english", "Universal English", "assemblyai", "assemblyai", False

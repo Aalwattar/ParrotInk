@@ -14,6 +14,15 @@ def query(url):
     return parse_qs(urlsplit(url).query)
 
 
+def test_assembly_default_uses_stt_37_agent():
+    config = Config()
+    config.transcription.mic_profile = "headset"
+    params = query(resolve_effective_config(config).assemblyai.url)
+    assert params["speech_model"] == ["assemblyai-stt-3-7-realtime-agent"]
+    assert params["voice_focus"] == ["near-field"]
+    assert params["mode"] == ["balanced"]
+
+
 def test_assembly_36_preserves_context_and_modern_options():
     config = Config()
     core = config.providers.assemblyai.core

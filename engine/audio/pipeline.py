@@ -19,32 +19,16 @@ class AudioPipeline:
         self.streamer = streamer
         self._audio_task: Optional[asyncio.Task] = None
         self._is_running = False
-        self._generation = 0
         self.on_voice_activity: Optional[Callable[[bool], None]] = None
 
     @property
     def is_active(self) -> bool:
         return self._is_running
 
-    async def start(
-        self, adapter: AudioAdapter, provider: BaseProvider, loop: asyncio.AbstractEventLoop
-    ):
-        """Starts the audio capture and the asynchronous processing pipe."""
+    def start_delivery(self, adapter: AudioAdapter, provider: BaseProvider):
+        """Forward buffered and live capture through the same ordered consumer."""
         if self._is_running:
             return
-
-        self._is_running = True
-        self._generation += 1
-        generation = self._generation
-        try:
-            await self.streamer.start(loop=loop)
-        except BaseException:
-            if generation == self._generation:
-                self._is_running = False
-            raise
-        if generation != self._generation:
-            return
-
         # Guard against zero sample rate just in case, though streamer handles it
         if getattr(self.streamer, "sample_rate", 16000) != adapter.capture_rate_hz:
             logger.info(
@@ -53,13 +37,14 @@ class AudioPipeline:
             )
             adapter.update_capture_rate(self.streamer.sample_rate)
 
-        self._audio_task = asyncio.create_task(self._run_pipe(adapter, provider))
+        chunks = self.streamer.begin_delivery()
+        self._is_running = True
+        self._audio_task = asyncio.create_task(self._run_pipe(adapter, provider, chunks))
         logger.debug("Audio pipeline started.")
 
     async def stop(self):
         """Stops capture and drains queued audio before returning."""
         self._is_running = False
-        self._generation += 1
         task = self._audio_task
         try:
             try:
@@ -88,11 +73,11 @@ class AudioPipeline:
 
         logger.debug("Audio pipeline stopped.")
 
-    async def _run_pipe(self, adapter: AudioAdapter, provider: BaseProvider):
+    async def _run_pipe(self, adapter: AudioAdapter, provider: BaseProvider, chunks):
         """Internal loop that pulls from streamer and sends to provider."""
         last_voice_active = False
         try:
-            async for chunk, capture_time in self.streamer.async_generator():
+            async for chunk, capture_time in chunks:
                 # Safely log status changes if they happened in the driver thread
                 if self.streamer.last_status:
                     logger.warning(f"Audio status warning: {self.streamer.last_status}")

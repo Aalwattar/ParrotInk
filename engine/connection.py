@@ -159,11 +159,10 @@ class ConnectionManager:
 
         # Fast path / task coalescing under a short lock only.
         async with self._state_lock:
-            if self.provider and self.provider.is_running:
-                return
-
             if self._connect_task and not self._connect_task.done():
                 task = self._connect_task
+            elif self.provider and self.provider.is_running:
+                return
             else:
                 if self.provider is None:
                     provider = TranscriptionFactory.create(

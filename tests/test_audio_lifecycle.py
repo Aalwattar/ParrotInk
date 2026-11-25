@@ -48,7 +48,8 @@ async def test_stop_drains_audio_and_reports_sustained_voice():
     provider.notify_voice_activity = AsyncMock()
     activity = Mock()
     pipeline.on_voice_activity = activity
-    await pipeline.start(adapter, provider, asyncio.get_running_loop())
+    await streamer.start(buffering=True)
+    pipeline.start_delivery(adapter, provider)
     streamer._push_to_queue(np.array([1]), 1.0)
     streamer._push_to_queue(np.array([2]), 2.0)
     await pipeline.stop()
@@ -57,25 +58,19 @@ async def test_stop_drains_audio_and_reports_sustained_voice():
 
 
 @pytest.mark.asyncio
-async def test_stop_during_start_does_not_start_pipeline():
-    streamer = Mock(sample_rate=16000)
-    entered, release = asyncio.Event(), asyncio.Event()
-
-    async def start(loop):
-        entered.set()
-        await release.wait()
-
-    streamer.start = start
+async def test_startup_overflow_discards_recording():
+    streamer = AudioStreamer()
+    streamer.async_q = asyncio.Queue(maxsize=1)
+    streamer._try_open_stream = Mock(return_value=Mock(samplerate=16000, channels=1))
     pipeline = AudioPipeline(streamer)
-    task = asyncio.create_task(
-        pipeline.start(Mock(capture_rate_hz=16000), Mock(), asyncio.get_running_loop())
-    )
-    await entered.wait()
+    await streamer.start(buffering=True)
+    streamer._push_to_queue(np.array([1]), 1.0)
+    streamer._push_to_queue(np.array([2]), 2.0)
+    with pytest.raises(BufferError):
+        pipeline.start_delivery(Mock(), Mock())
     await pipeline.stop()
-    release.set()
-    await task
+    assert streamer.async_q.empty()
     assert not pipeline.is_active
-    assert pipeline._audio_task is None
 
 
 @pytest.mark.asyncio
@@ -95,7 +90,8 @@ async def test_drain_timeout_cleans_up_full_queue_sentinel():
 
     provider.send_audio = blocked_send
     provider.notify_voice_activity = AsyncMock()
-    await pipeline.start(adapter, provider, asyncio.get_running_loop())
+    await streamer.start(buffering=True)
+    pipeline.start_delivery(adapter, provider)
     streamer._push_to_queue(np.array([1]), 1.0)
     await entered.wait()
     streamer._push_to_queue(np.array([2]), 2.0)
@@ -123,7 +119,8 @@ async def test_device_stop_failure_cleans_up_consumer():
     device.stop.side_effect = RuntimeError("device failure")
     streamer._try_open_stream = Mock(return_value=device)
     pipeline = AudioPipeline(streamer)
-    await pipeline.start(Mock(capture_rate_hz=16000), Mock(), asyncio.get_running_loop())
+    await streamer.start(buffering=True)
+    pipeline.start_delivery(Mock(capture_rate_hz=16000), Mock())
     task = pipeline._audio_task
     await asyncio.sleep(0)
     with pytest.raises(RuntimeError, match="device failure"):

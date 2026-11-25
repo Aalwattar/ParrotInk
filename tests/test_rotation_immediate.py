@@ -1,11 +1,10 @@
 import asyncio
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from engine.config import Config
 from engine.connection import ConnectionManager
-from tests.test_connection_lifecycle import ReadyStreamingSocket, connect_and_ready
+from tests.test_connection_lifecycle import connect_and_ready, mock_streaming_connection
 
 
 @pytest.mark.asyncio
@@ -27,9 +26,7 @@ async def test_immediate_rotation_after_stop():
         set_state_cb=set_state,
     )
 
-    with patch("websockets.asyncio.client.connect", new_callable=AsyncMock) as mock_connect:
-        mock_connect.side_effect = lambda *args, **kwargs: ReadyStreamingSocket()
-
+    with mock_streaming_connection():
         # 1. Connect
         await connect_and_ready(cm, is_listening=True)
         provider1 = cm.provider

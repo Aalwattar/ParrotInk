@@ -97,7 +97,7 @@ async def test_pipeline_reports_stopped_after_provider_failure():
         notify_voice_activity=vad, send_audio=send, is_running=False, get_type=lambda: "test"
     )
     adapter = SimpleNamespace(process=lambda chunk: b"pcm", voice_active=False)
-    await pipeline._run_pipe(adapter, provider)
+    await pipeline._run_pipe(adapter, provider, chunks())
     assert calls == ["vad", "audio"]
     assert not pipeline.is_active
 
@@ -220,7 +220,7 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     coordinator.state = AppState.IDLE
     coordinator.input_monitor._state = 1
     coordinator.connection_manager.ensure_connected = AsyncMock()
-    coordinator.pipeline.start = AsyncMock()
+    coordinator.streamer.start = AsyncMock()
     mocker.patch(
         "main.Anchor.capture_current",
         return_value=SimpleNamespace(
@@ -231,7 +231,7 @@ async def test_noneditable_target_rejects_dictation_before_network_or_microphone
     )
     await coordinator.start_listening()
     coordinator.connection_manager.ensure_connected.assert_not_awaited()
-    coordinator.pipeline.start.assert_not_awaited()
+    coordinator.streamer.start.assert_not_awaited()
     assert coordinator.input_monitor._state == 0
     assert coordinator.injection_controller.cancelled
     assert coordinator.state == AppState.IDLE
@@ -248,31 +248,95 @@ async def test_writable_target_still_starts_dictation(coordinator, mocker):
     coordinator._loop = asyncio.get_running_loop()
     coordinator.connection_manager.ensure_connected = AsyncMock()
     coordinator.connection_manager.provider = ReadyProvider()
-    coordinator.pipeline.start = AsyncMock()
+    coordinator.streamer.start = AsyncMock()
+    coordinator.pipeline.start_delivery = MagicMock()
     coordinator.pipeline.stop = AsyncMock()
     mocker.patch.object(coordinator, "_start_mouse_monitor")
-    target = SimpleNamespace(can_dictate=True, has_focus=lambda: True)
+    target = SimpleNamespace(can_dictate=True, has_focus=lambda **kwargs: True)
     mocker.patch("main.Anchor.capture_current", return_value=target)
     await coordinator.start_listening()
     coordinator.connection_manager.ensure_connected.assert_awaited_once()
-    coordinator.pipeline.start.assert_awaited_once()
+    coordinator.streamer.start.assert_awaited_once()
     assert coordinator.state == AppState.LISTENING
     await coordinator.stop_listening()
 
 
 @pytest.mark.asyncio
-async def test_target_changed_during_connection_does_not_start_microphone(coordinator, mocker):
-    coordinator.config.test.enabled = False
+@pytest.mark.parametrize(
+    "outcome", ["connected", "warming", "cancel", "focus_changed", "connection_failed"]
+)
+async def test_audio_buffered_during_delayed_connection(coordinator, mocker, outcome):
+    coordinator.loop = asyncio.get_running_loop()
     coordinator.config.transcription.provider = "openai"
     coordinator.get_provider_availability = MagicMock(return_value={"openai": True})
-    coordinator.state = AppState.IDLE
-    coordinator.connection_manager.ensure_connected = AsyncMock()
-    coordinator.connection_manager.provider = ReadyProvider()
-    coordinator.pipeline.start = AsyncMock()
-    target = SimpleNamespace(can_dictate=True, has_focus=lambda: False)
+    target = MagicMock(can_dictate=True)
     mocker.patch("main.Anchor.capture_current", return_value=target)
-    await coordinator.start_listening()
-    coordinator.connection_manager.ensure_connected.assert_awaited_once()
-    coordinator.pipeline.start.assert_not_awaited()
-    assert coordinator.state == AppState.IDLE
-    assert coordinator.injection_controller.cancelled
+    mocker.patch.object(coordinator, "_start_mouse_monitor")
+    streamer = coordinator.streamer
+    device = MagicMock(samplerate=streamer.sample_rate, channels=1)
+    mocker.patch.object(streamer, "_try_open_stream", return_value=device)
+    provider = ReadyProvider()
+    provider.send_audio = AsyncMock()
+    mocker.patch("engine.connection.TranscriptionFactory.create", return_value=provider)
+    adapter = MagicMock(
+        capture_rate_hz=streamer.sample_rate,
+        process=lambda frame: frame.tobytes(),
+        voice_active=True,
+    )
+    mocker.patch("engine.connection.AudioAdapter", return_value=adapter)
+    coordinator.config.audio.max_retries = 1
+    connecting, ready = asyncio.Event(), asyncio.Event()
+
+    async def wait_for_ready():
+        connecting.set()
+        await ready.wait()
+        if outcome == "connection_failed":
+            raise ConnectionError("handshake failed")
+
+    provider.wait_for_ready = wait_for_ready
+    warm_task = None
+    if outcome == "warming":
+        capture = streamer.start
+
+        async def start_during_warm_handshake(**kwargs):
+            nonlocal warm_task
+            await capture(**kwargs)
+            warm_task = asyncio.create_task(coordinator.connection_manager.ensure_connected(False))
+            await connecting.wait()
+
+        mocker.patch.object(streamer, "start", side_effect=start_during_warm_handshake)
+    startup = asyncio.create_task(coordinator.start_listening())
+    await asyncio.wait_for(connecting.wait(), timeout=2)
+    generation = streamer._start_cancel
+    frames = [np.array([value], dtype=np.float32) for value in (1, 2, 3)]
+    for frame in frames[:2]:
+        streamer._callback(frame, 1, None, None, generation)
+    await asyncio.sleep(0)
+    assert streamer.async_q.qsize() == 2
+    provider.send_audio.assert_not_awaited()
+
+    if outcome == "cancel":
+        await coordinator.stop_listening()
+    target.has_focus.return_value = outcome != "focus_changed"
+    ready.set()
+    if outcome == "cancel":
+        with pytest.raises(asyncio.CancelledError):
+            await startup
+    else:
+        await asyncio.wait_for(startup, timeout=2)
+    if warm_task is not None:
+        await warm_task
+    if outcome in ("connected", "warming", "focus_changed"):
+        target.has_focus.assert_called_once_with(same_editor=True)
+    if outcome in ("connected", "warming"):
+        streamer._callback(frames[2], 1, None, None, generation)
+        await coordinator.stop_listening()
+        sent = [call.args[0] for call in provider.send_audio.await_args_list]
+        assert sent == [frame.tobytes() for frame in frames]
+    else:
+        streamer._push_capture(frames[2], 3.0, generation)
+        provider.send_audio.assert_not_awaited()
+        assert streamer.async_q.empty()
+    assert not streamer.is_running
+    expected_state = AppState.ERROR if outcome == "connection_failed" else AppState.IDLE
+    assert coordinator.state == expected_state

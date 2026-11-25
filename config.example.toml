@@ -220,8 +220,8 @@
 # language_code = ""
 
 # Recommended modern streaming model. The tray Model menu also offers
-# "universal-3-5-pro", "u3-rt-pro", and legacy streaming models.
-# speech_model = "universal-3-6-pro"
+# "universal-3-6-pro". Older models remain available through configuration.
+# speech_model = "assemblyai-stt-3-7-realtime-agent"
 
 # Modern model latency mode, used when advanced.override=true; otherwise selected
 # by the shared latency profile. Options: "balanced", "min_latency", "max_accuracy".

@@ -314,7 +314,7 @@ async def test_stop_during_pipeline_start_does_not_restore_listening(coordinator
         entered.set()
         await resume.wait()
 
-    coordinator.pipeline.start = start
+    coordinator.streamer.start = start
     coordinator.pipeline.stop = AsyncMock()
     task = asyncio.create_task(coordinator.start_listening())
     await entered.wait()
@@ -354,7 +354,7 @@ async def test_stale_start_failure_does_not_stop_new_session(coordinator, mocker
         await resume.wait()
         raise error
 
-    coordinator.pipeline.start = start
+    coordinator.streamer.start = start
     coordinator.pipeline.stop = AsyncMock()
     task = asyncio.create_task(coordinator.start_listening())
     await entered.wait()
